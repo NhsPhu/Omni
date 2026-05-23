@@ -1,0 +1,450 @@
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.phase{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;margin-bottom:12px}
+.phase-header{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;user-select:none;background:var(--color-background-primary)}
+.phase-header:hover{background:var(--color-background-secondary)}
+.ph-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0}
+.ph-info{flex:1}
+.ph-title{font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.ph-meta{font-size:12px;color:var(--color-text-secondary)}
+.ph-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.dur-badge{font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px}
+.chevron{font-size:16px;color:var(--color-text-tertiary);transition:transform .2s}
+.chevron.open{transform:rotate(180deg)}
+.phase-body{border-top:0.5px solid var(--color-border-tertiary);display:none}
+.phase-body.open{display:block}
+.section-tabs{display:flex;border-bottom:0.5px solid var(--color-border-tertiary)}
+.stab{flex:1;padding:10px;font-size:12px;font-weight:500;text-align:center;cursor:pointer;color:var(--color-text-secondary);border-bottom:2px solid transparent;margin-bottom:-0.5px}
+.stab.on{color:var(--color-text-primary);border-bottom-color:var(--color-text-primary)}
+.stab-pane{display:none;padding:16px}
+.stab-pane.on{display:block}
+.task-list{display:flex;flex-direction:column;gap:6px}
+.task{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary)}
+.task-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.task-text{font-size:13px;color:var(--color-text-primary);line-height:1.5}
+.task-sub{font-size:11px;color:var(--color-text-secondary);margin-top:2px;line-height:1.4}
+.db-block{margin-bottom:12px}
+.db-label{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.db-tables{display:flex;flex-wrap:wrap;gap:6px}
+.db-table{font-size:12px;padding:5px 10px;border-radius:6px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-primary);font-family:var(--font-mono)}
+.db-table.new{border-color:#1D9E75;background:#E1F5EE;color:#085041}
+.db-table.modify{border-color:#BA7517;background:#FAEEDA;color:#633806}
+.note-box{padding:10px 12px;border-radius:var(--border-radius-md);border-left:3px solid;margin-top:8px;font-size:12px;line-height:1.55}
+.note-box.info{border-color:#378ADD;background:var(--color-background-info);color:var(--color-text-info)}
+.note-box.warn{border-color:#BA7517;background:var(--color-background-warning);color:var(--color-text-warning)}
+.note-box.success{border-color:#639922;background:var(--color-background-success);color:var(--color-text-success)}
+.api-list{display:flex;flex-direction:column;gap:4px}
+.api-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;border:0.5px solid var(--color-border-tertiary);font-size:12px;background:var(--color-background-primary)}
+.method{font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;font-family:var(--font-mono);flex-shrink:0;min-width:40px;text-align:center}
+.m-get{background:#E1F5EE;color:#085041}
+.m-post{background:#E6F1FB;color:#0C447C}
+.m-put{background:#FAEEDA;color:#633806}
+.m-del{background:#FCEBEB;color:#791F1F}
+.m-patch{background:#EEEDFE;color:#3C3489}
+.api-path{font-family:var(--font-mono);color:var(--color-text-primary);flex:1}
+.api-desc{font-size:11px;color:var(--color-text-secondary)}
+.progress-bar{height:4px;border-radius:2px;background:var(--color-border-tertiary);margin-top:6px;overflow:hidden}
+.progress-fill{height:100%;border-radius:2px}
+.dep-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dep-card{padding:10px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary)}
+.dep-name{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:3px;font-family:var(--font-mono)}
+.dep-desc{font-size:11px;color:var(--color-text-secondary);line-height:1.4}
+.overview-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.ov-card{flex:1;min-width:100px;padding:12px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);text-align:center}
+.ov-num{font-size:22px;font-weight:500;color:var(--color-text-primary)}
+.ov-label{font-size:11px;color:var(--color-text-secondary);margin-top:3px}
+.timeline{display:flex;gap:0;margin-bottom:16px;border-radius:var(--border-radius-md);overflow:hidden;height:10px}
+.tl-seg{height:100%}
+</style>
+
+<h2 class="sr-only">Lộ trình phát triển backend và database Omni Marketplace — 7 giai đoạn (đã bổ sung)</h2>
+
+<div class="overview-row">
+  <div class="ov-card"><div class="ov-num">7</div><div class="ov-label">Giai đoạn</div></div>
+  <div class="ov-card"><div class="ov-num">~19</div><div class="ov-label">Tuần</div></div>
+  <div class="ov-card"><div class="ov-num">5</div><div class="ov-label">Bounded Contexts</div></div>
+  <div class="ov-card"><div class="ov-num">70+</div><div class="ov-label">API Endpoints</div></div>
+</div>
+
+<div class="timeline">
+  <div class="tl-seg" style="width:16%;background:#5DCAA5" title="Phase 1 — Nền tảng"></div>
+  <div class="tl-seg" style="width:16%;background:#85B7EB" title="Phase 2 — Catalog"></div>
+  <div class="tl-seg" style="width:13%;background:#EF9F27" title="Phase 3A — Cart & Checkout"></div>
+  <div class="tl-seg" style="width:13%;background:#D4A017" title="Phase 3B — Order Lifecycle"></div>
+  <div class="tl-seg" style="width:16%;background:#F0997B" title="Phase 4 — Payment"></div>
+  <div class="tl-seg" style="width:13%;background:#72C4A8" title="Phase 5 — Notification"></div>
+  <div class="tl-seg" style="width:13%;background:#AFA9EC" title="Phase 6 — Admin & Hardening"></div>
+</div>
+
+<div id="phases"></div>
+
+<script>
+const phases=[
+{
+  num:1, color:"#5DCAA5", textColor:"#085041", bg:"#E1F5EE",
+  title:"Nền tảng & IAM",
+  meta:"Spring Boot setup · JWT · Users · Shops",
+  dur:"2–3 tuần",
+  tasks:[
+    {dot:"#5DCAA5", text:"Docker Compose — local dev environment", sub:"docker-compose.yml: PostgreSQL 16 + Redis 7 + MinIO (S3-compatible) — một lệnh docker compose up khởi động tất cả"},
+    {dot:"#5DCAA5", text:"Khởi tạo Spring Boot project + CI/CD", sub:"spring-web, spring-data-jpa, spring-security, lombok, mapstruct, flyway — GitHub Actions: build + test tự động mỗi push"},
+    {dot:"#5DCAA5", text:"Cấu hình Clean Architecture 4 lớp", sub:"Tạo package: domain / application / adapter / infrastructure cho từng module"},
+    {dot:"#5DCAA5", text:"Flyway migration — schema V1", sub:"Tạo bảng users, user_addresses, shops, media_files với full constraints và indexes"},
+    {dot:"#5DCAA5", text:"Domain entities thuần Java", sub:"User.java, Shop.java — không có @Entity, không import Spring"},
+    {dot:"#5DCAA5", text:"RegisterUserUseCase + Email Verification", sub:"Đăng ký → gửi email verify (token 24h TTL) → click link → activate account. TDD: registerUser_withDuplicateEmail_shouldThrow()"},
+    {dot:"#5DCAA5", text:"Forgot Password / Reset Password flow", sub:"POST /forgot-password → gửi email reset link (token 1h TTL) → POST /reset-password với token mới"},
+    {dot:"#5DCAA5", text:"JWT Authentication filter + Spring Security config", sub:"JwtTokenProvider, JwtAuthenticationFilter — stateless, no session"},
+    {dot:"#5DCAA5", text:"Social Login: Google OAuth2 + Facebook", sub:"spring-security-oauth2-client — map external profile → User entity"},
+    {dot:"#5DCAA5", text:"Media Service — File Upload trung tâm", sub:"POST /api/media/upload → MinIO/S3 → trả về URL. Dùng chung cho avatar, product images, review images, dispute evidence. Validate: max 5MB, chỉ JPG/PNG/WebP"},
+    {dot:"#5DCAA5", text:"Address book CRUD", sub:"user_addresses: thêm, sửa, xóa, set default — validate province/district/ward với GHN API"},
+    {dot:"#5DCAA5", text:"Vendor registration flow", sub:"Shop entity + status PENDING_REVIEW — chờ Admin duyệt — gửi event"},
+    {dot:"#5DCAA5", text:"Vendor Isolation interceptor", sub:"@PreAuthorize kiểm tra shopId từ JWT claim khớp resource đang truy cập"},
+  ],
+  db:[
+    {label:"Tables mới (V1 migration)", tables:["users","user_addresses","shops","refresh_tokens","email_verifications","media_files"]},
+    {label:"Indexes quan trọng", tables:["users.email (UNIQUE)","shops.owner_id","shops.status","email_verifications.token (UNIQUE)"]},
+  ],
+  note:{type:"info", text:"Flyway: đặt file migration là V1__init_iam.sql — KHÔNG bao giờ sửa file đã chạy, chỉ tạo V2, V3... Docker Compose phải chạy được bằng 1 lệnh duy nhất: docker compose up -d"},
+  apis:[
+    {m:"POST",p:"/api/auth/register",d:"Đăng ký tài khoản → gửi email verify"},
+    {m:"POST",p:"/api/auth/verify-email",d:"Xác minh email bằng token"},
+    {m:"POST",p:"/api/auth/login",d:"Đăng nhập → JWT pair"},
+    {m:"POST",p:"/api/auth/refresh",d:"Refresh access token"},
+    {m:"POST",p:"/api/auth/forgot-password",d:"Gửi email reset password"},
+    {m:"POST",p:"/api/auth/reset-password",d:"Đặt lại mật khẩu bằng token"},
+    {m:"GET",p:"/api/auth/oauth2/{provider}",d:"Social login redirect"},
+    {m:"GET",p:"/api/me/profile",d:"Lấy thông tin cá nhân"},
+    {m:"PUT",p:"/api/me/profile",d:"Cập nhật hồ sơ"},
+    {m:"GET",p:"/api/me/addresses",d:"Danh sách địa chỉ"},
+    {m:"POST",p:"/api/me/addresses",d:"Thêm địa chỉ mới"},
+    {m:"DELETE",p:"/api/me/addresses/{id}",d:"Xóa địa chỉ"},
+    {m:"POST",p:"/api/media/upload",d:"Upload file (avatar, ảnh SP, bằng chứng...)"},
+    {m:"POST",p:"/api/vendor/register",d:"Đăng ký làm người bán"},
+    {m:"GET",p:"/api/vendor/shop",d:"Lấy thông tin shop của mình"},
+    {m:"PUT",p:"/api/vendor/shop",d:"Cập nhật hồ sơ shop"},
+  ],
+  deps:[
+    {name:"spring-security + jjwt",desc:"JWT stateless auth, filter chain"},
+    {name:"spring-oauth2-client",desc:"Google / Facebook login"},
+    {name:"flyway-core",desc:"Version-control database schema"},
+    {name:"spring-validation",desc:"@Valid trên request DTOs"},
+    {name:"spring-mail + thymeleaf",desc:"Gửi email verify & reset password (HTML template)"},
+    {name:"minio-java / aws-s3-sdk",desc:"Media upload trung tâm (S3-compatible)"},
+    {name:"docker-compose",desc:"Local dev: PostgreSQL + Redis + MinIO"},
+    {name:"github-actions",desc:"CI pipeline: build + test + lint mỗi push"},
+  ]
+},
+{
+  num:2, color:"#85B7EB", textColor:"#0C447C", bg:"#E6F1FB",
+  title:"Catalog — Sản phẩm & Tồn kho",
+  meta:"Categories · Products · SKU · Elasticsearch · Optimistic Lock",
+  dur:"3 tuần",
+  tasks:[
+    {dot:"#85B7EB", text:"Flyway V2 — catalog schema", sub:"categories (self-join), products, product_skus với cột version cho Optimistic Lock"},
+    {dot:"#85B7EB", text:"Category tree — đệ quy", sub:"Lấy cây danh mục nhiều cấp bằng recursive CTE hoặc Closure Table pattern"},
+    {dot:"#85B7EB", text:"Product domain entity + business logic", sub:"Product.addSku(), Product.hide(), Product.softDelete() — thuần Java"},
+    {dot:"#85B7EB", text:"ProductSku với Optimistic Locking", sub:"@Version trên cột version — JPA tự thêm WHERE version=? khi UPDATE"},
+    {dot:"#85B7EB", text:"SKU attributes dạng JSON", sub:"attributes JSONB (PostgreSQL) — lưu {color:Red, size:M} — index với GIN"},
+    {dot:"#85B7EB", text:"Product images — tích hợp Media Service", sub:"Gọi Media Service (Phase 1) để upload, lưu danh sách URL vào product_images table"},
+    {dot:"#85B7EB", text:"Elasticsearch — full-text search", sub:"Dùng Elasticsearch (không dùng PostgreSQL FTS). Hỗ trợ tiếng Việt: có dấu/không dấu, synonym. Index product khi tạo/sửa/xóa qua event"},
+    {dot:"#85B7EB", text:"Lọc sản phẩm đa tiêu chí", sub:"Elasticsearch query DSL: lọc giá, danh mục, rating, shop — kết hợp full-text + filter"},
+    {dot:"#85B7EB", text:"Soft delete với Global Filter", sub:"@SQLRestriction('deleted_at IS NULL') trên @Entity — tự động exclude"},
+    {dot:"#85B7EB", text:"BDD: Cucumber scenario — Vendor tạo sản phẩm", sub:"Given/When/Then từ file .feature — acceptance test end-to-end"},
+  ],
+  db:[
+    {label:"Tables mới (V2 migration)", tables:["categories","products","product_skus","product_images"]},
+    {label:"Elasticsearch indexes", tables:["idx_products (name, description, category, price, rating, shop)"]},
+    {label:"Cột đặc biệt", tables:["product_skus.version (OL)","products.deleted_at (soft)","product_skus.attributes (JSONB)"]},
+  ],
+  note:{type:"warn", text:"Optimistic Lock: khi catch OptimisticLockingFailureException tại Service layer, phải retry tối đa 3 lần với exponential backoff — không trả lỗi thẳng ra client."},
+  apis:[
+    {m:"GET",p:"/api/categories",d:"Lấy cây danh mục toàn bộ"},
+    {m:"GET",p:"/api/products",d:"Tìm kiếm + lọc sản phẩm (public)"},
+    {m:"GET",p:"/api/products/{id}",d:"Chi tiết sản phẩm + SKU list"},
+    {m:"GET",p:"/api/shops/{id}/products",d:"Sản phẩm của một shop"},
+    {m:"POST",p:"/api/vendor/products",d:"Vendor tạo sản phẩm mới"},
+    {m:"PUT",p:"/api/vendor/products/{id}",d:"Cập nhật thông tin sản phẩm"},
+    {m:"PATCH",p:"/api/vendor/products/{id}/status",d:"Ẩn / hiện sản phẩm"},
+    {m:"DELETE",p:"/api/vendor/products/{id}",d:"Soft delete sản phẩm"},
+    {m:"POST",p:"/api/vendor/products/{id}/skus",d:"Thêm biến thể SKU"},
+    {m:"PUT",p:"/api/vendor/products/{id}/skus/{skuId}",d:"Cập nhật giá / tồn kho SKU"},
+    {m:"POST",p:"/api/vendor/products/{id}/images",d:"Upload ảnh sản phẩm"},
+    {m:"GET",p:"/api/admin/categories",d:"Admin quản lý danh mục"},
+    {m:"POST",p:"/api/admin/categories",d:"Admin tạo danh mục mới"},
+  ],
+  deps:[
+    {name:"spring-data-jpa + hibernate",desc:"ORM, Optimistic Lock, @Version"},
+    {name:"postgresql + JSONB",desc:"SKU attributes, GIN index"},
+    {name:"spring-data-elasticsearch",desc:"Full-text search tiếng Việt, filter, ranking"},
+    {name:"mapstruct",desc:"Entity ↔ DTO mapping tự động"},
+  ]
+},
+{
+  num:"3A", color:"#EF9F27", textColor:"#633806", bg:"#FAEEDA",
+  title:"Sales — Giỏ hàng & Checkout",
+  meta:"Cart · Voucher · Checkout Engine",
+  dur:"2.5 tuần",
+  tasks:[
+    {dot:"#EF9F27", text:"Cart service — lưu trên Redis", sub:"CartItem: skuId, quantity, snapshot giá — TTL 7 ngày — gom nhóm theo shopId"},
+    {dot:"#EF9F27", text:"Flyway V3A — sales schema", sub:"shop_vouchers, platform_vouchers, voucher_usages, parent_orders, child_orders, order_items"},
+    {dot:"#EF9F27", text:"Voucher validation engine", sub:"Kiểm tra: hết hạn, đủ điều kiện, còn lượt dùng, không trùng — atomic decrement với Redis"},
+    {dot:"#EF9F27", text:"Tính phí vận chuyển — GHN/GHTK API", sub:"Gọi API tính phí dựa trên warehouse_address_code của shop và địa chỉ giao của customer"},
+    {dot:"#EF9F27", text:"Checkout transaction — ACID", sub:"Trong 1 @Transactional: tạo parent_order + child_orders + order_items + giảm stock (OL)"},
+    {dot:"#EF9F27", text:"Domain Event: OrderPlacedEvent", sub:"Publish qua Spring ApplicationEvent — Payment module lắng nghe để tạo payment session"},
+    {dot:"#EF9F27", text:"BDD: Checkout with 2 shops, 2 vouchers", sub:"Scenario phức tạp nhất — Given cart 2 shop / When checkout / Then 1 parent + 2 child orders"},
+  ],
+  db:[
+    {label:"Tables mới (V3A migration)", tables:["parent_orders","child_orders","order_items","shop_vouchers","platform_vouchers","voucher_usages"]},
+    {label:"Redis keys", tables:["cart:{userId}","voucher:lock:{code}"]},
+    {label:"Cột đặc biệt", tables:["order_items.price_at_purchase"]},
+  ],
+  note:{type:"warn", text:"Checkout phải dùng SELECT ... FOR UPDATE khi đọc stock trước khi giảm — kết hợp với Optimistic Lock để đảm bảo không oversell dù có race condition."},
+  apis:[
+    {m:"GET",p:"/api/me/cart",d:"Lấy giỏ hàng hiện tại"},
+    {m:"POST",p:"/api/me/cart/items",d:"Thêm sản phẩm vào giỏ"},
+    {m:"PUT",p:"/api/me/cart/items/{skuId}",d:"Đổi số lượng"},
+    {m:"DELETE",p:"/api/me/cart/items/{skuId}",d:"Xóa khỏi giỏ"},
+    {m:"POST",p:"/api/me/cart/shipping-fee",d:"Tính phí ship preview"},
+    {m:"POST",p:"/api/me/cart/validate-voucher",d:"Kiểm tra mã giảm giá"},
+    {m:"POST",p:"/api/me/orders",d:"Đặt hàng (Checkout)"},
+    {m:"GET",p:"/api/admin/vouchers",d:"Admin xem platform vouchers"},
+    {m:"POST",p:"/api/admin/vouchers",d:"Admin tạo platform voucher"},
+  ],
+  deps:[
+    {name:"spring-data-redis",desc:"Cart, voucher lock"},
+    {name:"ghn / ghtk sdk",desc:"Tính phí + tracking vận chuyển"},
+    {name:"cucumber-spring",desc:"BDD acceptance test integration"},
+  ]
+},
+{
+  num:"3B", color:"#D4A017", textColor:"#594209", bg:"#FDF5DE",
+  title:"Sales — Vận hành Đơn hàng",
+  meta:"Order lifecycle · Auto-cancel · Return/Refund",
+  dur:"2.5 tuần",
+  tasks:[
+    {dot:"#D4A017", text:"Flyway V3B — order lifecycle schema", sub:"order_status_history, return_requests"},
+    {dot:"#D4A017", text:"Order status machine", sub:"PENDING → PROCESSING → SHIPPED → DELIVERED → COMPLETED | CANCELLED | RETURN_REQUESTED"},
+    {dot:"#D4A017", text:"Vendor order management", sub:"Vendor xem đơn con của shop — xác nhận, chuẩn bị, giao vận chuyển — kèm Vendor Isolation"},
+    {dot:"#D4A017", text:"Hủy đơn hàng + rollback tồn kho", sub:"Customer hủy khi PENDING — Vendor hủy khi PROCESSING — tự động nhả tồn kho"},
+    {dot:"#D4A017", text:"Return & Refund request", sub:"RETURN_REQUESTED + upload ảnh bằng chứng — tạo bản ghi riêng để track"},
+    {dot:"#D4A017", text:"Background job — auto cancel", sub:"@Scheduled: scan đơn PENDING quá 15 phút, hủy và rollback stock"},
+  ],
+  db:[
+    {label:"Tables mới (V3B migration)", tables:["order_status_history","return_requests"]},
+    {label:"Cột đặc biệt", tables:["child_orders.status","order_status_history.changed_by","order_status_history.note"]},
+  ],
+  note:{type:"info", text:"Lịch sử trạng thái đơn hàng (order_status_history) rất quan trọng để giải quyết tranh chấp (Dispute) ở Phase 6 sau này."},
+  apis:[
+    {m:"GET",p:"/api/me/orders",d:"Danh sách đơn hàng"},
+    {m:"GET",p:"/api/me/orders/{id}",d:"Chi tiết đơn + tracking"},
+    {m:"PATCH",p:"/api/me/orders/{id}/cancel",d:"Hủy đơn"},
+    {m:"POST",p:"/api/me/orders/{id}/return",d:"Yêu cầu hoàn trả"},
+    {m:"GET",p:"/api/vendor/orders",d:"Đơn hàng con của shop"},
+    {m:"PATCH",p:"/api/vendor/orders/{id}/status",d:"Cập nhật trạng thái xử lý"},
+  ],
+  deps:[
+    {name:"spring-scheduling",desc:"@Scheduled: auto-cancel job"},
+  ]
+},
+{
+  num:4, color:"#F0997B", textColor:"#712B13", bg:"#FAECE7",
+  title:"Payment — Thanh toán & Tài chính",
+  meta:"VNPay · MoMo · Wallet · Settlement · Webhook",
+  dur:"3 tuần",
+  tasks:[
+    {dot:"#F0997B", text:"Flyway V4 — payment schema", sub:"wallets, wallet_transactions, system_commissions, withdrawal_requests, webhook_events"},
+    {dot:"#F0997B", text:"VNPay integration", sub:"Tạo payment URL, callback handler, verify HMAC signature — redirect flow"},
+    {dot:"#F0997B", text:"MoMo integration", sub:"Tạo order, IPN callback, verify signature — cả redirect và deeplink"},
+    {dot:"#F0997B", text:"Payment callback idempotency", sub:"webhook_events bảng với external_event_id UNIQUE — bỏ qua nếu đã xử lý"},
+    {dot:"#F0997B", text:"OrderPaidEvent → unfreeze & notify", sub:"Sau payment success: cập nhật parent_order.payment_status = PAID, emit event"},
+    {dot:"#F0997B", text:"Wallet service — double-entry model", sub:"Mỗi thay đổi số dư = 1 row wallet_transactions — không UPDATE balance trực tiếp"},
+    {dot:"#F0997B", text:"GHN/GHTK webhook handler", sub:"Nhận sự kiện tracking → cập nhật child_order.status → audit log"},
+    {dot:"#F0997B", text:"Settlement job — auto khi COMPLETED", sub:"Tính commission, tạo wallet_transactions cho vendor và platform — idempotent"},
+    {dot:"#F0997B", text:"Vendor withdrawal flow", sub:"Tạo withdrawal_request → Admin duyệt → cập nhật trạng thái + notify"},
+    {dot:"#F0997B", text:"Auto-complete job (7 ngày)", sub:"@Scheduled: DELIVERED quá 7 ngày + không có dispute → chuyển COMPLETED → trigger settlement"},
+  ],
+  db:[
+    {label:"Tables mới (V4 migration)", tables:["wallets","wallet_transactions","system_commissions","withdrawal_requests","webhook_events","payment_sessions"]},
+    {label:"Constraints quan trọng", tables:["webhook_events.external_event_id (UNIQUE)","wallet_transactions.reference_order_id","system_commissions.vendor_id"]},
+  ],
+  note:{type:"success", text:"Double-entry wallet: KHÔNG bao giờ UPDATE wallets.balance trực tiếp. Chỉ INSERT wallet_transactions rồi tính balance = SUM(amount). Immutable ledger — dễ audit, dễ reconcile."},
+  apis:[
+    {m:"POST",p:"/api/me/orders/{id}/payment/vnpay",d:"Tạo URL thanh toán VNPay"},
+    {m:"POST",p:"/api/me/orders/{id}/payment/momo",d:"Tạo payment session MoMo"},
+    {m:"GET",p:"/api/payment/vnpay/callback",d:"VNPay redirect callback"},
+    {m:"POST",p:"/api/payment/momo/ipn",d:"MoMo IPN webhook"},
+    {m:"POST",p:"/api/webhooks/ghn",d:"GHN tracking webhook"},
+    {m:"POST",p:"/api/webhooks/ghtk",d:"GHTK tracking webhook"},
+    {m:"GET",p:"/api/vendor/wallet",d:"Số dư ví vendor"},
+    {m:"GET",p:"/api/vendor/wallet/transactions",d:"Lịch sử giao dịch ví"},
+    {m:"POST",p:"/api/vendor/wallet/withdraw",d:"Tạo lệnh rút tiền"},
+    {m:"GET",p:"/api/admin/withdrawals",d:"Admin: danh sách lệnh rút"},
+    {m:"PATCH",p:"/api/admin/withdrawals/{id}",d:"Admin duyệt / từ chối"},
+    {m:"GET",p:"/api/admin/reports/revenue",d:"Báo cáo doanh thu & hoa hồng"},
+  ],
+  deps:[
+    {name:"vnpay-sdk / momo-sdk",desc:"Payment gateway integration"},
+    {name:"spring-retry",desc:"Retry khi webhook xử lý thất bại"},
+    {name:"quartz-scheduler",desc:"Settlement + auto-complete jobs chính xác hơn @Scheduled"},
+    {name:"actuator + micrometer",desc:"Monitor job execution, metrics"},
+  ]
+},
+{
+  num:5, color:"#72C4A8", textColor:"#0B4F3B", bg:"#EAF7F3",
+  title:"Notification — Hệ thống Thông báo",
+  meta:"Email · Push · SMS · In-app",
+  dur:"2.5 tuần",
+  tasks:[
+    {dot:"#72C4A8", text:"Flyway V5 — notification schema", sub:"notifications, notification_templates, user_devices"},
+    {dot:"#72C4A8", text:"Notification service — async consumer", sub:"Kafka/RabbitMQ listener: OrderPlaced, OrderShipped, PaymentSuccess..."},
+    {dot:"#72C4A8", text:"Email engine", sub:"Tích hợp JavaMailSender + Thymeleaf (template) — gửi async"},
+    {dot:"#72C4A8", text:"Firebase Cloud Messaging (FCM)", sub:"Gửi push notification cho thiết bị di động/web (nếu có user_devices)"},
+    {dot:"#72C4A8", text:"In-app notification list", sub:"API lấy danh sách thông báo chưa đọc, đánh dấu đã đọc"},
+    {dot:"#72C4A8", text:"Template management", sub:"Quản lý nội dung email/push theo multi-language"},
+  ],
+  db:[
+    {label:"Tables mới (V5 migration)", tables:["notifications","notification_templates","user_devices"]},
+    {label:"Cột đặc biệt", tables:["notifications.read_at","notifications.payload (JSONB)"]},
+  ],
+  note:{type:"info", text:"Hệ thống thông báo phải hoàn toàn bất đồng bộ (async) qua Message Queue (VD: Kafka/RabbitMQ) để không làm chậm luồng xử lý chính (checkout/payment)."},
+  apis:[
+    {m:"GET",p:"/api/me/notifications",d:"Danh sách thông báo in-app"},
+    {m:"PATCH",p:"/api/me/notifications/{id}/read",d:"Đánh dấu đã đọc"},
+    {m:"PATCH",p:"/api/me/notifications/read-all",d:"Đánh dấu tất cả đã đọc"},
+    {m:"POST",p:"/api/me/devices",d:"Đăng ký FCM token"},
+  ],
+  deps:[
+    {name:"spring-boot-starter-mail",desc:"JavaMailSender gửi email"},
+    {name:"firebase-admin",desc:"FCM gửi push notification"},
+    {name:"spring-kafka / amqp",desc:"Consumer lắng nghe event"},
+  ]
+},
+{
+  num:6, color:"#AFA9EC", textColor:"#3C3489", bg:"#EEEDFE",
+  title:"Admin, Reviews & Hardening",
+  meta:"Admin Portal · Đánh giá · Performance · Security",
+  dur:"2.5 tuần",
+  tasks:[
+    {dot:"#AFA9EC", text:"Admin module — ROLE_ADMIN guard", sub:"Duyệt shop, khóa tài khoản, kiểm duyệt sản phẩm — tất cả có audit log"},
+    {dot:"#AFA9EC", text:"Flyway V6 — reviews schema", sub:"product_reviews, review_images, review_votes — ràng buộc: chỉ order COMPLETED mới review được"},
+    {dot:"#AFA9EC", text:"Review & Rating system", sub:"Tạo review, moderate (ẩn vi phạm), tính rating TB + cập nhật vào products.avg_rating"},
+    {dot:"#AFA9EC", text:"Dispute resolution workflow", sub:"Admin can thiệp tranh chấp giữa customer và vendor — ghi phán quyết + trigger refund"},
+    {dot:"#AFA9EC", text:"Platform voucher management", sub:"Admin tạo platform-level voucher, tracking budget cap, báo cáo usage"},
+    {dot:"#AFA9EC", text:"Seller analytics API", sub:"Vendor: doanh thu theo ngày/tuần, top sản phẩm, tỷ lệ hoàn trả — aggregate queries"},
+    {dot:"#AFA9EC", text:"Performance tuning", sub:"EXPLAIN ANALYZE cho các query phức tạp, thêm index còn thiếu, N+1 query check"},
+    {dot:"#AFA9EC", text:"Redis cache layer", sub:"Cache: danh mục, top sản phẩm, shop profile — TTL 5–30 phút — invalidate khi cần"},
+    {dot:"#AFA9EC", text:"Rate limiting + Security hardening", sub:"@RateLimiter trên login/register, CORS config, input sanitize, SQL injection prevention"},
+    {dot:"#AFA9EC", text:"Integration test suite + Swagger docs", sub:"@SpringBootTest + Testcontainers (real DB) — SpringDoc OpenAPI 3.0 tự động"},
+  ],
+  db:[
+    {label:"Tables mới (V6 migration)", tables:["product_reviews","review_images","review_votes","audit_logs","disputes"]},
+    {label:"Cột bổ sung (modify)", tables:["products.avg_rating","products.review_count","child_orders.dispute_status","users.last_login_at"]},
+  ],
+  note:{type:"info", text:"Testcontainers: chạy test với PostgreSQL thật (không phải H2 in-memory) — tránh hành vi khác nhau giữa môi trường test và production, đặc biệt với JSONB và full-text search."},
+  apis:[
+    {m:"GET",p:"/api/admin/shops/pending",d:"Danh sách shop chờ duyệt"},
+    {m:"PATCH",p:"/api/admin/shops/{id}/approve",d:"Duyệt / từ chối shop"},
+    {m:"PATCH",p:"/api/admin/users/{id}/ban",d:"Khóa tài khoản"},
+    {m:"GET",p:"/api/admin/products/flagged",d:"Sản phẩm bị báo cáo"},
+    {m:"GET",p:"/api/admin/disputes",d:"Danh sách tranh chấp"},
+    {m:"PATCH",p:"/api/admin/disputes/{id}/resolve",d:"Phán quyết tranh chấp"},
+    {m:"POST",p:"/api/me/orders/{id}/reviews",d:"Gửi đánh giá sản phẩm"},
+    {m:"GET",p:"/api/products/{id}/reviews",d:"Đánh giá của sản phẩm"},
+    {m:"GET",p:"/api/vendor/analytics/revenue",d:"Thống kê doanh thu vendor"},
+    {m:"GET",p:"/api/vendor/analytics/products",d:"Hiệu suất từng sản phẩm"},
+  ],
+  deps:[
+    {name:"springdoc-openapi",desc:"Swagger UI + OpenAPI 3.0 docs"},
+    {name:"testcontainers-postgresql",desc:"Integration test với DB thật"},
+    {name:"bucket4j + redis",desc:"Rate limiting distributed"},
+    {name:"spring-cache + redis",desc:"Cache layer với annotation"},
+  ]
+}
+]
+
+function build(){
+  const wrap=document.getElementById('phases')
+  phases.forEach((p,pi)=>{
+    const ph=document.createElement('div')
+    ph.className='phase'
+    ph.innerHTML=`
+<div class="phase-header" onclick="toggle(${pi})">
+  <div class="ph-num" style="background:${p.bg};color:${p.textColor}">${p.num}</div>
+  <div class="ph-info">
+    <div class="ph-title">${p.title}</div>
+    <div class="ph-meta">${p.meta}</div>
+  </div>
+  <div class="ph-right">
+    <span class="dur-badge" style="background:${p.bg};color:${p.textColor}">${p.dur}</span>
+    <i class="ti ti-chevron-down chevron" id="chv${pi}" aria-hidden="true"></i>
+  </div>
+</div>
+<div class="phase-body" id="body${pi}">
+  <div class="section-tabs">
+    <div class="stab on" onclick="stab(${pi},0,this)"><i class="ti ti-list-check" aria-hidden="true"></i> Tasks</div>
+    <div class="stab" onclick="stab(${pi},1,this)"><i class="ti ti-database" aria-hidden="true"></i> Database</div>
+    <div class="stab" onclick="stab(${pi},2,this)"><i class="ti ti-api" aria-hidden="true"></i> APIs</div>
+    <div class="stab" onclick="stab(${pi},3,this)"><i class="ti ti-package" aria-hidden="true"></i> Dependencies</div>
+  </div>
+  <div class="stab-pane on" id="sp${pi}_0">
+    <div class="task-list">${p.tasks.map(t=>`
+      <div class="task">
+        <div class="task-dot" style="background:${t.dot}"></div>
+        <div><div class="task-text">${t.text}</div><div class="task-sub">${t.sub}</div></div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="stab-pane" id="sp${pi}_1">
+    ${p.db.map(d=>`
+    <div class="db-block">
+      <div class="db-label">${d.label}</div>
+      <div class="db-tables">${d.tables.map(t=>`<span class="db-table new">${t}</span>`).join('')}</div>
+    </div>`).join('')}
+    <div class="note-box ${p.note.type}">${p.note.text}</div>
+  </div>
+  <div class="stab-pane" id="sp${pi}_2">
+    <div class="api-list">${p.apis.map(a=>`
+      <div class="api-row">
+        <span class="method m-${a.m.toLowerCase()}">${a.m}</span>
+        <span class="api-path">${a.p}</span>
+        <span class="api-desc">${a.d}</span>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="stab-pane" id="sp${pi}_3">
+    <div class="dep-grid">${p.deps.map(d=>`
+      <div class="dep-card">
+        <div class="dep-name">${d.name}</div>
+        <div class="dep-desc">${d.desc}</div>
+      </div>`).join('')}
+    </div>
+    <div style="margin-top:10px">
+      <button onclick="sendPrompt('Cho tôi xem cấu hình pom.xml đầy đủ cho giai đoạn ${p.num}: ${p.title}')" style="font-size:12px;padding:6px 12px">Xem pom.xml giai đoạn ${p.num} ↗</button>
+    </div>
+  </div>
+</div>`
+    wrap.appendChild(ph)
+  })
+}
+
+function toggle(i){
+  const b=document.getElementById('body'+i)
+  const c=document.getElementById('chv'+i)
+  const open=b.classList.contains('open')
+  b.classList.toggle('open',!open)
+  c.classList.toggle('open',!open)
+}
+
+function stab(pi,ti,el){
+  for(let j=0;j<4;j++){
+    const p=document.getElementById('sp'+pi+'_'+j)
+    if(p)p.classList.toggle('on',j===ti)
+  }
+  el.closest('.section-tabs').querySelectorAll('.stab').forEach((t,j)=>t.classList.toggle('on',j===ti))
+}
+
+build()
+document.getElementById('body0').classList.add('open')
+document.getElementById('chv0').classList.add('open')
+</script>
