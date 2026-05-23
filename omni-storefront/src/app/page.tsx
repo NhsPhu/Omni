@@ -1,0 +1,25 @@
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import HeroSection from "@/components/sections/HeroSection";
+import CategoriesSection from "@/components/sections/CategoriesSection";
+import FeaturedProducts from "@/components/sections/FeaturedProducts";
+import FlashSaleSection from "@/components/sections/FlashSaleSection";
+import SellerCTASection from "@/components/sections/SellerCTASection";
+import TrustSection from "@/components/sections/TrustSection";
+
+export default function Home() {
+  return (
+    <>
+      <Navbar />
+      <main className="flex-1">
+        <HeroSection />
+        <CategoriesSection />
+        <FeaturedProducts />
+        <FlashSaleSection />
+        <SellerCTASection />
+        <TrustSection />
+      </main>
+      <Footer />
+    </>
+  );
+}
