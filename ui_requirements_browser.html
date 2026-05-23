@@ -1,0 +1,466 @@
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;padding:0 0 16px}
+.tab{padding:7px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:13px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);transition:all .15s}
+.tab.active{background:var(--color-background-info);color:var(--color-text-info);border-color:var(--color-border-info)}
+.section{display:none}
+.section.active{display:block}
+.fn-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.fn-grid{grid-template-columns:1fr}}
+.fn-card{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;background:var(--color-background-primary)}
+.fn-header{padding:12px 14px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:8px}
+.fn-icon{width:28px;height:28px;border-radius:var(--border-radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
+.fn-title{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.fn-body{padding:12px 14px}
+.req-row{display:flex;gap:8px;margin-bottom:7px;align-items:flex-start}
+.req-row:last-child{margin-bottom:0}
+.req-label{font-size:11px;font-weight:500;padding:2px 7px;border-radius:20px;flex-shrink:0;margin-top:1px;line-height:1.6}
+.lbl-screen{background:#E6F1FB;color:#0C447C}
+.lbl-comp{background:#E1F5EE;color:#085041}
+.lbl-rule{background:#FAEEDA;color:#633806}
+.lbl-data{background:#EEEDFE;color:#3C3489}
+.lbl-action{background:#FAECE7;color:#712B13}
+.req-text{font-size:12px;color:var(--color-text-secondary);line-height:1.6}
+.badge-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.badge{font-size:11px;padding:2px 8px;border-radius:20px;border:0.5px solid var(--color-border-tertiary);color:var(--color-text-tertiary)}
+.section-title{font-size:11px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+</style>
+
+<div style="padding:4px 0 0">
+<div class="tabs">
+  <button class="tab active" onclick="show('kh')"><i class="ti ti-user" aria-hidden="true"></i> Khách hàng</button>
+  <button class="tab" onclick="show('nb')"><i class="ti ti-store" aria-hidden="true"></i> Người bán</button>
+  <button class="tab" onclick="show('ad')"><i class="ti ti-shield" aria-hidden="true"></i> Admin</button>
+  <button class="tab" onclick="show('sys')"><i class="ti ti-settings-automation" aria-hidden="true"></i> Hệ thống</button>
+</div>
+
+<div id="kh" class="section active">
+<div class="section-title">Phân hệ khách hàng — 10 chức năng</div>
+<div class="fn-grid">
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#E6F1FB"><i class="ti ti-user-circle" style="color:#185FA5"></i></div>
+    <span class="fn-title">Đăng ký / Đăng nhập</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Form đăng ký (email, mật khẩu, họ tên, SĐT) + Form đăng nhập riêng biệt</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Nút Social Login (Google / Facebook) nổi bật trên form; toggle hiển thị mật khẩu</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Validate inline từng trường; thông báo lỗi ngay dưới input; nút submit disable khi đang gọi API</span></div>
+    <div class="req-row"><span class="req-label lbl-action">Luồng</span><span class="req-text">Sau đăng ký → màn xác nhận email; sau đăng nhập → redirect về trang trước hoặc trang chủ</span></div>
+    <div class="badge-row"><span class="badge">Responsive</span><span class="badge">OTP flow</span><span class="badge">Forgot password</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#E1F5EE"><i class="ti ti-home" style="color:#0F6E56"></i></div>
+    <span class="fn-title">Trang chủ</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Banner carousel full-width, danh mục nổi bật dạng icon grid, section sản phẩm bán chạy</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Thanh search nổi bật trên đầu; product card (ảnh, tên, giá, rating, số đã bán)</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Lazy load ảnh; skeleton loading state khi fetch; banner auto-play có dot indicator</span></div>
+    <div class="req-row"><span class="req-label lbl-data">Dữ liệu</span><span class="req-text">Banner lấy từ CMS Admin; sản phẩm bán chạy từ ranking job; danh mục từ cây danh mục toàn cục</span></div>
+    <div class="badge-row"><span class="badge">Infinite scroll</span><span class="badge">Personalized</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#EEEDFE"><i class="ti ti-search" style="color:#534AB7"></i></div>
+    <span class="fn-title">Tìm kiếm & lọc</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Sidebar bộ lọc (trái) + lưới kết quả (phải); trên mobile chuyển thành bottom sheet filter</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Range slider giá; checkbox danh mục; star rating filter; dropdown sắp xếp (mới nhất / bán chạy / giá)</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Filter áp dụng real-time (debounce 300ms); chip hiển thị filter đang áp dụng; nút "Xóa tất cả"</span></div>
+    <div class="req-row"><span class="req-label lbl-data">Dữ liệu</span><span class="req-text">Hiển thị số lượng kết quả; highlight từ khóa trong tên sản phẩm</span></div>
+    <div class="badge-row"><span class="badge">Full-text search</span><span class="badge">No-result state</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#FAECE7"><i class="ti ti-box" style="color:#993C1D"></i></div>
+    <span class="fn-title">Chi tiết sản phẩm</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Gallery ảnh (thumbnail + zoom), thông tin sản phẩm, bộ chọn SKU, nút hành động CTA</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Chip chọn Màu / Size (disable nếu hết hàng); badge tồn kho; tab Mô tả / Thông số / Đánh giá</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Chọn SKU → cập nhật giá + tồn kho ngay; nút "Thêm vào giỏ" disable khi chưa chọn đủ SKU</span></div>
+    <div class="req-row"><span class="req-label lbl-action">Luồng</span><span class="req-text">Thêm giỏ → toast confirm + icon giỏ hàng animation; Mua ngay → chuyển thẳng checkout</span></div>
+    <div class="badge-row"><span class="badge">Sticky CTA</span><span class="badge">Share button</span><span class="badge">Breadcrumb</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#E1F5EE"><i class="ti ti-shopping-cart" style="color:#0F6E56"></i></div>
+    <span class="fn-title">Giỏ hàng</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Danh sách sản phẩm gom nhóm theo Shop; cột phải tóm tắt đơn hàng + nút thanh toán</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Checkbox chọn từng item / chọn cả shop / chọn tất cả; stepper số lượng; nút xóa; chip tên shop</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Tổng tiền cập nhật real-time khi thay đổi số lượng / chọn item; cảnh báo nếu item vượt tồn kho</span></div>
+    <div class="req-row"><span class="req-label lbl-data">Dữ liệu</span><span class="req-text">Hiển thị giá gốc + giá sau giảm nếu có; badge "Hết hàng" cho item không còn tồn kho</span></div>
+    <div class="badge-row"><span class="badge">Grouped by shop</span><span class="badge">Empty state</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#EEEDFE"><i class="ti ti-credit-card" style="color:#534AB7"></i></div>
+    <span class="fn-title">Thanh toán (Checkout)</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Stepper 3 bước: Địa chỉ → Vận chuyển & Voucher → Xác nhận & Thanh toán</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Dropdown chọn địa chỉ đã lưu; input voucher + nút Áp dụng; radio chọn PTTT (VNPay/MoMo/COD)</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Phí ship tính ngay khi chọn địa chỉ (gọi GHN/GHTK API); voucher validate trước khi áp; bảng tổng tiền phân rõ từng mục</span></div>
+    <div class="req-row"><span class="req-label lbl-action">Luồng</span><span class="req-text">Nhấn "Đặt hàng" → redirect sang cổng thanh toán; callback → trang xác nhận đơn hoặc trang lỗi</span></div>
+    <div class="badge-row"><span class="badge">Multi-step form</span><span class="badge">Order summary sticky</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#E6F1FB"><i class="ti ti-list-check" style="color:#185FA5"></i></div>
+    <span class="fn-title">Quản lý đơn hàng</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Tab bar trạng thái (Tất cả / Chờ TT / Đang giao / Đã giao / Đã hủy); danh sách order card</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Timeline tracking dọc cho từng đơn; nút "Hủy đơn" chỉ hiện khi trạng thái cho phép; nút "Mua lại"</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Hủy đơn yêu cầu confirm modal + lý do; "Đánh giá" chỉ hiện khi COMPLETED; badge số lượng trên tab</span></div>
+    <div class="req-row"><span class="req-label lbl-data">Dữ liệu</span><span class="req-text">Mỗi order card: ảnh SP, tên shop, tổng tiền, trạng thái badge màu, ngày đặt</span></div>
+    <div class="badge-row"><span class="badge">Pull to refresh</span><span class="badge">Search by order ID</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#FAECE7"><i class="ti ti-truck-return" style="color:#993C1D"></i></div>
+    <span class="fn-title">Trả hàng / Hoàn tiền</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Form yêu cầu: chọn sản phẩm cần trả, chọn lý do (dropdown), mô tả thêm, upload ảnh</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Image picker (tối đa 5 ảnh, preview inline); dropdown lý do; textarea mô tả; timeline theo dõi tiến trình xử lý</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Chỉ mở với đơn DELIVERED trong 7 ngày; ảnh bắt buộc với một số lý do; không thể gửi lại nếu đang xử lý</span></div>
+    <div class="req-row"><span class="req-label lbl-action">Luồng</span><span class="req-text">Gửi yêu cầu → trạng thái "Đang chờ shop xử lý"; shop duyệt → "Chờ gửi hàng về"; hoàn tiền → notify</span></div>
+    <div class="badge-row"><span class="badge">Evidence upload</span><span class="badge">Status tracking</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#E1F5EE"><i class="ti ti-star" style="color:#0F6E56"></i></div>
+    <span class="fn-title">Đánh giá sản phẩm</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Form đánh giá per-item trong đơn: star rating, textarea nhận xét, upload ảnh thực tế</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Star picker interactive (hover effect); rating tổng của shop riêng với rating sản phẩm; ảnh preview</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Chỉ mở sau khi đơn COMPLETED; chỉ đánh giá được 1 lần; hiển thị đánh giá đã gửi (read-only)</span></div>
+    <div class="req-row"><span class="req-label lbl-data">Dữ liệu</span><span class="req-text">Rating tổng hợp hiển thị trên trang sản phẩm: điểm TB, phân phối sao, ảnh từ người mua</span></div>
+    <div class="badge-row"><span class="badge">Anonymous option</span><span class="badge">Helpful vote</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#EEEDFE"><i class="ti ti-heart" style="color:#534AB7"></i></div>
+    <span class="fn-title">Wishlist & Thông báo</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Tab Yêu thích: grid sản phẩm đã save; Tab Thông báo: danh sách notify theo thời gian</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Icon tim trên product card (toggle); badge đỏ số unread trên bell icon header; notify item với icon type</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Notify nhóm theo ngày; mark all as read; sản phẩm trong wishlist giảm giá → notify highlight</span></div>
+    <div class="req-row"><span class="req-label lbl-action">Luồng</span><span class="req-text">Click notify → navigate đến đơn hàng / sản phẩm / voucher liên quan</span></div>
+    <div class="badge-row"><span class="badge">Push notification</span><span class="badge">Email digest</span></div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<div id="nb" class="section">
+<div class="section-title">Phân hệ người bán — 8 chức năng</div>
+<div class="fn-grid">
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#E1F5EE"><i class="ti ti-chart-bar" style="color:#0F6E56"></i></div>
+    <span class="fn-title">Dashboard tổng quan</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Metric cards hàng đầu (doanh thu / đơn mới / tỷ lệ chuyển đổi); biểu đồ doanh thu 7/30 ngày; bảng đơn cần xử lý</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Date range picker; chart line (doanh thu) + bar (đơn hàng); bảng đơn pending với nút quick-action</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Metric so sánh kỳ trước (% thay đổi + arrow up/down); loading skeleton; auto-refresh 5 phút</span></div>
+    <div class="badge-row"><span class="badge">Export CSV</span><span class="badge">Date filter</span><span class="badge">Mobile-friendly</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#EEEDFE"><i class="ti ti-package" style="color:#534AB7"></i></div>
+    <span class="fn-title">Quản lý sản phẩm</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Bảng sản phẩm (tìm kiếm, lọc trạng thái); form tạo/sửa sản phẩm multi-step</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Drag & drop ảnh; SKU matrix (bảng giá × tồn kho cho mỗi tổ hợp biến thể); rich text editor mô tả</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Auto-save draft; preview trước khi publish; cảnh báo SKU không có giá; bulk ẩn/hiện nhiều SP</span></div>
+    <div class="req-row"><span class="req-label lbl-data">Dữ liệu</span><span class="req-text">Chọn danh mục từ cây danh mục chung; trạng thái: Bản nháp / Đang bán / Đã ẩn / Chờ duyệt</span></div>
+    <div class="badge-row"><span class="badge">Bulk import CSV</span><span class="badge">Copy product</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#FAECE7"><i class="ti ti-clipboard-list" style="color:#712B13"></i></div>
+    <span class="fn-title">Xử lý đơn hàng</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Bảng đơn hàng con (tab theo trạng thái); trang chi tiết đơn hàng với timeline + thông tin giao hàng</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Button chuyển trạng thái (Xác nhận → Chuẩn bị → Giao vận chuyển); nút "In vận đơn" PDF</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Chuyển trạng thái cần confirm; không thể revert trạng thái; đơn quá 24h chưa xử lý → highlight đỏ</span></div>
+    <div class="req-row"><span class="req-label lbl-action">Luồng</span><span class="req-text">Giao vận chuyển → nhập mã tracking hoặc tích hợp tự động GHN/GHTK; webhook cập nhật ngược</span></div>
+    <div class="badge-row"><span class="badge">Bulk confirm</span><span class="badge">Print label</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#E6F1FB"><i class="ti ti-tag" style="color:#185FA5"></i></div>
+    <span class="fn-title">Quản lý voucher shop</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Danh sách voucher (bảng); form tạo voucher với preview ngay lập tức</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Radio loại giảm (% / số tiền cố định); date range picker hiệu lực; input giới hạn số lượng + giá trị đơn tối thiểu</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Không thể sửa sau khi có lượt dùng; badge trạng thái (Sắp diễn ra / Đang chạy / Hết hạn); hiển thị % đã dùng</span></div>
+    <div class="req-row"><span class="req-label lbl-data">Dữ liệu</span><span class="req-text">Thống kê mỗi voucher: lượt dùng, doanh thu từ voucher, tỷ lệ chuyển đổi</span></div>
+    <div class="badge-row"><span class="badge">Flash sale timer</span><span class="badge">Usage stats</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#E1F5EE"><i class="ti ti-wallet" style="color:#0F6E56"></i></div>
+    <span class="fn-title">Ví nội bộ & Tài chính</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Thẻ số dư (tạm giữ + khả dụng); bảng lịch sử giao dịch; form yêu cầu rút tiền</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Tooltip giải thích "Tạm giữ" vs "Khả dụng"; lịch sử giao dịch có filter theo loại; form rút tiền với chọn TK ngân hàng</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Chỉ rút được số dư khả dụng; mỗi giao dịch có badge loại (+ Thu / − Hoa hồng / − Rút); confirm OTP khi rút</span></div>
+    <div class="req-row"><span class="req-label lbl-data">Dữ liệu</span><span class="req-text">Mỗi row: ngày, mô tả, loại, số tiền có màu (xanh +, đỏ −), số dư sau giao dịch</span></div>
+    <div class="badge-row"><span class="badge">Export statement</span><span class="badge">Bank account mgmt</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#FAECE7"><i class="ti ti-message-circle" style="color:#712B13"></i></div>
+    <span class="fn-title">Hỏi đáp & Đánh giá nhận được</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Tab Hỏi đáp chưa trả lời (ưu tiên); Tab Đánh giá của khách có thể phản hồi</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Thread view mỗi câu hỏi; textarea phản hồi inline; badge "Chưa trả lời" nổi bật; filter theo sản phẩm</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Phản hồi đánh giá công khai (hiện dưới review); câu hỏi quá 48h chưa trả → remind</span></div>
+    <div class="badge-row"><span class="badge">Sort by unread</span><span class="badge">Product filter</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#EEEDFE"><i class="ti ti-chart-line" style="color:#534AB7"></i></div>
+    <span class="fn-title">Phân tích sản phẩm</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Bảng SKU performance (lượt xem, thêm giỏ, đặt hàng, doanh thu); funnel chuyển đổi</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Funnel chart (Xem → Giỏ → Đặt → Hoàn thành); bảng sắp xếp được theo từng metric</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Highlight sản phẩm có tỷ lệ hoàn trả cao; cột tồn kho đổi màu khi dưới ngưỡng cảnh báo</span></div>
+    <div class="badge-row"><span class="badge">Date range</span><span class="badge">Compare periods</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#E1F5EE"><i class="ti ti-building-store" style="color:#0F6E56"></i></div>
+    <span class="fn-title">Hồ sơ cửa hàng</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Form cập nhật: tên shop, logo (crop tool), banner, mô tả, địa chỉ kho (bản đồ chọn điểm)</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Image cropper cho logo/banner; map picker cho địa chỉ kho; preview trang shop (how customer sees it)</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Địa chỉ kho ảnh hưởng trực tiếp tính phí ship → cảnh báo nếu thay đổi; logo tối thiểu 200×200px</span></div>
+    <div class="badge-row"><span class="badge">Preview mode</span><span class="badge">Address validation</span></div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<div id="ad" class="section">
+<div class="section-title">Phân hệ admin — 7 chức năng</div>
+<div class="fn-grid">
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#FAEEDA"><i class="ti ti-users" style="color:#633806"></i></div>
+    <span class="fn-title">Quản lý người dùng</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Bảng user (tìm kiếm, filter role/trạng thái); trang chi tiết user với lịch sử hoạt động</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Nút Ban/Unban với modal nhập lý do; badge trạng thái tài khoản; timeline lịch sử thao tác admin</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Ban account yêu cầu lý do (lưu audit log); không thể tự ban chính mình; tìm kiếm theo email / SĐT / tên</span></div>
+    <div class="badge-row"><span class="badge">Audit log</span><span class="badge">Bulk actions</span><span class="badge">Export</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#E1F5EE"><i class="ti ti-check" style="color:#085041"></i></div>
+    <span class="fn-title">Duyệt người bán</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Queue hồ sơ chờ duyệt; trang xem chi tiết từng hồ sơ; lịch sử duyệt/từ chối</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Card hồ sơ với thông tin định danh; nút Duyệt (xanh) / Từ chối (đỏ); textarea lý do từ chối (bắt buộc)</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Từ chối bắt buộc nhập lý do → gửi email thông báo cho người đăng ký; đếm số hồ sơ pending trên badge</span></div>
+    <div class="badge-row"><span class="badge">Email auto-send</span><span class="badge">Document preview</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#EEEDFE"><i class="ti ti-sitemap" style="color:#3C3489"></i></div>
+    <span class="fn-title">Cây danh mục toàn cục</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Tree view phân cấp (kéo thả sắp xếp); form thêm/sửa node danh mục; preview icon/ảnh danh mục</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Drag & drop reorder; input tên, slug, icon upload, parent selector; toggle ẩn/hiện danh mục</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Không xóa danh mục có sản phẩm (chỉ ẩn); thay đổi slug cần confirm vì ảnh hưởng SEO URL</span></div>
+    <div class="badge-row"><span class="badge">Max 3 levels</span><span class="badge">Slug validation</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#FAECE7"><i class="ti ti-scale" style="color:#712B13"></i></div>
+    <span class="fn-title">Giải quyết tranh chấp</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Queue tranh chấp cần xử lý; trang chi tiết: bằng chứng 2 phía, chat thread, nút phán quyết</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Split view: bằng chứng khách (trái) / shop (phải); gallery ảnh có lightbox; dropdown phán quyết; input ghi chú nội bộ</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Phán quyết không thể undo sau khi confirm; ghi log ai phán quyết lúc nào; notify 2 bên sau phán quyết</span></div>
+    <div class="req-row"><span class="req-label lbl-action">Luồng</span><span class="req-text">Hoàn tiền → trigger refund flow; bác đơn → đóng dispute; escalate → chuyển cấp trên</span></div>
+    <div class="badge-row"><span class="badge">Evidence viewer</span><span class="badge">Escalation</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#FAEEDA"><i class="ti ti-ticket" style="color:#633806"></i></div>
+    <span class="fn-title">Platform voucher</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Danh sách voucher sàn; form tạo tương tự vendor nhưng áp dụng toàn bộ sàn</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Toggle áp dụng cho danh mục cụ thể hay toàn sàn; budget cap (giới hạn tổng tiền sàn chịu); realtime usage chart</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Budget cap alert khi đạt 80%; không trùng mã với shop voucher; cơ chế ưu tiên (platform vs shop voucher)</span></div>
+    <div class="badge-row"><span class="badge">Budget cap</span><span class="badge">Category targeting</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#E1F5EE"><i class="ti ti-coin" style="color:#085041"></i></div>
+    <span class="fn-title">Duyệt lệnh rút tiền</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Bảng lệnh rút tiền (lọc theo trạng thái / ngân hàng); trang chi tiết với thông tin TK ngân hàng</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Nút "Đã chuyển khoản" cập nhật trạng thái; input mã giao dịch ngân hàng; export batch để chuyển khoản hàng loạt</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Verify số TK trước khi duyệt; ghi nhận admin nào duyệt; notify vendor ngay sau khi cập nhật trạng thái</span></div>
+    <div class="badge-row"><span class="badge">Bulk approve</span><span class="badge">Bank export</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#EEEDFE"><i class="ti ti-chart-area" style="color:#3C3489"></i></div>
+    <span class="fn-title">Báo cáo & Cấu hình</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Dashboard báo cáo: GMV, doanh thu platform (hoa hồng), top shop, top sản phẩm; trang cấu hình hệ thống</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Chart GMV theo thời gian; bảng top shop; form cấu hình commission rate theo danh mục; audit log viewer</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Thay đổi commission rate → confirm 2 bước + ghi audit log; chỉ super-admin mới thay được rate</span></div>
+    <div class="badge-row"><span class="badge">Period comparison</span><span class="badge">Audit trail</span></div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<div id="sys" class="section">
+<div class="section-title">Phân hệ hệ thống tự động — không có UI, nhưng cần màn hình giám sát</div>
+<div class="fn-grid">
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#E6F1FB"><i class="ti ti-webhook" style="color:#185FA5"></i></div>
+    <span class="fn-title">Webhook GHN / GHTK</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Admin: log viewer webhook (URL nhận, payload, thời gian, trạng thái xử lý)</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Bảng log có filter (thành công / thất bại); nút "Retry" cho webhook thất bại; diff viewer payload JSON</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Lưu raw payload 30 ngày; alert khi tỷ lệ thất bại > 5% trong 1 giờ; idempotent key tránh xử lý trùng</span></div>
+    <div class="badge-row"><span class="badge">Retry logic</span><span class="badge">Dead letter queue</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#FCEBEB"><i class="ti ti-clock-x" style="color:#A32D2D"></i></div>
+    <span class="fn-title">Hủy đơn tự động (15 phút)</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Khách hàng thấy: countdown timer trên trang đơn hàng "Chờ thanh toán"; Admin thấy: job run history</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Countdown timer real-time (MM:SS); cảnh báo màu đỏ khi còn &lt; 2 phút; toast khi đơn bị hủy tự động</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Nhả tồn kho ngay khi hủy; ghi lý do hủy "Hết thời gian thanh toán"; không hủy nếu đang trong cổng TT</span></div>
+    <div class="badge-row"><span class="badge">Inventory rollback</span><span class="badge">Timer UI</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#EAF3DE"><i class="ti ti-circle-check" style="color:#27500A"></i></div>
+    <span class="fn-title">Auto-complete đơn hàng (7 ngày)</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Khách hàng: thông báo "Đơn hàng đã hoàn thành tự động" + nút Đánh giá; Admin: job execution log</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Banner nhắc nhở "X ngày nữa đơn tự hoàn thành" trên trang tracking; nút "Xác nhận đã nhận" sớm hơn</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Không auto-complete nếu có dispute đang mở; trigger settlement job sau khi chuyển COMPLETED</span></div>
+    <div class="badge-row"><span class="badge">Manual confirm</span><span class="badge">Dispute check</span></div>
+  </div>
+</div>
+
+<div class="fn-card">
+  <div class="fn-header">
+    <div class="fn-icon" style="background:#FAEEDA"><i class="ti ti-calculator" style="color:#633806"></i></div>
+    <span class="fn-title">Settlement & Đối soát</span>
+  </div>
+  <div class="fn-body">
+    <div class="req-row"><span class="req-label lbl-screen">Màn hình</span><span class="req-text">Vendor: thấy tiền cộng vào ví với ghi chú rõ đơn hàng nào, hoa hồng bao nhiêu; Admin: settlement report</span></div>
+    <div class="req-row"><span class="req-label lbl-comp">Thành phần</span><span class="req-text">Breakdown chi tiết mỗi settlement: doanh thu gốc − hoa hồng (%) = tiền về ví; Admin dashboard: tổng hoa hồng thu được theo ngày</span></div>
+    <div class="req-row"><span class="req-label lbl-rule">Quy tắc</span><span class="req-text">Settlement idempotent (chạy lại không trùng tiền); ghi log đầy đủ cho audit; rate lấy từ config tại thời điểm đơn hoàn thành</span></div>
+    <div class="badge-row"><span class="badge">Idempotent</span><span class="badge">Audit log</span><span class="badge">Reconciliation</span></div>
+  </div>
+</div>
+
+</div>
+</div>
+</div>
+
+<script>
+function show(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>

@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary-color: #185FA5;
+    --secondary-color: #0F6E56;
+    --bg-base: #f0f2f5;
+  }
+  
+  body {
+    background-color: var(--bg-base);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+      'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+      'Noto Color Emoji';
+  }
+}
+
+/* Ant Design overrides */
+.ant-layout {
+  background: transparent !important;
+}
+.ant-layout-header {
+  background: #fff;
+  padding: 0 24px !important;
+  box-shadow: 0 1px 4px rgba(0,21,41,.08);
+  z-index: 10;
+}
+.ant-layout-sider {
+  box-shadow: 2px 0 8px 0 rgba(29,35,41,.05);
+  z-index: 11;
+}
+.ant-menu-light {
+  border-inline-end: none !important;
+}
+.card-shadow {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+}
