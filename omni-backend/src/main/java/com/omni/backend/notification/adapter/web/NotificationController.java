@@ -1,0 +1,44 @@
+package com.omni.backend.notification.adapter.web;
+
+import com.omni.backend.notification.adapter.persistence.entity.NotificationJpaEntity;
+import com.omni.backend.notification.application.service.NotificationService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/me/notifications")
+@RequiredArgsConstructor
+public class NotificationController {
+
+    private final NotificationService notificationService;
+
+    private UUID getUserId(Authentication authentication) {
+        return UUID.fromString(authentication.getName());
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<NotificationJpaEntity>> getNotifications(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(notificationService.getUserNotifications(getUserId(authentication), PageRequest.of(page, size)));
+    }
+
+    @PatchMapping("/{id}/read")
+    public ResponseEntity<Void> markAsRead(Authentication authentication, @PathVariable UUID id) {
+        notificationService.markAsRead(getUserId(authentication), id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/read-all")
+    public ResponseEntity<Void> markAllAsRead(Authentication authentication) {
+        notificationService.markAllAsRead(getUserId(authentication));
+        return ResponseEntity.ok().build();
+    }
+}
