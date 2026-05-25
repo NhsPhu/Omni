@@ -4,6 +4,7 @@ import com.omni.backend.catalog.adapter.persistence.entity.CategoryJpaEntity;
 import com.omni.backend.catalog.adapter.persistence.repository.CategoryRepository;
 import com.omni.backend.catalog.application.dto.CategoryDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
 
+    @Cacheable("categories")
     @Transactional(readOnly = true)
     public List<CategoryDto> getCategoryTree() {
         List<CategoryJpaEntity> allCategories = categoryRepository.findAll();
