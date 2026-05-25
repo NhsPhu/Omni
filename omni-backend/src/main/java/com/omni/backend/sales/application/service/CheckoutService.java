@@ -1,0 +1,143 @@
+package com.omni.backend.sales.application.service;
+
+import com.omni.backend.catalog.adapter.persistence.entity.ProductSkuJpaEntity;
+import com.omni.backend.catalog.adapter.persistence.repository.ProductSkuRepository;
+import com.omni.backend.sales.adapter.persistence.entity.ChildOrderJpaEntity;
+import com.omni.backend.sales.adapter.persistence.entity.OrderItemJpaEntity;
+import com.omni.backend.sales.adapter.persistence.entity.ParentOrderJpaEntity;
+import com.omni.backend.sales.adapter.persistence.repository.ParentOrderRepository;
+import com.omni.backend.sales.application.dto.CartDto;
+import com.omni.backend.sales.application.dto.CartItemDto;
+import com.omni.backend.sales.application.dto.CheckoutRequest;
+import com.omni.backend.sales.application.dto.CheckoutResponse;
+import com.omni.backend.sales.domain.event.OrderPlacedEvent;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class CheckoutService {
+
+    private final CartService cartService;
+    private final ProductSkuRepository productSkuRepository;
+    private final ParentOrderRepository parentOrderRepository;
+    private final ApplicationEventPublisher eventPublisher;
+
+    @Transactional(rollbackFor = Exception.class)
+    public CheckoutResponse checkout(UUID userId, CheckoutRequest request) {
+        log.info("Starting checkout process for user {}", userId);
+
+        // 1. Lấy thông tin giỏ hàng
+        CartDto cart = cartService.getCart(userId);
+        if (cart.getItemsByShop().isEmpty()) {
+            throw new RuntimeException("Cart is empty");
+        }
+
+        // Lọc các items người dùng chọn checkout (skuIds)
+        List<CartItemDto> selectedItems = cart.getItemsByShop().values().stream()
+                .flatMap(List::stream)
+                .filter(item -> request.getSkuIds().contains(item.getSkuId()))
+                .collect(Collectors.toList());
+
+        if (selectedItems.isEmpty()) {
+            throw new RuntimeException("No valid items selected for checkout");
+        }
+
+        // Group lại theo shop
+        Map<UUID, List<CartItemDto>> itemsByShop = selectedItems.stream()
+                .collect(Collectors.groupingBy(CartItemDto::getShopId));
+
+        // 2. Validate và tạo Parent Order
+        ParentOrderJpaEntity parentOrder = ParentOrderJpaEntity.builder()
+                .userId(userId)
+                .shippingAddressId(request.getShippingAddressId())
+                .platformVoucherId(request.getPlatformVoucherId())
+                .status("PENDING")
+                .build();
+
+        BigDecimal grandTotal = BigDecimal.ZERO;
+        
+        // 3. Xử lý từng Shop (Child Order)
+        for (Map.Entry<UUID, List<CartItemDto>> entry : itemsByShop.entrySet()) {
+            UUID shopId = entry.getKey();
+            List<CartItemDto> shopItems = entry.getValue();
+
+            BigDecimal shopSubtotal = BigDecimal.ZERO;
+            ChildOrderJpaEntity childOrder = ChildOrderJpaEntity.builder()
+                    .parentOrder(parentOrder)
+                    .shopId(shopId)
+                    .status("PENDING")
+                    // Note: Cần thêm logic tìm shopVoucherId nếu req gửi lên list
+                    // và apply shipping_fee 
+                    .shippingFee(BigDecimal.valueOf(30000)) // Giả lập phí ship 30k
+                    .build();
+
+            for (CartItemDto item : shopItems) {
+                // Giảm tồn kho (Optimistic Lock)
+                ProductSkuJpaEntity sku = productSkuRepository.findById(item.getSkuId())
+                        .orElseThrow(() -> new RuntimeException("SKU not found"));
+                
+                if (sku.getStockQuantity() < item.getQuantity()) {
+                    throw new RuntimeException("Not enough stock for SKU: " + sku.getSkuCode());
+                }
+                
+                // Trừ tồn kho (Hibernate sẽ check @Version lúc flush)
+                sku.setStockQuantity(sku.getStockQuantity() - item.getQuantity());
+                productSkuRepository.save(sku);
+
+                BigDecimal itemTotal = sku.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                shopSubtotal = shopSubtotal.add(itemTotal);
+
+                OrderItemJpaEntity orderItem = OrderItemJpaEntity.builder()
+                        .childOrder(childOrder)
+                        .productId(item.getProductId())
+                        .skuId(item.getSkuId())
+                        .quantity(item.getQuantity())
+                        .priceAtPurchase(sku.getPrice())
+                        .build();
+
+                childOrder.getItems().add(orderItem);
+            }
+
+            childOrder.setSubtotal(shopSubtotal);
+            childOrder.setTotalAmount(shopSubtotal.add(childOrder.getShippingFee()).subtract(childOrder.getShopDiscount()));
+            
+            parentOrder.getChildOrders().add(childOrder);
+            grandTotal = grandTotal.add(childOrder.getTotalAmount());
+        }
+
+        // Apply Platform voucher discount logic here (skip for simple demo)
+        parentOrder.setTotalAmount(grandTotal);
+        parentOrder.setFinalAmount(grandTotal.subtract(parentOrder.getPlatformDiscount()));
+
+        // Lưu toàn bộ tree: Parent -> Child -> Items
+        parentOrder = parentOrderRepository.save(parentOrder);
+
+        // 4. Xóa các item đã mua khỏi Redis Cart
+        for (UUID skuId : request.getSkuIds()) {
+            cartService.removeFromCart(userId, skuId);
+        }
+
+        // 5. Publish Event cho các hệ thống khác (Payment)
+        eventPublisher.publishEvent(new OrderPlacedEvent(parentOrder.getId(), userId, parentOrder.getFinalAmount()));
+
+        log.info("Checkout successful for user {}, ParentOrder ID: {}", userId, parentOrder.getId());
+        
+        return CheckoutResponse.builder()
+                .parentOrderId(parentOrder.getId())
+                .totalAmount(parentOrder.getTotalAmount())
+                .finalAmount(parentOrder.getFinalAmount())
+                .status(parentOrder.getStatus())
+                .build();
+    }
+}
