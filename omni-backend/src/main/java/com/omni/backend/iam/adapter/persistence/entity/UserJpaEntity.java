@@ -59,4 +59,7 @@ public class UserJpaEntity {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private ZonedDateTime updatedAt;
+    
+    @Column(name = "last_login_at")
+    private ZonedDateTime lastLoginAt;
 }
