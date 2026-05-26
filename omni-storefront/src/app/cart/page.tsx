@@ -5,22 +5,100 @@ import { Minus, Plus, Trash2, ShoppingCart, Tag, ArrowRight, Store } from "lucid
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
-import { mockCartItems } from "@/data/mock";
 import { formatPrice } from "@/lib/utils";
-import type { CartItem } from "@/data/mock";
 import Link from "next/link";
+import api from "@/lib/axios";
+import { useEffect } from "react";
+import { toast } from "sonner";
+import { useAuthStore } from "@/store/authStore";
+
+export interface CartItem {
+  id: string; // mapping from skuId
+  shopId: string;
+  shopName: string;
+  name: string;
+  sku: string;
+  price: number;
+  originalPrice?: number;
+  quantity: number;
+  stock: number;
+  selected: boolean;
+}
 
 const GRADS = ["from-violet-600/80 to-indigo-600/80","from-amber-500/80 to-orange-600/80","from-blue-600/80 to-cyan-500/80","from-emerald-600/80 to-teal-600/80"];
 
 export default function CartPage() {
-  const [items, setItems] = useState<CartItem[]>(mockCartItems);
+  const [items, setItems] = useState<CartItem[]>([]);
   const [voucher, setVoucher] = useState("");
   const [voucherApplied, setVoucherApplied] = useState(false);
+  const { isAuthenticated } = useAuthStore();
+  const [loading, setLoading] = useState(true);
+
+  const fetchCart = async () => {
+    if (!isAuthenticated()) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const res = await api.get("/cart");
+      const data = res.data;
+      if (!data || !data.itemsByShop) return;
+      
+      const newItems: CartItem[] = [];
+      Object.keys(data.itemsByShop).forEach((shopId: string) => {
+        const shopItems = data.itemsByShop[shopId];
+        shopItems.forEach((it: any) => {
+          newItems.push({
+            id: it.skuId, // using skuId as unique cart item ID
+            shopId: it.shopId,
+            shopName: "Shop " + it.shopId.substring(0, 8), // Backend doesn't return shopName in CartDto yet
+            name: it.productName,
+            sku: it.skuCode,
+            price: it.price,
+            quantity: it.quantity,
+            stock: 999, // default
+            selected: true,
+          });
+        });
+      });
+      setItems(newItems);
+    } catch (e: any) {
+      if (e.response?.status !== 401 && e.response?.status !== 403) {
+        console.error("Cart fetch error:", e);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCart();
+  }, []);
 
   const toggle = (id: string) => setItems(prev => prev.map(it => it.id === id ? { ...it, selected: !it.selected } : it));
   const toggleAll = (checked: boolean) => setItems(prev => prev.map(it => ({ ...it, selected: it.stock > 0 ? checked : false })));
-  const setQty = (id: string, qty: number) => setItems(prev => prev.map(it => it.id === id ? { ...it, quantity: Math.max(1, Math.min(it.stock, qty)) } : it));
-  const remove = (id: string) => setItems(prev => prev.filter(it => it.id !== id));
+  
+  const setQty = async (id: string, qty: number) => {
+    // Optimistic update
+    setItems(prev => prev.map(it => it.id === id ? { ...it, quantity: Math.max(1, Math.min(it.stock, qty)) } : it));
+    try {
+      await api.put(`/cart/items/${id}?quantity=${qty}`);
+    } catch (e) {
+      toast.error("Lỗi cập nhật số lượng");
+      fetchCart(); // revert
+    }
+  };
+  
+  const remove = async (id: string) => {
+    setItems(prev => prev.filter(it => it.id !== id));
+    try {
+      await api.delete(`/cart/items/${id}`);
+      toast.success("Đã xóa khỏi giỏ hàng");
+    } catch (e) {
+      toast.error("Lỗi xóa sản phẩm");
+      fetchCart();
+    }
+  };
 
   const allChecked = items.filter(it => it.stock > 0).every(it => it.selected);
   const selectedItems = items.filter(it => it.selected);
@@ -35,8 +113,8 @@ export default function CartPage() {
     shopName: items.find(it => it.shopId === shopId)!.shopName,
     items: items.filter(it => it.shopId === shopId),
   }));
-  const shopAllChecked = (shopId: number) => items.filter(it => it.shopId === shopId && it.stock > 0).every(it => it.selected);
-  const toggleShop = (shopId: number, checked: boolean) => setItems(prev => prev.map(it => it.shopId === shopId ? { ...it, selected: it.stock > 0 ? checked : false } : it));
+  const shopAllChecked = (shopId: string) => items.filter(it => it.shopId === shopId && it.stock > 0).every(it => it.selected);
+  const toggleShop = (shopId: string, checked: boolean) => setItems(prev => prev.map(it => it.shopId === shopId ? { ...it, selected: it.stock > 0 ? checked : false } : it));
 
   return (
     <>
@@ -47,7 +125,11 @@ export default function CartPage() {
             Giỏ hàng ({items.length})
           </h1>
 
-          {items.length === 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <span className="text-sm">Đang tải giỏ hàng...</span>
+            </div>
+          ) : items.length === 0 ? (
             /* Empty state */
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <ShoppingCart className="w-20 h-20 mb-5" style={{ color: "var(--text-muted)" }} />
@@ -174,12 +256,14 @@ export default function CartPage() {
                     <span className="text-lg text-gradient-gold font-[family-name:var(--font-heading)]">{formatPrice(total)}</span>
                   </div>
 
-                  <Link href="/checkout">
-                    <Button variant="gold" className="w-full mt-2 group" disabled={selectedItems.length === 0}>
+                  <Button variant="gold" className="w-full mt-2 group" disabled={selectedItems.length === 0}
+                    onClick={() => {
+                      localStorage.setItem("checkout_skus", JSON.stringify(selectedItems.map(it => it.id)));
+                      window.location.href = "/checkout";
+                    }}>
                       Thanh toán ({selectedItems.length})
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
-                    </Button>
-                  </Link>
+                  </Button>
                   <p className="text-xs text-center" style={{ color: "var(--text-muted)" }}>Bằng cách đặt hàng, bạn đồng ý với điều khoản của Omni</p>
                 </div>
               </div>

@@ -7,13 +7,22 @@ import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
 import { productDetail } from "@/data/mock";
 import { formatPrice, calcDiscount } from "@/lib/utils";
+import api from "@/lib/axios";
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/authStore";
+import { toast } from "sonner";
 
 const GRADS = ["from-violet-600/80 to-indigo-600/80","from-amber-500/80 to-orange-600/80","from-purple-600/80 to-pink-600/80","from-blue-600/80 to-cyan-500/80"];
 const TABS = ["Mô tả sản phẩm", "Thông số kỹ thuật", "Đánh giá"];
 
 export default function ProductDetailPage() {
-  const p = productDetail;
+  const params = useParams();
+  const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+  const [p, setP] = useState<any>(productDetail); // Fallback to mock temporarily if api fails
   const [activeImg, setActiveImg] = useState(0);
+
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedStorage, setSelectedStorage] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
@@ -21,12 +30,20 @@ export default function ProductDetailPage() {
   const [activeTab, setActiveTab] = useState(0);
   const [addedToCart, setAddedToCart] = useState(false);
 
+  useEffect(() => {
+    if (params?.id) {
+      api.get("/products/" + params.id).then(res => setP(res.data)).catch((e: any) => {
+        if (e.response?.status !== 401 && e.response?.status !== 403) console.error(e);
+      });
+    }
+  }, [params?.id]);
+
   // Derive unique colors / storages
-  const colors   = [...new Set(p.skus?.map(s => s.color).filter(Boolean) as string[])];
-  const storages = [...new Set(p.skus?.map(s => s.storage).filter(Boolean) as string[])];
+  const colors   = [...new Set(p?.skus?.map((s:any) => s.color).filter(Boolean) as string[])];
+  const storages = [...new Set(p?.skus?.map((s:any) => s.storage).filter(Boolean) as string[])];
 
   // Find matching SKU
-  const activeSku = p.skus?.find(s =>
+  const activeSku = p?.skus?.find((s:any) =>
     (!selectedColor   || s.color   === selectedColor) &&
     (!selectedStorage || s.storage === selectedStorage)
   );
@@ -36,9 +53,34 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (!canAdd) return;
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
+    if (!isAuthenticated()) {
+      toast.error("Vui lòng đăng nhập để mua hàng", {
+        action: {
+          label: "Đăng nhập",
+          onClick: () => router.push("/auth")
+        }
+      });
+      return;
+    }
+    
+    // In real app, call API to add to cart
+    api.post("/cart/items", {
+      productId: p.id,
+      skuId: activeSku?.id,
+      quantity: qty
+    }).then(() => {
+      setAddedToCart(true);
+      setTimeout(() => setAddedToCart(false), 2000);
+    }).catch((e: any) => {
+       if (e.response?.status === 401 || e.response?.status === 403) {
+         toast.error("Vui lòng đăng nhập lại");
+       } else {
+         console.error(e);
+       }
+    });
   };
+
+  if (!p) return null;
 
   return (
     <>
@@ -86,7 +128,7 @@ export default function ProductDetailPage() {
 
               {/* Thumbnails */}
               <div className="grid grid-cols-4 gap-2">
-                {(p.images ?? [p.image, p.image, p.image, p.image]).map((_, i) => (
+                {(p.images ?? [p.image, p.image, p.image, p.image]).map((_: any, i: number) => (
                   <button key={i} onClick={() => setActiveImg(i)}
                     className={`aspect-square rounded-xl overflow-hidden bg-gradient-to-br ${GRADS[i % 4]} cursor-pointer transition-all duration-200`}
                     style={{ border: activeImg === i ? "2px solid var(--gold)" : "1px solid var(--border)", opacity: activeImg === i ? 1 : 0.6 }}>
@@ -157,8 +199,8 @@ export default function ProductDetailPage() {
                     Màu sắc: <span style={{ color: "var(--text-primary)" }}>{selectedColor ?? "Chưa chọn"}</span>
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {colors.map(color => {
-                      const sku = p.skus?.find(s => s.color === color && (!selectedStorage || s.storage === selectedStorage));
+                    {colors.map((color: any) => {
+                      const sku = p.skus?.find((s:any) => s.color === color && (!selectedStorage || s.storage === selectedStorage));
                       const outOfStock = (sku?.stock ?? 0) === 0;
                       return (
                         <button key={color} disabled={outOfStock} onClick={() => setSelectedColor(color)}
@@ -185,8 +227,8 @@ export default function ProductDetailPage() {
                     Dung lượng: <span style={{ color: "var(--text-primary)" }}>{selectedStorage ?? "Chưa chọn"}</span>
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {storages.map(storage => {
-                      const sku = p.skus?.find(s => s.storage === storage && (!selectedColor || s.color === selectedColor));
+                    {storages.map((storage: any) => {
+                      const sku = p.skus?.find((s:any) => s.storage === storage && (!selectedColor || s.color === selectedColor));
                       const outOfStock = (sku?.stock ?? 0) === 0;
                       return (
                         <button key={storage} disabled={outOfStock} onClick={() => setSelectedStorage(storage)}
@@ -283,7 +325,7 @@ export default function ProductDetailPage() {
               {activeTab === 0 && (
                 <motion.div key="desc" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                   className="p-6 rounded-2xl prose-sm max-w-none" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)", lineHeight: 1.8 }}>
-                  {p.description?.split("\n").map((line, i) => <p key={i} className="mb-3">{line}</p>)}
+                  {p.description?.split("\n").map((line: any, i: number) => <p key={i} className="mb-3">{line}</p>)}
                 </motion.div>
               )}
 
@@ -291,7 +333,7 @@ export default function ProductDetailPage() {
               {activeTab === 1 && (
                 <motion.div key="specs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                   className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-                  {Object.entries(p.specs ?? {}).map(([key, val], i) => (
+                  {Object.entries(p.specs ?? {}).map(([key, val]: any, i: number) => (
                     <div key={key} className="flex items-start" style={{ background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-elevated)", borderBottom: "1px solid var(--border)" }}>
                       <span className="w-44 flex-shrink-0 px-5 py-3 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>{key}</span>
                       <span className="flex-1 px-5 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{val}</span>
@@ -314,7 +356,7 @@ export default function ProductDetailPage() {
                     </div>
                     <div className="flex-1 space-y-1.5">
                       {[5,4,3,2,1].map(star => {
-                        const count = p.reviews?.filter(r => Math.floor(r.rating) === star).length ?? 0;
+                        const count = p.reviews?.filter((r:any) => Math.floor(r.rating) === star).length ?? 0;
                         const pct = p.reviews?.length ? (count / p.reviews.length) * 100 : 0;
                         return (
                           <div key={star} className="flex items-center gap-3">
@@ -331,7 +373,7 @@ export default function ProductDetailPage() {
                   </div>
 
                   {/* Review cards */}
-                  {p.reviews?.map(review => (
+                  {p.reviews?.map((review:any) => (
                     <div key={review.id} className="p-5 rounded-2xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">

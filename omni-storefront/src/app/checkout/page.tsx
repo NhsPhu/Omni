@@ -4,9 +4,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Truck, CreditCard, CheckCircle, ChevronRight, ShoppingCart, Edit2 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Button from "@/components/ui/Button";
-import { mockAddresses, mockCartItems, shippingMethods, paymentMethods } from "@/data/mock";
+import { mockAddresses, shippingMethods, paymentMethods } from "@/data/mock";
 import { formatPrice } from "@/lib/utils";
 import * as LucideIcons from "lucide-react";
+import api from "@/lib/axios";
+import { toast } from "sonner";
+import type { CartItem } from "@/app/cart/page";
+import { useEffect } from "react";
+import { useAuthStore } from "@/store/authStore";
+import { useRouter } from "next/navigation";
 
 const STEPS = [
   { id: 1, label: "Địa chỉ",   icon: MapPin      },
@@ -21,8 +27,54 @@ export default function CheckoutPage() {
   const [selectedPayment, setSelectedPayment] = useState(paymentMethods[0].id);
   const [voucher, setVoucher] = useState("");
   const [placed, setPlaced] = useState(false);
+  const [orderId, setOrderId] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const { isAuthenticated } = useAuthStore();
+  const router = useRouter();
 
-  const selectedItems = mockCartItems.filter(it => it.selected);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      router.push("/auth");
+      return;
+    }
+    // Load checkout items from cart
+    const skusStr = localStorage.getItem("checkout_skus");
+    if (!skusStr) return;
+    try {
+      const selectedSkus = JSON.parse(skusStr);
+      api.get("/cart").then(res => {
+        const data = res.data;
+        if (!data || !data.itemsByShop) return;
+        const items: CartItem[] = [];
+        Object.keys(data.itemsByShop).forEach((shopId: string) => {
+          data.itemsByShop[shopId].forEach((it: any) => {
+            if (selectedSkus.includes(it.skuId)) {
+              items.push({
+                id: it.skuId,
+                shopId: it.shopId,
+                shopName: "Shop " + it.shopId.substring(0, 8),
+                name: it.productName,
+                sku: it.skuCode,
+                price: it.price,
+                quantity: it.quantity,
+                stock: 999,
+                selected: true,
+              });
+            }
+          });
+        });
+        setCartItems(items);
+      }).catch((e: any) => {
+        if (e.response?.status !== 401 && e.response?.status !== 403) console.error(e);
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const selectedItems = cartItems;
   const subtotal  = selectedItems.reduce((s, it) => s + it.price * it.quantity, 0);
   const shipFee   = shippingMethods.find(s => s.id === selectedShipping)!.price;
   const total     = subtotal + shipFee;
@@ -35,7 +87,7 @@ export default function CheckoutPage() {
       </motion.div>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <h1 className="text-3xl font-bold font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Đặt hàng thành công!</h1>
-        <p className="mt-2" style={{ color: "var(--text-secondary)" }}>Mã đơn hàng: <strong className="text-gradient-gold">OMN-{Date.now().toString().slice(-6)}</strong></p>
+        <p className="mt-2" style={{ color: "var(--text-secondary)" }}>Mã đơn hàng: <strong className="text-gradient-gold">{orderId.split("-")[0].toUpperCase()}</strong></p>
         <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Chúng tôi sẽ xử lý và giao hàng sớm nhất có thể</p>
         <div className="flex gap-3 mt-6 justify-center">
           <Button variant="gold" onClick={() => window.location.href = "/"}>Về trang chủ</Button>
@@ -200,8 +252,30 @@ export default function CheckoutPage() {
                     </div>
 
                     <div className="flex gap-3">
-                      <Button variant="glass" onClick={() => setStep(2)}>Quay lại</Button>
-                      <Button variant="gold" className="flex-1" onClick={() => setPlaced(true)}>
+                      <Button variant="glass" onClick={() => setStep(2)} disabled={loading}>Quay lại</Button>
+                      <Button variant="gold" className="flex-1" loading={loading} onClick={async () => {
+                        setLoading(true);
+                        try {
+                          const res = await api.post("/checkout", {
+                            shippingAddressId: "00000000-0000-0000-0000-000000000000", // Dummy address UUID
+                            skuIds: selectedItems.map(it => it.id)
+                          });
+                          const parentOrderId = res.data.parentOrderId;
+                          setOrderId(parentOrderId);
+
+                          if (selectedPayment === "vnpay") {
+                            const vnRes = await api.post(`/payment/vnpay/create-url?orderId=${parentOrderId}`);
+                            window.location.href = vnRes.data; // redirect to VNPay
+                          } else {
+                            // COD
+                            setPlaced(true);
+                          }
+                        } catch (e: any) {
+                          toast.error(e.response?.data?.message || "Lỗi khi đặt hàng");
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}>
                         Đặt hàng — {formatPrice(total)}
                       </Button>
                     </div>
