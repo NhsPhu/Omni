@@ -24,7 +24,8 @@ public class DisputeController {
     private final DisputeRepository disputeRepository;
 
     private UUID getUserId(Authentication authentication) {
-        return UUID.fromString(authentication.getName());
+        com.omni.backend.shared.security.CustomUserDetails userDetails = (com.omni.backend.shared.security.CustomUserDetails) authentication.getPrincipal();
+        return userDetails.getId();
     }
 
     @PostMapping("/me/disputes")
@@ -43,6 +44,14 @@ public class DisputeController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(disputeRepository.findByStatus("OPEN", PageRequest.of(page, size)));
+    }
+
+    @GetMapping("/admin/disputes")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Page<DisputeJpaEntity>> getAllDisputes(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(disputeRepository.findAll(PageRequest.of(page, size)));
     }
 
     @PatchMapping("/admin/disputes/{id}/resolve")
@@ -71,3 +80,4 @@ class ResolveDisputeRequest {
     private BigDecimal refundAmount;
     private String decision;
 }
+

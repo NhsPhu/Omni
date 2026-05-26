@@ -29,6 +29,20 @@ public class AdminController {
         return UUID.fromString(authentication.getName());
     }
 
+    @GetMapping("/users")
+    public ResponseEntity<Page<UserJpaEntity>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(userRepository.findAll(PageRequest.of(page, size)));
+    }
+
+    @GetMapping("/shops")
+    public ResponseEntity<Page<ShopJpaEntity>> getAllShops(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(shopRepository.findAll(PageRequest.of(page, size)));
+    }
+
     @GetMapping("/shops/pending")
     public ResponseEntity<Page<ShopJpaEntity>> getPendingShops(
             @RequestParam(defaultValue = "0") int page,
@@ -71,3 +85,4 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 }
+

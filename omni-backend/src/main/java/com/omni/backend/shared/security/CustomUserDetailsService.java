@@ -23,7 +23,8 @@ public class CustomUserDetailsService implements UserDetailsService {
         UserJpaEntity user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
-        return new User(
+        return new CustomUserDetails(
+                user.getId(),
                 user.getEmail(),
                 user.getPasswordHash() != null ? user.getPasswordHash() : "",
                 Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name()))

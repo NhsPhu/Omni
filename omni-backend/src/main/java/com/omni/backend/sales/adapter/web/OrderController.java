@@ -19,7 +19,8 @@ public class OrderController {
     private final OrderService orderService;
 
     private UUID getUserId(Authentication authentication) {
-        return UUID.fromString(authentication.getName());
+        com.omni.backend.shared.security.CustomUserDetails userDetails = (com.omni.backend.shared.security.CustomUserDetails) authentication.getPrincipal();
+        return userDetails.getId();
     }
 
     // --- User Endpoints ---
@@ -53,3 +54,4 @@ public class OrderController {
         return ResponseEntity.ok().build();
     }
 }
+

@@ -19,7 +19,8 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     private UUID getUserId(Authentication authentication) {
-        return UUID.fromString(authentication.getName());
+        com.omni.backend.shared.security.CustomUserDetails userDetails = (com.omni.backend.shared.security.CustomUserDetails) authentication.getPrincipal();
+        return userDetails.getId();
     }
 
     @GetMapping
@@ -42,3 +43,4 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 }
+

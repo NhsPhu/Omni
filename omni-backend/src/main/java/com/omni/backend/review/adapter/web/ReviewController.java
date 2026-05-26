@@ -22,7 +22,8 @@ public class ReviewController {
     private final ReviewRepository reviewRepository;
 
     private UUID getUserId(Authentication authentication) {
-        return UUID.fromString(authentication.getName());
+        com.omni.backend.shared.security.CustomUserDetails userDetails = (com.omni.backend.shared.security.CustomUserDetails) authentication.getPrincipal();
+        return userDetails.getId();
     }
 
     @PostMapping("/me/reviews")
@@ -43,3 +44,4 @@ public class ReviewController {
         return ResponseEntity.ok(reviewRepository.findByProductIdAndStatus(productId, "APPROVED", PageRequest.of(page, size)));
     }
 }
+
