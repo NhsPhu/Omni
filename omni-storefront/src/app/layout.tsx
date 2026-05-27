@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Bodoni_Moda, Jost } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "sonner";
+import Script from "next/script";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const bodoniModa = Bodoni_Moda({
   variable: "--font-heading",
@@ -31,6 +34,9 @@ export const metadata: Metadata = {
   },
 };
 
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+const FACEBOOK_APP_ID  = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID  ?? "";
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -39,9 +45,32 @@ export default function RootLayout({
       lang="vi"
       className={`${bodoniModa.variable} ${jost.variable}`}
       suppressHydrationWarning
+      data-scroll-behavior="smooth"
     >
       <body className="antialiased">
-        {children}
+        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+          {children}
+        </GoogleOAuthProvider>
+        <Toaster richColors position="top-right" />
+
+        {/* Facebook JS SDK — khởi tạo async sau khi trang load */}
+        <Script id="fb-sdk-init" strategy="afterInteractive">{`
+          window.fbAsyncInit = function() {
+            FB.init({
+              appId   : '${FACEBOOK_APP_ID}',
+              cookie  : true,
+              xfbml   : true,
+              version : 'v19.0'
+            });
+          };
+          (function(d, s, id) {
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) { return; }
+            js = d.createElement(s); js.id = id;
+            js.src = "https://connect.facebook.net/vi_VN/sdk.js";
+            fjs.parentNode.insertBefore(js, fjs);
+          }(document, 'script', 'facebook-jssdk'));
+        `}</Script>
       </body>
     </html>
   );

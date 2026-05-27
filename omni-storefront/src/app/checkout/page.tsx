@@ -22,9 +22,9 @@ const STEPS = [
 
 export default function CheckoutPage() {
   const [step, setStep] = useState(1);
-  const [selectedAddr, setSelectedAddr] = useState(mockAddresses[0].id);
-  const [selectedShipping, setSelectedShipping] = useState(shippingMethods[0].id);
-  const [selectedPayment, setSelectedPayment] = useState(paymentMethods[0].id);
+  const [selectedAddr, setSelectedAddr] = useState(mockAddresses?.[0]?.id || "");
+  const [selectedShipping, setSelectedShipping] = useState(shippingMethods?.[0]?.id || "");
+  const [selectedPayment, setSelectedPayment] = useState(paymentMethods?.[0]?.id || "");
   const [voucher, setVoucher] = useState("");
   const [placed, setPlaced] = useState(false);
   const [orderId, setOrderId] = useState<string>("");
@@ -76,9 +76,9 @@ export default function CheckoutPage() {
 
   const selectedItems = cartItems;
   const subtotal  = selectedItems.reduce((s, it) => s + it.price * it.quantity, 0);
-  const shipFee   = shippingMethods.find(s => s.id === selectedShipping)!.price;
+  const shipFee   = shippingMethods.find(s => s.id === selectedShipping)?.price || 0;
   const total     = subtotal + shipFee;
-  const addr      = mockAddresses.find(a => a.id === selectedAddr)!;
+  const addr      = mockAddresses.find(a => a.id === selectedAddr);
 
   if (placed) return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 text-center px-4" style={{ background: "var(--bg-base)" }}>
@@ -241,12 +241,12 @@ export default function CheckoutPage() {
                       <h3 className="font-bold text-sm font-[family-name:var(--font-body)]" style={{ color: "var(--text-primary)" }}>Xác nhận đơn hàng</h3>
                       <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                         <MapPin className="w-4 h-4 flex-shrink-0" style={{ color: "var(--gold)" }} />
-                        {addr.street}, {addr.ward}, {addr.district}
+                        {addr ? `${addr.street}, ${addr.ward}, ${addr.district}` : "Chưa chọn địa chỉ"}
                         <button onClick={() => setStep(1)} className="ml-auto cursor-pointer"><Edit2 className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} /></button>
                       </div>
                       <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                         <Truck className="w-4 h-4 flex-shrink-0" style={{ color: "var(--purple-light)" }} />
-                        {shippingMethods.find(s => s.id === selectedShipping)!.label}
+                        {shippingMethods.find(s => s.id === selectedShipping)?.label || "Chưa chọn vận chuyển"}
                         <button onClick={() => setStep(2)} className="ml-auto cursor-pointer"><Edit2 className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} /></button>
                       </div>
                     </div>
@@ -257,7 +257,7 @@ export default function CheckoutPage() {
                         setLoading(true);
                         try {
                           const res = await api.post("/checkout", {
-                            shippingAddressId: "00000000-0000-0000-0000-000000000000", // Dummy address UUID
+                            shippingAddressId: "00000000-0000-0000-0000-000000000001", // Valid seeded address UUID
                             skuIds: selectedItems.map(it => it.id)
                           });
                           const parentOrderId = res.data.parentOrderId;

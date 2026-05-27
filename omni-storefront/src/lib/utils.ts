@@ -8,7 +8,8 @@ export function cn(...classes: (string | boolean | undefined | null)[]): string 
 }
 
 /** Format price in Vietnamese Dong (VND) */
-export function formatPrice(price: number): string {
+export function formatPrice(price?: number): string {
+  if (price === undefined || price === null) price = 0;
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
@@ -17,7 +18,8 @@ export function formatPrice(price: number): string {
 }
 
 /** Format compact number (e.g., 1.2k, 5M) */
-export function formatCompact(num: number): string {
+export function formatCompact(num?: number): string {
+  if (num === undefined || num === null) return "0";
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
   if (num >= 1_000) return `${(num / 1_000).toFixed(1)}k`;
   return num.toString();

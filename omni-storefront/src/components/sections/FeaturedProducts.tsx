@@ -1,9 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Flame, Clock, TrendingDown } from "lucide-react";
 import ProductCard from "@/components/ui/ProductCard";
-import { featuredProducts } from "@/data/mock";
+import api from "@/lib/axios";
+import Link from "next/link";
 
 const tabs = [
   { id: "bestseller", label: "Bán chạy", icon: Flame },
@@ -13,8 +14,14 @@ const tabs = [
 
 export default function FeaturedProducts() {
   const [active, setActive] = useState("bestseller");
-  const filtered = featuredProducts.filter(p => p.badge === active);
-  const displayed = filtered.length ? filtered : featuredProducts.slice(0, 8);
+  const [products, setProducts] = useState<any[]>([]);
+
+  useEffect(() => {
+    // In a real app, pass the active tab as a sort/filter parameter
+    api.get("/products?size=8").then(res => setProducts(res.data.content || [])).catch(console.error);
+  }, [active]);
+
+  const displayed = products;
 
   return (
     <section className="py-20 lg:py-28" style={{ background: "var(--bg-surface)" }}>
@@ -48,14 +55,14 @@ export default function FeaturedProducts() {
         </motion.div>
 
         <div className="mt-12 text-center">
-          <a href="#"
+          <Link href="/search"
             className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-semibold transition-all duration-300 cursor-pointer glass group"
             style={{ color: "var(--text-primary)", border: "1px solid var(--border-purple)" }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--gold)"}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--border-purple)"}>
             Xem tất cả sản phẩm
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
-          </a>
+          </Link>
         </div>
       </div>
     </section>
