@@ -19,6 +19,7 @@ import java.util.UUID;
 public class ProductSearchService {
 
     private final ElasticsearchOperations elasticsearchOperations;
+    private final com.omni.backend.catalog.adapter.persistence.repository.CategoryRepository categoryRepository;
 
     public Page<ProductDocument> searchProducts(String keyword, UUID categoryId, Double minPrice, Double maxPrice, int page, int size) {
         BoolQuery.Builder boolQueryBuilder = QueryBuilders.bool();
@@ -31,12 +32,25 @@ public class ProductSearchService {
                     .build()._toQuery());
         }
 
-        // 2. Filter by Category
+        // 2. Filter by Category (Include Children)
         if (categoryId != null) {
-            boolQueryBuilder.filter(QueryBuilders.term()
-                    .field("categoryId")
-                    .value(categoryId.toString())
-                    .build()._toQuery());
+            java.util.List<String> categoryIds = new java.util.ArrayList<>();
+            categoryIds.add(categoryId.toString());
+            
+            java.util.List<com.omni.backend.catalog.adapter.persistence.entity.CategoryJpaEntity> children = 
+                categoryRepository.findByParentIdOrderBySortOrderAsc(categoryId);
+                
+            if (children != null) {
+                children.forEach(c -> categoryIds.add(c.getId().toString()));
+            }
+
+            BoolQuery.Builder categoryBoolQuery = QueryBuilders.bool();
+            for (String id : categoryIds) {
+                categoryBoolQuery.should(QueryBuilders.term().field("categoryId").value(id).build()._toQuery());
+            }
+            categoryBoolQuery.minimumShouldMatch("1");
+            
+            boolQueryBuilder.filter(categoryBoolQuery.build()._toQuery());
         }
 
         // 3. Filter by Price Range

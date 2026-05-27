@@ -1,10 +1,27 @@
 "use client";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 import CategoryCard from "@/components/ui/CategoryCard";
-import { categories } from "@/data/mock";
+import { useEffect, useState } from "react";
+import { categories as mockCategories } from "@/data/mock";
+import api from "@/lib/axios";
 
 export default function CategoriesSection() {
+  const [categories, setCategories] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.get("/categories").then(res => {
+      if (res.data && res.data.length > 0) {
+        setCategories(res.data);
+      } else {
+        setCategories(mockCategories);
+      }
+    }).catch(e => {
+      console.error(e);
+      setCategories(mockCategories);
+    });
+  }, []);
   return (
     <section id="categories" className="py-20 lg:py-28" style={{ background: "var(--bg-base)" }}>
       <div className="max-w-7xl mx-auto px-4 lg:px-6">
@@ -18,12 +35,12 @@ export default function CategoriesSection() {
               Hàng trăm nghìn sản phẩm từ các cửa hàng uy tín
             </p>
           </motion.div>
-          <motion.a href="#" initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
-            className="hidden lg:flex items-center gap-2 text-sm font-semibold transition-all duration-200 cursor-pointer group"
-            style={{ color: "var(--purple-light)" }}>
-            Xem tất cả
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
-          </motion.a>
+          <Link href="/search" className="hidden lg:flex items-center gap-2 text-sm font-semibold transition-all duration-200 cursor-pointer group" style={{ color: "var(--purple-light)" }}>
+            <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="flex items-center gap-2">
+              Xem tất cả
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+            </motion.div>
+          </Link>
         </div>
 
         <div className="grid grid-cols-4 lg:grid-cols-8 gap-3">
@@ -31,9 +48,9 @@ export default function CategoriesSection() {
         </div>
 
         <div className="lg:hidden mt-6 text-center">
-          <a href="#" className="inline-flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "var(--purple-light)" }}>
+          <Link href="/search" className="inline-flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: "var(--purple-light)" }}>
             Xem tất cả <ArrowRight className="w-4 h-4" />
-          </a>
+          </Link>
         </div>
       </div>
     </section>

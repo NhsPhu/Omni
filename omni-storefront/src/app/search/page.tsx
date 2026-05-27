@@ -6,8 +6,10 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import ProductCard from "@/components/ui/ProductCard";
 import Button from "@/components/ui/Button";
-import { featuredProducts, categories } from "@/data/mock";
 import { formatPrice } from "@/lib/utils";
+import api from "@/lib/axios";
+import { useSearchParams } from "next/navigation";
+import { useEffect, Suspense } from "react";
 
 const SORT_OPTIONS = [
   { id: "popular",  label: "Phổ biến nhất" },
@@ -25,36 +27,60 @@ const PRICE_RANGES = [
   { id: "over10m",label: "Trên 10M",    min: 10000000,max: Infinity },
 ];
 
-export default function SearchPage() {
-  const [query] = useState("iPhone");
+function SearchContent() {
+  const searchParams = useSearchParams();
+  const query = searchParams.get("q") || "";
+  const initCategoryId = searchParams.get("categoryId");
   const [sort, setSort] = useState("popular");
   const [priceRange, setPriceRange] = useState("all");
   const [minRating, setMinRating] = useState(0);
-  const [selectedCats, setSelectedCats] = useState<number[]>([]);
+  const [selectedCats, setSelectedCats] = useState<string[]>(initCategoryId ? [initCategoryId] : []);
   const [filterOpen, setFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortOpen, setSortOpen] = useState(false);
+  
+  const [realCategories, setRealCategories] = useState<any[]>([]);
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  useEffect(() => {
+    api.get("/categories").then(res => setRealCategories(res.data)).catch(console.error);
+  }, []);
 
   // Active filter chips
   const chips: { id: string; label: string; onRemove: () => void }[] = [
     ...(priceRange !== "all" ? [{ id: "price", label: PRICE_RANGES.find(r => r.id === priceRange)!.label, onRemove: () => setPriceRange("all") }] : []),
     ...(minRating > 0 ? [{ id: "rating", label: `${minRating}★ trở lên`, onRemove: () => setMinRating(0) }] : []),
-    ...selectedCats.map(id => ({ id: `cat-${id}`, label: categories.find(c => c.id === id)!.name, onRemove: () => setSelectedCats(p => p.filter(c => c !== id)) })),
+    ...selectedCats.map(id => ({ id: `cat-${id}`, label: realCategories.find((c:any) => c.id === id)?.name || "Danh mục", onRemove: () => setSelectedCats(p => p.filter(c => c !== id)) })),
   ];
 
   const range = PRICE_RANGES.find(r => r.id === priceRange)!;
-  const results = useMemo(() => {
-    let list = featuredProducts.filter(p => {
-      if (priceRange !== "all" && (p.price < range.min || p.price > range.max)) return false;
-      if (minRating > 0 && p.rating < minRating) return false;
-      if (selectedCats.length > 0 && !selectedCats.includes(p.categoryId ?? 0)) return false;
-      return true;
+  
+  useEffect(() => {
+    setLoading(true);
+    let url = `/products?keyword=${encodeURIComponent(query)}`;
+    if (range.id !== "all") {
+        url += `&minPrice=${range.min}&maxPrice=${range.max}`;
+    }
+    if (selectedCats.length > 0) {
+        url += `&categoryId=${selectedCats[0]}`;
+    }
+    
+    api.get(url).then(res => {
+        let list = res.data.content || [];
+        if (minRating > 0) list = list.filter((p:any) => (p.rating || 5.0) >= minRating);
+        
+        if (sort === "price_asc")  list = [...list].sort((a:any, b:any) => a.price - b.price);
+        if (sort === "price_desc") list = [...list].sort((a:any, b:any) => b.price - a.price);
+        if (sort === "rating")     list = [...list].sort((a:any, b:any) => (b.rating || 5.0) - (a.rating || 5.0));
+        
+        setResults(list);
+        setLoading(false);
+    }).catch(err => {
+        console.error(err);
+        setLoading(false);
     });
-    if (sort === "price_asc")  list = [...list].sort((a, b) => a.price - b.price);
-    if (sort === "price_desc") list = [...list].sort((a, b) => b.price - a.price);
-    if (sort === "rating")     list = [...list].sort((a, b) => b.rating - a.rating);
-    return list;
-  }, [priceRange, minRating, selectedCats, sort, range.min, range.max]);
+  }, [query, priceRange, selectedCats, minRating, sort, range]);
 
   const FilterPanel = () => (
     <div className="space-y-6">
@@ -62,7 +88,7 @@ export default function SearchPage() {
       <div>
         <h3 className="text-sm font-bold mb-3 font-[family-name:var(--font-body)]" style={{ color: "var(--text-primary)" }}>Danh mục</h3>
         <div className="space-y-2">
-          {categories.slice(0, 6).map(cat => (
+          {realCategories.slice(0, 6).map((cat:any) => (
             <label key={cat.id} className="flex items-center gap-3 cursor-pointer group">
               <div onClick={() => setSelectedCats(p => p.includes(cat.id) ? p.filter(c => c !== cat.id) : [...p, cat.id])}
                 className="w-4 h-4 rounded flex items-center justify-center cursor-pointer flex-shrink-0 transition-all duration-150"
@@ -211,7 +237,12 @@ export default function SearchPage() {
               </div>
 
               {/* Results */}
-              {results.length === 0 ? (
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-24 text-center">
+                  <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin mb-4" />
+                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>Đang tìm kiếm...</p>
+                </div>
+              ) : results.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
                   <Search className="w-16 h-16 mb-4" style={{ color: "var(--text-muted)" }} />
                   <h3 className="text-lg font-bold mb-2" style={{ color: "var(--text-primary)" }}>Không tìm thấy sản phẩm</h3>
@@ -277,5 +308,13 @@ export default function SearchPage() {
       </main>
       <Footer />
     </>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Đang tải...</div>}>
+      <SearchContent />
+    </Suspense>
   );
 }
