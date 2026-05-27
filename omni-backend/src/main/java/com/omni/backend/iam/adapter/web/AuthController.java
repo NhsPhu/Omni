@@ -3,7 +3,9 @@ package com.omni.backend.iam.adapter.web;
 import com.omni.backend.iam.application.dto.AuthResponse;
 import com.omni.backend.iam.application.dto.LoginRequest;
 import com.omni.backend.iam.application.dto.RegisterRequest;
+import com.omni.backend.iam.application.dto.SocialLoginRequest;
 import com.omni.backend.iam.application.port.in.AuthUseCase;
+import com.omni.backend.iam.application.service.SocialAuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthUseCase authUseCase;
+    private final SocialAuthService socialAuthService;
 
     @PostMapping("/register")
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
@@ -30,4 +33,16 @@ public class AuthController {
         AuthResponse response = authUseCase.login(request);
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * Social login: Token Exchange Pattern
+     * Frontend gửi access_token từ Google/Facebook SDK,
+     * backend verify với provider API rồi trả về JWT Omni.
+     */
+    @PostMapping("/social")
+    public ResponseEntity<AuthResponse> socialLogin(@Valid @RequestBody SocialLoginRequest request) {
+        AuthResponse response = socialAuthService.loginWithSocial(request);
+        return ResponseEntity.ok(response);
+    }
 }
+

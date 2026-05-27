@@ -62,4 +62,11 @@ public class UserJpaEntity {
     
     @Column(name = "last_login_at")
     private ZonedDateTime lastLoginAt;
+
+    @Column(length = 50)
+    @Builder.Default
+    private String provider = "LOCAL"; // LOCAL, GOOGLE, FACEBOOK
+
+    @Column(name = "provider_id", length = 255)
+    private String providerId;
 }
