@@ -60,7 +60,7 @@ public class AuthService implements AuthUseCase {
             throw new RuntimeException("User is banned");
         }
 
-        String accessToken = jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name());
+        String accessToken = jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name(), user.getId().toString(), user.getFullName());
 
         // TODO: Generate and save refresh token
 
