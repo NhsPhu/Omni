@@ -9,6 +9,7 @@ import VoucherList from './pages/vouchers/VoucherList';
 import Wallet from './pages/finance/Wallet';
 import Reviews from './pages/reviews/Reviews';
 import Analytics from './pages/analytics/Analytics';
+import Login from './pages/Login';
 
 import SuperAdminLayout from './components/layout/SuperAdminLayout';
 import Users from './pages/admin/Users';
@@ -23,6 +24,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/login" element={<Login />} />
         <Route path="/" element={<AdminLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="products" element={<ProductList />} />

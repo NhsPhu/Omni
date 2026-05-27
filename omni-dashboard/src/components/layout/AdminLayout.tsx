@@ -14,7 +14,8 @@ import {
   LogOut,
   User
 } from 'lucide-react';
-import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
 
 const { Header, Sider, Content } = Layout;
 
@@ -22,6 +23,11 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, token, logout } = useAuthStore();
+
+  if (!token || !user) {
+    return <Navigate to="/login" replace />;
+  }
 
   const menuItems = [
     { key: '/', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
@@ -79,13 +85,19 @@ export default function AdminLayout() {
                   { key: 'profile', icon: <User size={16} />, label: 'Hồ sơ cửa hàng' },
                   { type: 'divider' },
                   { key: 'logout', icon: <LogOut size={16} />, label: 'Đăng xuất', danger: true },
-                ] 
+                ],
+                onClick: ({ key }) => {
+                  if (key === 'logout') {
+                    logout();
+                    navigate('/login');
+                  }
+                }
               }} 
               placement="bottomRight"
             >
               <div className="flex items-center gap-2 cursor-pointer">
                 <Avatar src="https://api.dicebear.com/7.x/notionists/svg?seed=Felix" />
-                <span className="text-sm font-medium text-gray-700 hidden sm:block">Apple Store VN</span>
+                <span className="text-sm font-medium text-gray-700 hidden sm:block">{user.fullName || 'Vendor'}</span>
               </div>
             </Dropdown>
           </div>

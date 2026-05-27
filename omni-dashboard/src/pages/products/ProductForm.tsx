@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Steps, Form, Input, InputNumber, Button, Select, Upload, Switch, Table, Space, message, Row, Col } from 'antd';
 import { InboxOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { ArrowLeft, Save, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../lib/axios';
+import { useAuthStore } from '../../store/authStore';
 
 const { Dragger } = Upload;
 const { TextArea } = Input;
@@ -13,6 +15,15 @@ export default function ProductForm() {
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const [skus, setSkus] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { shopId } = useAuthStore();
+
+  useEffect(() => {
+    api.get('/categories').then(res => {
+      setCategories(res.data);
+    }).catch(e => console.error(e));
+  }, []);
   
   // Fake SKU generation for demo
   const generateSkus = (colors: string[], storages: string[]) => {
@@ -20,7 +31,13 @@ export default function ProductForm() {
     if (colors?.length && storages?.length) {
       colors.forEach(c => {
         storages.forEach(s => {
-          newSkus.push({ key: `${c}-${s}`, color: c, storage: s, price: 0, stock: 0, sku: '' });
+          newSkus.push({ 
+            key: `${c}-${s}`, 
+            attributes: { color: c, storage: s }, 
+            price: 0, 
+            stockQuantity: 0, 
+            skuCode: '' 
+          });
         });
       });
     }
@@ -28,25 +45,56 @@ export default function ProductForm() {
   };
 
   const skuColumns = [
-    { title: 'Màu sắc', dataIndex: 'color', key: 'color' },
-    { title: 'Dung lượng', dataIndex: 'storage', key: 'storage' },
+    { title: 'Màu sắc', dataIndex: 'attributes', key: 'color', render: (attrs: any) => attrs.color },
+    { title: 'Dung lượng', dataIndex: 'attributes', key: 'storage', render: (attrs: any) => attrs.storage },
     { 
       title: 'Giá bán', 
       dataIndex: 'price', 
       key: 'price',
-      render: (_: any, record: any) => <InputNumber min={0} defaultValue={0} formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} style={{ width: 120 }} />
+      render: (_: any, record: any, index: number) => (
+        <InputNumber 
+          min={0} 
+          defaultValue={0} 
+          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} 
+          style={{ width: 120 }} 
+          onChange={(val) => {
+            const newSkus = [...skus];
+            newSkus[index].price = val || 0;
+            setSkus(newSkus);
+          }}
+        />
+      )
     },
     { 
       title: 'Kho', 
-      dataIndex: 'stock', 
-      key: 'stock',
-      render: (_: any, record: any) => <InputNumber min={0} defaultValue={0} />
+      dataIndex: 'stockQuantity', 
+      key: 'stockQuantity',
+      render: (_: any, record: any, index: number) => (
+        <InputNumber 
+          min={0} 
+          defaultValue={0} 
+          onChange={(val) => {
+            const newSkus = [...skus];
+            newSkus[index].stockQuantity = val || 0;
+            setSkus(newSkus);
+          }}
+        />
+      )
     },
     { 
       title: 'Mã SKU', 
-      dataIndex: 'sku', 
-      key: 'sku',
-      render: (_: any, record: any) => <Input placeholder="Tùy chọn" />
+      dataIndex: 'skuCode', 
+      key: 'skuCode',
+      render: (_: any, record: any, index: number) => (
+        <Input 
+          placeholder="Tùy chọn" 
+          onChange={(e) => {
+            const newSkus = [...skus];
+            newSkus[index].skuCode = e.target.value;
+            setSkus(newSkus);
+          }}
+        />
+      )
     },
   ];
 
@@ -60,11 +108,11 @@ export default function ProductForm() {
           </Form.Item>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="category" label="Danh mục" rules={[{ required: true, message: 'Vui lòng chọn danh mục' }]}>
+              <Form.Item name="categoryId" label="Danh mục" rules={[{ required: true, message: 'Vui lòng chọn danh mục' }]}>
                 <Select size="large" placeholder="Chọn danh mục">
-                  <Option value="dienthoai">Điện thoại di động</Option>
-                  <Option value="laptop">Laptop</Option>
-                  <Option value="tainghe">Tai nghe</Option>
+                  {categories.map((c: any) => (
+                    <Option key={c.id} value={c.id}>{c.name}</Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>
@@ -167,6 +215,47 @@ export default function ProductForm() {
 
   const prev = () => setCurrent(current - 1);
 
+  const handlePublish = async () => {
+    try {
+      const values = await form.validateFields();
+      setLoading(true);
+
+      const payload = {
+        shopId,
+        categoryId: values.categoryId,
+        name: values.name,
+        slug: values.name.toLowerCase().replace(/ /g, '-'),
+        description: values.description,
+        status: 'ACTIVE',
+        skus: skus.length > 0 ? skus.map(s => ({
+          skuCode: s.skuCode || '',
+          price: s.price,
+          stockQuantity: s.stockQuantity,
+          attributes: s.attributes
+        })) : [{
+          skuCode: values.sku || '',
+          price: values.price || 0,
+          stockQuantity: values.stock || 0,
+          attributes: {}
+        }],
+        images: []
+      };
+
+      await api.post('/vendor/products', payload);
+      message.success('Đã xuất bản sản phẩm!');
+      navigate('/products');
+    } catch (e: any) {
+      console.error(e);
+      if (e.errorFields) {
+        message.error('Vui lòng điền đầy đủ thông tin');
+      } else {
+        message.error('Lỗi khi xuất bản sản phẩm');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -177,7 +266,7 @@ export default function ProductForm() {
         <div className="flex items-center gap-2">
           <Button icon={<Save size={16} />}>Lưu nháp</Button>
           <Button icon={<Eye size={16} />}>Xem trước</Button>
-          <Button type="primary" onClick={() => message.success('Đã xuất bản sản phẩm!')}>Xuất bản</Button>
+          <Button type="primary" onClick={handlePublish} loading={loading}>Xuất bản</Button>
         </div>
       </div>
 
@@ -191,7 +280,7 @@ export default function ProductForm() {
         <div className="mt-8 flex justify-end gap-2 border-t pt-6">
           {current > 0 && <Button onClick={prev}>Quay lại</Button>}
           {current < steps.length - 1 && <Button type="primary" onClick={next}>Tiếp theo</Button>}
-          {current === steps.length - 1 && <Button type="primary" onClick={() => message.success('Hoàn thành!')}>Hoàn thành</Button>}
+          {current === steps.length - 1 && <Button type="primary" onClick={handlePublish} loading={loading}>Hoàn thành</Button>}
         </div>
       </Card>
     </div>

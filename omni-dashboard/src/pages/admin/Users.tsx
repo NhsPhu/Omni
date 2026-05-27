@@ -1,26 +1,49 @@
-import React, { useState } from 'react';
-import { Card, Table, Button, Tag, Input, Space, Dropdown, Modal, Form, Select, Avatar, Timeline, Drawer } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Table, Button, Tag, Input, Space, Dropdown, Modal, Form, Select, Avatar, Timeline, Drawer, message } from 'antd';
 import { Search, MoreVertical, Ban, CheckCircle, Shield, User, History, Download } from 'lucide-react';
+import dayjs from 'dayjs';
+import api from '../../lib/axios';
 
 const { Option } = Select;
 const { TextArea } = Input;
-
-const mockUsers = Array.from({ length: 20 }).map((_, i) => ({
-  key: i.toString(),
-  id: `USR-${1000 + i}`,
-  name: `Người dùng ${i}`,
-  email: `user${i}@example.com`,
-  phone: `0901234${String(i).padStart(3, '0')}`,
-  role: i === 0 ? 'Admin' : (i % 3 === 0 ? 'Vendor' : 'Customer'),
-  status: i % 8 === 0 ? 'banned' : 'active',
-  joined: `20/05/2026`,
-}));
 
 export default function Users() {
   const [banModalOpen, setBanModalOpen] = useState(false);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [form] = Form.useForm();
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/admin/users');
+      setUsers(res.data.content || []);
+      setTotal(res.data.totalElements || 0);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const handleBanUser = async () => {
+    try {
+      await api.patch(`/admin/users/${selectedUser.id}/ban?ban=${selectedUser.status === 'ACTIVE' ? 'true' : 'false'}`);
+      message.success(selectedUser.status === 'ACTIVE' ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản');
+      setBanModalOpen(false);
+      form.resetFields();
+      loadUsers();
+    } catch (e) {
+      message.error('Lỗi thao tác');
+    }
+  };
 
   const columns = [
     {
@@ -42,18 +65,22 @@ export default function Users() {
       dataIndex: 'role', 
       key: 'role',
       render: (role: string) => {
-        const colors: any = { Admin: 'red', Vendor: 'blue', Customer: 'default' };
-        return <Tag color={colors[role]}>{role}</Tag>;
+        const colors: any = { ADMIN: 'red', VENDOR: 'blue', CUSTOMER: 'default', USER: 'default' };
+        return <Tag color={colors[role] || 'default'}>{role || 'USER'}</Tag>;
       }
     },
-    { title: 'Ngày tham gia', dataIndex: 'joined', key: 'joined' },
+    { 
+      title: 'Ngày tham gia', 
+      key: 'createdAt',
+      render: (_: any, r: any) => dayjs(r.createdAt).format('DD/MM/YYYY')
+    },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={status === 'active' ? 'success' : 'error'} icon={status === 'active' ? <CheckCircle size={14} className="mr-1"/> : <Ban size={14} className="mr-1"/>}>
-          {status === 'active' ? 'Hoạt động' : 'Bị khóa'}
+        <Tag color={status === 'ACTIVE' ? 'success' : 'error'} icon={status === 'ACTIVE' ? <CheckCircle size={14} className="mr-1"/> : <Ban size={14} className="mr-1"/>}>
+          {status === 'ACTIVE' ? 'Hoạt động' : 'Bị khóa'}
         </Tag>
       )
     },
@@ -64,7 +91,7 @@ export default function Users() {
       render: (_: any, record: any) => (
         <Dropdown menu={{ items: [
           { key: 'view', icon: <User size={14} />, label: 'Xem chi tiết', onClick: () => { setSelectedUser(record); setDetailDrawerOpen(true); } },
-          { key: 'ban', icon: <Ban size={14} />, label: record.status === 'active' ? 'Khóa tài khoản' : 'Mở khóa', danger: record.status === 'active', onClick: () => { setSelectedUser(record); setBanModalOpen(true); } },
+          { key: 'ban', icon: <Ban size={14} />, label: record.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa', danger: record.status === 'ACTIVE', onClick: () => { setSelectedUser(record); setBanModalOpen(true); } },
         ]}} trigger={['click']}>
           <Button type="text" icon={<MoreVertical size={16} />} />
         </Dropdown>
@@ -94,19 +121,21 @@ export default function Users() {
 
         <Table 
           columns={columns} 
-          dataSource={mockUsers}
+          dataSource={users}
+          rowKey="id"
+          loading={loading}
           className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500"
-          pagination={{ total: 50, pageSize: 10 }}
+          pagination={{ total: total, pageSize: 20 }}
         />
       </Card>
 
       <Modal
-        title={selectedUser?.status === 'active' ? "Khóa tài khoản người dùng" : "Mở khóa tài khoản"}
+        title={selectedUser?.status === 'ACTIVE' ? "Khóa tài khoản người dùng" : "Mở khóa tài khoản"}
         open={banModalOpen}
         onCancel={() => setBanModalOpen(false)}
-        onOk={() => { setBanModalOpen(false); form.resetFields(); }}
+        onOk={handleBanUser}
         okText="Xác nhận"
-        okButtonProps={{ danger: selectedUser?.status === 'active' }}
+        okButtonProps={{ danger: selectedUser?.status === 'ACTIVE' }}
       >
         <div className="mb-4 text-gray-600">
           Bạn đang thực hiện thao tác trên tài khoản <strong>{selectedUser?.name}</strong> ({selectedUser?.email}). 
@@ -133,8 +162,8 @@ export default function Users() {
                 <h3 className="text-lg font-bold m-0">{selectedUser.name}</h3>
                 <div className="text-gray-500">{selectedUser.email}</div>
                 <div className="mt-1">
-                  <Tag color={selectedUser.status === 'active' ? 'success' : 'error'}>{selectedUser.status === 'active' ? 'Hoạt động' : 'Bị khóa'}</Tag>
-                  <Tag color="blue">{selectedUser.role}</Tag>
+                  <Tag color={selectedUser.status === 'ACTIVE' ? 'success' : 'error'}>{selectedUser.status === 'ACTIVE' ? 'Hoạt động' : 'Bị khóa'}</Tag>
+                  <Tag color="blue">{selectedUser.role || 'USER'}</Tag>
                 </div>
               </div>
             </div>

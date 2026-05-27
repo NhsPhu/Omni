@@ -1,39 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Tree, Button, Modal, Form, Input, Switch, message, Upload, Popconfirm } from 'antd';
 import { Plus, Edit2, EyeOff, Trash2, Upload as UploadIcon, AlertCircle } from 'lucide-react';
-
-const initialTreeData = [
-  {
-    title: 'Điện thoại di động',
-    key: 'dienthoai',
-    children: [
-      { title: 'Apple (iPhone)', key: 'iphone' },
-      { title: 'Samsung Galaxy', key: 'samsung' },
-    ],
-  },
-  {
-    title: 'Máy tính xách tay (Laptop)',
-    key: 'laptop',
-    children: [
-      { title: 'MacBook', key: 'macbook' },
-      { title: 'Laptop Gaming', key: 'gaming' },
-    ],
-  },
-  {
-    title: 'Phụ kiện',
-    key: 'phukien',
-    children: [
-      { title: 'Tai nghe Bluetooth', key: 'tainghe' },
-      { title: 'Cáp sạc, pin dự phòng', key: 'capsac' },
-    ],
-  },
-];
+import api from '../../lib/axios';
 
 export default function Categories() {
-  const [treeData, setTreeData] = useState<any[]>(initialTreeData);
+  const [treeData, setTreeData] = useState<any[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [editingNode, setEditingNode] = useState<any>(null);
+
+  const loadCategories = async () => {
+    try {
+      const res = await api.get('/categories');
+      // Format tree data
+      const formatTree = (items: any[]): any[] => {
+        return items.map(item => ({
+          title: item.name,
+          key: item.id,
+          slug: item.slug,
+          children: item.children ? formatTree(item.children) : []
+        }));
+      };
+      setTreeData(formatTree(res.data));
+    } catch (e) {
+      console.error(e);
+      message.error("Lỗi khi tải danh mục");
+    }
+  };
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
 
   const onDrop = (info: any) => {
     // Drop logic omitted for UI demo
@@ -53,8 +50,8 @@ export default function Categories() {
       <div className="flex items-center justify-between group py-1">
         <span className="font-medium text-gray-700">{nodeData.title}</span>
         <div className="hidden group-hover:flex items-center gap-2 px-2">
-          <Button size="small" type="text" icon={<Plus size={14} />} onClick={(e) => { e.stopPropagation(); setEditingNode(null); form.setFieldsValue({ parent: nodeData.title }); setModalOpen(true); }} />
-          <Button size="small" type="text" icon={<Edit2 size={14} />} onClick={(e) => { e.stopPropagation(); setEditingNode(nodeData); form.setFieldsValue({ name: nodeData.title, slug: nodeData.key }); setModalOpen(true); }} />
+          <Button size="small" type="text" icon={<Plus size={14} />} onClick={(e) => { e.stopPropagation(); setEditingNode(null); form.setFieldsValue({ parentId: nodeData.key, parent: nodeData.title }); setModalOpen(true); }} />
+          <Button size="small" type="text" icon={<Edit2 size={14} />} onClick={(e) => { e.stopPropagation(); setEditingNode(nodeData); form.setFieldsValue({ name: nodeData.title, slug: nodeData.slug }); setModalOpen(true); }} />
           <Button size="small" type="text" icon={<EyeOff size={14} />} onClick={(e) => e.stopPropagation()} />
           <Popconfirm title="Bạn có chắc chắn muốn xóa?" description="Danh mục đang có sản phẩm sẽ không thể bị xóa." onConfirm={(e) => e?.stopPropagation()}>
             <Button size="small" type="text" danger icon={<Trash2 size={14} />} onClick={(e) => e.stopPropagation()} />

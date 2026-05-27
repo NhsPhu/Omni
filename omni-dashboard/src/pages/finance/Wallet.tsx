@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Statistic, Table, Button, Tag, Space, Modal, Form, InputNumber, Select, message, Tooltip as AntTooltip } from 'antd';
 import { Wallet as WalletIcon, ArrowDownRight, ArrowUpRight, History, Info, Building2 } from 'lucide-react';
+import api from '../../lib/axios';
 
 const { Option } = Select;
 
@@ -14,6 +15,15 @@ const mockTransactions = [
 export default function Wallet() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
+  const [balance, setBalance] = useState(0);
+
+  useEffect(() => {
+    api.get('/vendor/wallet').then(res => {
+      if (res.data && res.data.balance) {
+        setBalance(res.data.balance);
+      }
+    }).catch(e => console.error("Wallet error:", e));
+  }, []);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
@@ -74,7 +84,7 @@ export default function Wallet() {
               <WalletIcon size={18} />
               <span>Số dư khả dụng</span>
             </div>
-            <div className="text-4xl font-bold mb-4">{formatCurrency(34937500)}</div>
+            <div className="text-4xl font-bold mb-4">{formatCurrency(balance)}</div>
             <div className="text-sm opacity-80">Có thể dùng để rút về thẻ ngân hàng hoặc thanh toán dịch vụ Omni</div>
           </Card>
         </Col>
@@ -140,7 +150,7 @@ export default function Wallet() {
         <Form form={form} layout="vertical" className="mt-4">
           <div className="bg-blue-50 p-4 rounded-lg mb-6 flex justify-between items-center">
             <span className="text-blue-800 font-medium">Số dư khả dụng</span>
-            <span className="text-xl font-bold text-blue-600">{formatCurrency(34937500)}</span>
+            <span className="text-xl font-bold text-blue-600">{formatCurrency(balance)}</span>
           </div>
           
           <Form.Item name="amount" label="Số tiền muốn rút" rules={[{ required: true, message: 'Vui lòng nhập số tiền' }]}>
@@ -149,7 +159,7 @@ export default function Wallet() {
               size="large" 
               formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} 
               addonAfter="VND"
-              max={34937500}
+              max={balance}
             />
           </Form.Item>
 

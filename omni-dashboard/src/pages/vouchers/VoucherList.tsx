@@ -1,21 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Table, Button, Tag, Input, Space, Drawer, Form, Radio, InputNumber, DatePicker, Switch, message } from 'antd';
 import { Search, Plus, Tag as TagIcon, Percent, DollarSign } from 'lucide-react';
 import dayjs from 'dayjs';
+import api from '../../lib/axios';
+import { useAuthStore } from '../../store/authStore';
 
 const { RangePicker } = DatePicker;
-
-const mockVouchers = [
-  { key: '1', code: 'SUMMER24', type: 'percent', value: 10, minOrder: 200000, maxDiscount: 50000, usage: 45, limit: 100, status: 'active', end: '30/06/2026' },
-  { key: '2', code: 'WELCOME', type: 'fixed', value: 50000, minOrder: 150000, maxDiscount: 50000, usage: 120, limit: null, status: 'active', end: '31/12/2026' },
-  { key: '3', code: 'FLASH50', type: 'percent', value: 50, minOrder: 50000, maxDiscount: 100000, usage: 200, limit: 200, status: 'expired', end: '15/05/2026' },
-  { key: '4', code: 'FREESHIP', type: 'fixed', value: 30000, minOrder: 0, maxDiscount: 30000, usage: 0, limit: 50, status: 'upcoming', end: '01/08/2026' },
-];
 
 export default function VoucherList() {
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm();
   const [discountType, setDiscountType] = useState('percent');
+  const [vouchers, setVouchers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { shopId } = useAuthStore();
+
+  const loadVouchers = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/vendor/vouchers');
+      setVouchers(res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadVouchers();
+  }, []);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
@@ -31,7 +45,7 @@ export default function VoucherList() {
       key: 'discount',
       render: (_: any, record: any) => (
         <span className="font-semibold text-red-500">
-          {record.type === 'percent' ? `Giảm ${record.value}%` : `Giảm ${formatCurrency(record.value)}`}
+          {record.discountType === 'PERCENT' || record.discountType === 'PERCENTAGE' ? `Giảm ${record.discountValue}%` : `Giảm ${formatCurrency(record.discountValue)}`}
         </span>
       )
     },
@@ -40,8 +54,8 @@ export default function VoucherList() {
       key: 'condition',
       render: (_: any, record: any) => (
         <div className="text-xs text-gray-500">
-          <div>Đơn tối thiểu: {formatCurrency(record.minOrder)}</div>
-          {record.type === 'percent' && <div>Tối đa: {formatCurrency(record.maxDiscount)}</div>}
+          <div>Đơn tối thiểu: {formatCurrency(record.minOrderValue)}</div>
+          {(record.discountType === 'PERCENT' || record.discountType === 'PERCENTAGE') && record.maxDiscountAmount && <div>Tối đa: {formatCurrency(record.maxDiscountAmount)}</div>}
         </div>
       )
     },
@@ -49,25 +63,29 @@ export default function VoucherList() {
       title: 'Đã dùng', 
       key: 'usage',
       render: (_: any, record: any) => (
-        <span>{record.usage} / {record.limit ? record.limit : '∞'}</span>
+        <span>{record.usedCount} / {record.usageLimit > 0 ? record.usageLimit : '∞'}</span>
       )
     },
     { 
       title: 'Hạn sử dụng', 
-      dataIndex: 'end', 
-      key: 'end',
+      key: 'validTo',
+      render: (_: any, record: any) => dayjs(record.validTo).format('DD/MM/YYYY')
     },
     {
       title: 'Trạng thái',
-      dataIndex: 'status',
       key: 'status',
-      render: (status: string) => {
-        const config: Record<string, any> = {
-          active: { color: 'success', text: 'Đang chạy' },
-          expired: { color: 'default', text: 'Đã kết thúc' },
-          upcoming: { color: 'processing', text: 'Sắp diễn ra' },
-        };
-        return <Tag color={config[status].color}>{config[status].text}</Tag>;
+      render: (_: any, record: any) => {
+        const now = dayjs();
+        const start = dayjs(record.validFrom);
+        const end = dayjs(record.validTo);
+        
+        if (now.isBefore(start)) {
+          return <Tag color="processing">Sắp diễn ra</Tag>;
+        } else if (now.isAfter(end)) {
+          return <Tag color="default">Đã kết thúc</Tag>;
+        } else {
+          return <Tag color="success">Đang chạy</Tag>;
+        }
       }
     },
     {
@@ -82,10 +100,27 @@ export default function VoucherList() {
     }
   ];
 
-  const onFinish = (values: any) => {
-    message.success('Đã tạo voucher thành công!');
-    setOpen(false);
-    form.resetFields();
+  const onFinish = async (values: any) => {
+    try {
+      const payload = {
+        code: values.code,
+        discountType: values.type.toUpperCase(),
+        discountValue: values.value,
+        minOrderValue: values.minOrder,
+        maxDiscountAmount: values.maxDiscount,
+        usageLimit: values.limitToggle ? values.limit : 0,
+        validFrom: values.timeRange[0].toISOString(),
+        validTo: values.timeRange[1].toISOString(),
+      };
+      await api.post('/vendor/vouchers', payload);
+      message.success('Đã tạo voucher thành công!');
+      setOpen(false);
+      form.resetFields();
+      loadVouchers();
+    } catch (e) {
+      console.error(e);
+      message.error('Lỗi khi tạo voucher!');
+    }
   };
 
   return (
@@ -106,7 +141,9 @@ export default function VoucherList() {
 
         <Table 
           columns={columns} 
-          dataSource={mockVouchers}
+          dataSource={vouchers}
+          rowKey="id"
+          loading={loading}
           className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500"
           pagination={false}
         />
@@ -168,7 +205,7 @@ export default function VoucherList() {
             <InputNumber size="large" className="w-full" min={0} />
           </Form.Item>
 
-          <Form.Item label="Thời gian hiệu lực" rules={[{ required: true }]}>
+          <Form.Item name="timeRange" label="Thời gian hiệu lực" rules={[{ required: true }]}>
             <RangePicker size="large" showTime className="w-full" />
           </Form.Item>
 

@@ -1,31 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../../lib/axios';
 import { Card, Row, Col, Statistic, Table, Tabs, Form, InputNumber, Button, Select, Avatar, DatePicker, message, Tag } from 'antd';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, DollarSign, Store, ShoppingBag, Settings, History } from 'lucide-react';
 
 const { RangePicker } = DatePicker;
 
-const gmvData = [
-  { date: '17/05', gmv: 250000000, revenue: 12500000 },
-  { date: '18/05', gmv: 320000000, revenue: 16000000 },
-  { date: '19/05', gmv: 280000000, revenue: 14000000 },
-  { date: '20/05', gmv: 450000000, revenue: 22500000 },
-  { date: '21/05', gmv: 510000000, revenue: 25500000 },
-  { date: '22/05', gmv: 480000000, revenue: 24000000 },
-  { date: '23/05', gmv: 620000000, revenue: 31000000 },
-];
-
-const mockTopShops = [
-  { key: '1', rank: 1, name: 'Apple Store VN', gmv: 1250000000, orders: 1200 },
-  { key: '2', rank: 2, name: 'Samsung Official', gmv: 980000000, orders: 1540 },
-  { key: '3', rank: 3, name: 'Keychron VN', gmv: 450000000, orders: 890 },
-  { key: '4', rank: 4, name: 'Sony Center', gmv: 320000000, orders: 150 },
-  { key: '5', rank: 5, name: 'Xiaomi Store', gmv: 280000000, orders: 2100 },
-];
-
 export default function Reports() {
   const [form] = Form.useForm();
+  const [report, setReport] = useState<any>(null);
   
+  useEffect(() => {
+    api.get('/admin/reports').then(res => setReport(res.data)).catch(() => {});
+  }, []);
+
   const formatCurrency = (val: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
   const handleSaveConfig = () => {
@@ -35,7 +23,10 @@ export default function Reports() {
   };
 
   const topShopsColumns = [
-    { title: 'Hạng', dataIndex: 'rank', key: 'rank', width: 60, render: (t: number) => <div className={`font-bold w-6 h-6 rounded-full flex items-center justify-center ${t === 1 ? 'bg-yellow-100 text-yellow-600' : t === 2 ? 'bg-gray-100 text-gray-500' : t === 3 ? 'bg-orange-100 text-orange-600' : ''}`}>{t}</div> },
+    { title: 'Hạng', key: 'rank', width: 60, render: (_: any, __: any, index: number) => {
+      const t = index + 1;
+      return <div className={`font-bold w-6 h-6 rounded-full flex items-center justify-center ${t === 1 ? 'bg-yellow-100 text-yellow-600' : t === 2 ? 'bg-gray-100 text-gray-500' : t === 3 ? 'bg-orange-100 text-orange-600' : ''}`}>{t}</div>
+    } },
     { 
       title: 'Gian hàng', 
       key: 'name',
@@ -59,7 +50,7 @@ export default function Reports() {
               <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
                 <DollarSign size={24} />
               </div>
-              <Statistic title="Tổng GMV toàn sàn" value={2910000000} formatter={(v) => formatCurrency(Number(v))} valueStyle={{ fontSize: '20px', fontWeight: 'bold' }} />
+              <Statistic title="Tổng GMV toàn sàn" value={report?.totalGmv || 0} formatter={(v) => formatCurrency(Number(v))} valueStyle={{ fontSize: '20px', fontWeight: 'bold' }} />
             </div>
           </Card>
         </Col>
@@ -69,7 +60,7 @@ export default function Reports() {
               <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
                 <TrendingUp size={24} />
               </div>
-              <Statistic title="Doanh thu Sàn (Hoa hồng)" value={145500000} formatter={(v) => formatCurrency(Number(v))} valueStyle={{ fontSize: '20px', fontWeight: 'bold' }} />
+              <Statistic title="Doanh thu Sàn (Hoa hồng)" value={report?.totalRevenue || 0} formatter={(v) => formatCurrency(Number(v))} valueStyle={{ fontSize: '20px', fontWeight: 'bold' }} />
             </div>
           </Card>
         </Col>
@@ -79,7 +70,7 @@ export default function Reports() {
               <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
                 <Store size={24} />
               </div>
-              <Statistic title="Gian hàng hoạt động" value={1482} valueStyle={{ fontSize: '24px', fontWeight: 'bold' }} />
+              <Statistic title="Gian hàng hoạt động" value={report?.activeShops || 0} valueStyle={{ fontSize: '24px', fontWeight: 'bold' }} />
             </div>
           </Card>
         </Col>
@@ -89,7 +80,7 @@ export default function Reports() {
               <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
                 <ShoppingBag size={24} />
               </div>
-              <Statistic title="Tổng đơn hàng" value={45290} valueStyle={{ fontSize: '24px', fontWeight: 'bold' }} />
+              <Statistic title="Tổng đơn hàng" value={report?.totalOrders || 0} valueStyle={{ fontSize: '24px', fontWeight: 'bold' }} />
             </div>
           </Card>
         </Col>
@@ -100,7 +91,7 @@ export default function Reports() {
           <Card title="Biểu đồ GMV & Doanh thu Sàn" className="card-shadow border-none rounded-xl h-full">
             <div style={{ width: '100%', height: 350 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={gmvData} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
+                <AreaChart data={report?.chartData || []} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} dy={10} />
                   <YAxis 
@@ -143,7 +134,7 @@ export default function Reports() {
           <Card title="Top Gian Hàng (GMV)" className="card-shadow border-none rounded-xl h-full">
             <Table 
               columns={topShopsColumns} 
-              dataSource={mockTopShops}
+              dataSource={report?.topShops?.map((s: any, i: number) => ({ ...s, key: i })) || []}
               pagination={false}
               size="small"
               className="[&_.ant-table-thead_th]:!bg-gray-50"

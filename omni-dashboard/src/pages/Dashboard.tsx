@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { Card, Row, Col, Statistic, Table, Tag, Button, Select, Space } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Row, Col, Statistic, Table, Tag, Button, Select, Space, message } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Package, TrendingUp, DollarSign, Users } from 'lucide-react';
+import api from '../lib/axios';
+import { useAuthStore } from '../store/authStore';
 
 const { Option } = Select;
 
@@ -16,16 +18,42 @@ const revenueData = [
   { date: '23/05', revenue: 24500000, orders: 95 },
 ];
 
-const pendingOrders = [
-  { key: '1', id: 'OMN-202401', customer: 'Nguyễn Văn An', total: 1250000, status: 'pending', time: '10 phút trước' },
-  { key: '2', id: 'OMN-202402', customer: 'Trần Thị Bình', total: 3400000, status: 'pending', time: '25 phút trước' },
-  { key: '3', id: 'OMN-202403', customer: 'Lê Hoàng Cường', total: 890000, status: 'pending', time: '1 giờ trước' },
-  { key: '4', id: 'OMN-202404', customer: 'Phạm Thu Dung', total: 4550000, status: 'pending', time: '2 giờ trước' },
-  { key: '5', id: 'OMN-202405', customer: 'Hoàng Văn E', total: 150000, status: 'pending', time: '3 giờ trước' },
-];
-
 export default function Dashboard() {
   const [timeRange, setTimeRange] = useState('7days');
+  const [orders, setOrders] = useState<any[]>([]);
+  const { shopId } = useAuthStore();
+
+  const fetchOrders = async () => {
+    if (!shopId) return;
+    try {
+      const res = await api.get(`/vendor/orders?shopId=${shopId}`);
+      setOrders(res.data.map((o: any) => ({
+        key: o.id,
+        id: o.id.split('-')[0].toUpperCase(),
+        customer: 'Khách hàng',
+        total: o.totalAmount,
+        status: o.status,
+        time: new Date(o.createdAt).toLocaleString('vi-VN'),
+        originalId: o.id
+      })));
+    } catch(e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, [shopId]);
+
+  const confirmOrder = async (id: string) => {
+    try {
+      await api.patch(`/vendor/orders/${id}/status?shopId=${shopId}&status=CONFIRMED`);
+      message.success("Đã xác nhận đơn hàng");
+      fetchOrders();
+    } catch(e) {
+      message.error("Lỗi xác nhận");
+    }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
@@ -35,13 +63,16 @@ export default function Dashboard() {
     { title: 'Mã đơn', dataIndex: 'id', key: 'id', render: (text: string) => <a className="font-semibold">{text}</a> },
     { title: 'Khách hàng', dataIndex: 'customer', key: 'customer' },
     { title: 'Tổng tiền', dataIndex: 'total', key: 'total', render: (val: number) => <span className="font-semibold text-blue-600">{formatCurrency(val)}</span> },
+    { title: 'Trạng thái', dataIndex: 'status', key: 'status', render: (text: string) => <Tag color={text === 'PENDING' ? 'orange' : 'blue'}>{text}</Tag> },
     { title: 'Thời gian', dataIndex: 'time', key: 'time', render: (text: string) => <span className="text-gray-500">{text}</span> },
     { 
       title: 'Hành động', 
       key: 'action', 
-      render: () => (
+      render: (_:any, record: any) => (
         <Space size="middle">
-          <Button type="primary" size="small">Xác nhận</Button>
+          {record.status === 'PENDING' && (
+            <Button type="primary" size="small" onClick={() => confirmOrder(record.originalId)}>Xác nhận</Button>
+          )}
           <Button size="small">Chi tiết</Button>
         </Space>
       )
@@ -194,14 +225,14 @@ export default function Dashboard() {
             title={
               <div className="flex items-center gap-2">
                 <span>Đơn hàng chờ xử lý</span>
-                <Tag color="error" className="rounded-full">{pendingOrders.length}</Tag>
+                <Tag color="error" className="rounded-full">{orders.filter(o => o.status === 'PENDING').length}</Tag>
               </div>
             }
             className="card-shadow border-none rounded-xl h-full"
             extra={<Button type="link">Xem tất cả</Button>}
           >
             <Table 
-              dataSource={pendingOrders} 
+              dataSource={orders.filter(o => o.status === 'PENDING')} 
               columns={columns} 
               pagination={false}
               size="middle"

@@ -1,34 +1,61 @@
-import React, { useState } from 'react';
-import { Card, Tabs, Table, Button, Tag, Input, Space, Dropdown, Modal } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Tabs, Table, Button, Tag, Input, Space, Dropdown, Modal, message } from 'antd';
 import { Search, Printer, FileText, CheckCircle, Truck, Package, XCircle } from 'lucide-react';
-
-const mockOrders = Array.from({ length: 30 }).map((_, i) => {
-  const statusList = ['pending', 'processing', 'shipping', 'completed', 'cancelled'];
-  const status = statusList[i % 5];
-  return {
-    key: i.toString(),
-    id: `OMN-2026${String(i).padStart(4, '0')}`,
-    date: `23/05/2026 10:${String(i).padStart(2, '0')}`,
-    customer: `Khách hàng ${i}`,
-    phone: `0901234${String(i).padStart(3, '0')}`,
-    total: 1500000 + i * 200000,
-    items: i % 3 + 1,
-    status: status,
-    shippingMethod: i % 2 === 0 ? 'Giao Hàng Nhanh' : 'Giao Hàng Tiết Kiệm',
-  };
-});
+import api from '../../lib/axios';
+import { useAuthStore } from '../../store/authStore';
 
 export default function OrderList() {
   const [activeTab, setActiveTab] = useState('all');
-  
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { shopId } = useAuthStore();
+
+  const fetchOrders = async () => {
+    if (!shopId) return;
+    setLoading(true);
+    try {
+      const res = await api.get(`/vendor/orders?shopId=${shopId}`);
+      setOrders(res.data.map((o:any) => ({
+        key: o.id,
+        id: o.id.split('-')[0].toUpperCase(),
+        date: new Date(o.createdAt).toLocaleString('vi-VN'),
+        customer: 'Khách hàng',
+        phone: '09xxxxxx',
+        total: o.totalAmount,
+        items: o.orderItems?.length || 1,
+        status: o.status.toLowerCase(),
+        shippingMethod: 'Tiêu chuẩn',
+        originalId: o.id
+      })));
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, [shopId]);
+
+  const updateStatus = async (id: string, newStatus: string) => {
+    try {
+      await api.patch(`/vendor/orders/${id}/status?shopId=${shopId}&status=${newStatus}`);
+      message.success("Cập nhật trạng thái thành công");
+      fetchOrders();
+    } catch(e) {
+      message.error("Cập nhật thất bại");
+    }
+  };
+
   const formatCurrency = (val: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
   const getStatusConfig = (status: string) => {
     switch(status) {
       case 'pending': return { color: 'warning', text: 'Chờ xác nhận', icon: <CheckCircle size={14} /> };
-      case 'processing': return { color: 'processing', text: 'Đang chuẩn bị', icon: <Package size={14} /> };
+      case 'confirmed': return { color: 'processing', text: 'Đang chuẩn bị', icon: <Package size={14} /> };
       case 'shipping': return { color: 'cyan', text: 'Đang giao hàng', icon: <Truck size={14} /> };
-      case 'completed': return { color: 'success', text: 'Hoàn thành', icon: <CheckCircle size={14} /> };
+      case 'delivered': return { color: 'success', text: 'Hoàn thành', icon: <CheckCircle size={14} /> };
       case 'cancelled': return { color: 'error', text: 'Đã hủy', icon: <XCircle size={14} /> };
       default: return { color: 'default', text: status, icon: null };
     }
@@ -89,22 +116,22 @@ export default function OrderList() {
       key: 'action',
       render: (_: any, record: any) => (
         <Space>
-          {record.status === 'pending' && <Button type="primary" size="small">Xác nhận</Button>}
-          {record.status === 'processing' && <Button type="primary" size="small">Giao ĐVVC</Button>}
+          {record.status === 'pending' && <Button type="primary" size="small" onClick={() => updateStatus(record.originalId, 'CONFIRMED')}>Xác nhận</Button>}
+          {record.status === 'confirmed' && <Button type="primary" size="small" onClick={() => updateStatus(record.originalId, 'SHIPPING')}>Giao ĐVVC</Button>}
           <Button size="small" icon={<FileText size={14} />} />
         </Space>
       )
     }
   ];
 
-  const filteredOrders = mockOrders.filter(order => activeTab === 'all' ? true : order.status === activeTab);
+  const filteredOrders = orders.filter((order: any) => activeTab === 'all' ? true : order.status === activeTab);
 
   const tabItems = [
-    { key: 'all', label: `Tất cả (${mockOrders.length})` },
-    { key: 'pending', label: `Chờ xác nhận (${mockOrders.filter(o => o.status === 'pending').length})` },
-    { key: 'processing', label: `Đang chuẩn bị (${mockOrders.filter(o => o.status === 'processing').length})` },
-    { key: 'shipping', label: `Đang giao hàng (${mockOrders.filter(o => o.status === 'shipping').length})` },
-    { key: 'completed', label: 'Hoàn thành' },
+    { key: 'all', label: `Tất cả (${orders.length})` },
+    { key: 'pending', label: `Chờ xác nhận (${orders.filter((o: any) => o.status === 'pending').length})` },
+    { key: 'confirmed', label: `Đang chuẩn bị (${orders.filter((o: any) => o.status === 'confirmed').length})` },
+    { key: 'shipping', label: `Đang giao hàng (${orders.filter((o: any) => o.status === 'shipping').length})` },
+    { key: 'delivered', label: 'Hoàn thành' },
     { key: 'cancelled', label: 'Đã hủy' },
   ];
 
@@ -130,13 +157,14 @@ export default function OrderList() {
       />
 
       <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm flex items-center justify-between">
-        <span>Có <strong>{mockOrders.filter(o => o.status === 'pending').length} đơn hàng</strong> cần được xác nhận trong vòng 24h để tránh bị phạt tỷ lệ giao hàng trễ.</span>
+        <span>Có <strong>{orders.filter(o => o.status === 'pending').length} đơn hàng</strong> cần được xác nhận trong vòng 24h để tránh bị phạt tỷ lệ giao hàng trễ.</span>
         <Button size="small" type="primary">Xác nhận hàng loạt</Button>
       </div>
 
       <Table 
         columns={columns} 
         dataSource={filteredOrders}
+        loading={loading}
         className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500"
         pagination={{ total: filteredOrders.length, pageSize: 10, showSizeChanger: true }}
       />

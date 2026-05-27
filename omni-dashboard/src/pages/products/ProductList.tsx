@@ -1,25 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Card, Button, Input, Select, Tag, Space, Dropdown, Modal, message } from 'antd';
 import { Search, Plus, MoreVertical, Edit2, Copy, EyeOff, Trash2, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../lib/axios';
+import { useAuthStore } from '../../store/authStore';
 
 const { Option } = Select;
 
-const mockProducts = Array.from({ length: 25 }).map((_, i) => ({
-  key: i.toString(),
-  id: `PROD-${2024001 + i}`,
-  name: i % 2 === 0 ? `Tai nghe Bluetooth Không Dây Sony WH-1000XM${i % 5 + 3}` : `Bàn phím cơ Keychron K${i % 10 + 2} Pro`,
-  category: i % 2 === 0 ? 'Âm thanh' : 'Bàn phím',
-  price: 2500000 + i * 150000,
-  stock: i % 5 === 0 ? 0 : 45 + i * 2,
-  sales: 120 + i * 15,
-  status: i % 7 === 0 ? 'draft' : i % 8 === 0 ? 'hidden' : 'active',
-  image: `https://picsum.photos/seed/${i}/80/80`
-}));
-
 export default function ProductList() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { shopId } = useAuthStore();
+
+  const fetchProducts = async () => {
+    if (!shopId) return;
+    setLoading(true);
+    try {
+      const res = await api.get(`/products/shops/${shopId}?size=100`);
+      setProducts(res.data.content.map((p: any) => ({
+        key: p.id,
+        id: p.id.split('-')[0].toUpperCase(),
+        name: p.name,
+        category: p.categoryId,
+        price: p.price,
+        stock: p.stock,
+        sales: 0,
+        status: p.status.toLowerCase(),
+        image: p.image || `https://picsum.photos/seed/${p.id}/80/80`
+      })));
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, [shopId]);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
@@ -126,9 +146,10 @@ export default function ProductList() {
           onChange: setSelectedRowKeys,
         }}
         columns={columns} 
-        dataSource={mockProducts}
+        dataSource={products}
+        loading={loading}
         className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500"
-        pagination={{ total: 25, pageSize: 10, showSizeChanger: true }}
+        pagination={{ total: products.length, pageSize: 10, showSizeChanger: true }}
       />
     </Card>
   );

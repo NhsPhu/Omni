@@ -1,20 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Table, Button, Tag, Input, Space, Modal, Form, Select, message, Upload, Row, Col } from 'antd';
 import { Search, Download, CheckCircle, Clock, Upload as UploadIcon, Building2, Copy } from 'lucide-react';
+import dayjs from 'dayjs';
+import api from '../../lib/axios';
 
 const { Option } = Select;
-
-const mockWithdrawals = [
-  { key: '1', id: 'WD-001', vendor: 'Apple Store VN', bank: 'Vietcombank', account: '0123456789', owner: 'NGUYEN VAN A', amount: 15000000, date: '23/05/2026 09:30', status: 'pending' },
-  { key: '2', id: 'WD-002', vendor: 'Keychron Official', bank: 'MB Bank', account: '9876543210', owner: 'TRAN MINH B', amount: 4500000, date: '22/05/2026 14:15', status: 'completed', txId: 'FT202605221234' },
-  { key: '3', id: 'WD-003', vendor: 'Sony Center', bank: 'Techcombank', account: '1903456789012', owner: 'LE THI C', amount: 28000000, date: '23/05/2026 10:45', status: 'pending' },
-];
 
 export default function Withdrawals() {
   const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [form] = Form.useForm();
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+
+  const loadWithdrawals = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/admin/finance/withdrawals');
+      setWithdrawals(res.data.content || []);
+      setTotal(res.data.totalElements || 0);
+    } catch (e) {
+      console.error(e);
+      message.error("Lỗi khi tải lệnh rút tiền");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWithdrawals();
+  }, []);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
@@ -24,25 +41,31 @@ export default function Withdrawals() {
   };
 
   const handleApprove = () => {
-    form.validateFields().then(values => {
-      message.success(`Đã cập nhật trạng thái thành công. TX ID: ${values.txId}`);
-      setModalOpen(false);
-      form.resetFields();
+    form.validateFields().then(async values => {
+      try {
+        await api.patch(`/admin/finance/withdrawals/${selectedRecord.id}/approve`, { txId: values.txId });
+        message.success(`Đã cập nhật trạng thái thành công. TX ID: ${values.txId}`);
+        setModalOpen(false);
+        form.resetFields();
+        loadWithdrawals();
+      } catch (e) {
+        message.error('Lỗi cập nhật trạng thái lệnh rút tiền');
+      }
     });
   };
 
   const columns = [
     { title: 'Mã GD', dataIndex: 'id', key: 'id', render: (t: string) => <span className="font-mono text-xs">{t}</span> },
-    { title: 'Gian hàng', dataIndex: 'vendor', key: 'vendor', render: (t: string) => <span className="font-semibold text-blue-600">{t}</span> },
+    { title: 'Gian hàng', dataIndex: 'shopId', key: 'shopId', render: (t: string) => <span className="font-semibold text-blue-600">{t}</span> },
     { 
       title: 'Tài khoản nhận', 
       key: 'bankInfo',
       render: (_: any, r: any) => (
         <div className="text-sm">
-          <div className="font-bold flex items-center gap-1"><Building2 size={12}/> {r.bank}</div>
+          <div className="font-bold flex items-center gap-1"><Building2 size={12}/> {r.bankName}</div>
           <div className="text-gray-600 group flex items-center gap-1">
-            {r.account} - {r.owner} 
-            <Copy size={12} className="cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleCopy(`${r.account}`)}/>
+            {r.bankAccountNumber} - {r.bankAccountName} 
+            <Copy size={12} className="cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleCopy(`${r.bankAccountNumber}`)}/>
           </div>
         </div>
       )
@@ -53,16 +76,20 @@ export default function Withdrawals() {
       key: 'amount',
       render: (val: number) => <span className="font-bold text-red-600">{formatCurrency(val)}</span>
     },
-    { title: 'Ngày yêu cầu', dataIndex: 'date', key: 'date', render: (t: string) => <span className="text-gray-500 text-sm">{t}</span> },
+    { 
+      title: 'Ngày yêu cầu', 
+      key: 'createdAt', 
+      render: (_: any, r: any) => <span className="text-gray-500 text-sm">{dayjs(r.createdAt).format('DD/MM/YYYY HH:mm')}</span> 
+    },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
       render: (status: string, record: any) => {
-        if (status === 'completed') return (
+        if (status === 'COMPLETED') return (
           <div>
             <Tag color="success" icon={<CheckCircle size={14} className="mr-1"/>}>Hoàn thành</Tag>
-            <div className="text-[10px] text-gray-400 mt-1">Ref: {record.txId}</div>
+            <div className="text-[10px] text-gray-400 mt-1">Ref: {record.adminNote}</div>
           </div>
         );
         return <Tag color="warning" icon={<Clock size={14} className="mr-1"/>}>Chờ chuyển khoản</Tag>;
@@ -72,7 +99,7 @@ export default function Withdrawals() {
       title: 'Thao tác',
       key: 'action',
       render: (_: any, record: any) => {
-        if (record.status === 'completed') return null;
+        if (record.status === 'COMPLETED') return null;
         return <Button type="primary" size="small" onClick={() => { setSelectedRecord(record); setModalOpen(true); }}>Cập nhật</Button>;
       }
     }
@@ -112,9 +139,11 @@ export default function Withdrawals() {
             onChange: setSelectedKeys,
           }}
           columns={columns} 
-          dataSource={mockWithdrawals}
+          dataSource={withdrawals}
+          rowKey="id"
+          loading={loading}
           className="[&_.ant-table-thead_th]:!bg-gray-50"
-          pagination={false}
+          pagination={{ total: total, pageSize: 20 }}
         />
       </Card>
 
@@ -131,13 +160,13 @@ export default function Withdrawals() {
             <div className="bg-gray-50 p-4 rounded mb-4 text-sm border border-gray-200">
               <Row gutter={[16, 8]}>
                 <Col span={8} className="text-gray-500">Gian hàng:</Col>
-                <Col span={16} className="font-bold text-blue-600">{selectedRecord.vendor}</Col>
+                <Col span={16} className="font-bold text-blue-600">{selectedRecord.shopId}</Col>
                 <Col span={8} className="text-gray-500">Số tiền rút:</Col>
                 <Col span={16} className="font-bold text-red-600">{formatCurrency(selectedRecord.amount)}</Col>
                 <Col span={8} className="text-gray-500">Thông tin nhận:</Col>
                 <Col span={16}>
-                  <strong>{selectedRecord.bank}</strong><br/>
-                  {selectedRecord.account} - {selectedRecord.owner}
+                  <strong>{selectedRecord.bankName}</strong><br/>
+                  {selectedRecord.bankAccountNumber} - {selectedRecord.bankAccountName}
                 </Col>
               </Row>
             </div>

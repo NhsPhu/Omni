@@ -1,22 +1,66 @@
-import React, { useState } from 'react';
-import { Card, Table, Button, Tag, Space, Drawer, Form, Input, InputNumber, DatePicker, Select, Switch, message, Progress } from 'antd';
+import React, { useState, useEffect } from 'react';
+import api from '../../lib/axios';
+import { Card, Table, Button, Tag, Space, Drawer, Form, Input, InputNumber, DatePicker, Select, message, Progress } from 'antd';
 import { Plus, Ticket, AlertTriangle } from 'lucide-react';
+import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
-
-const mockVouchers = [
-  { key: '1', code: 'OMNI50K', discount: '50K', minOrder: 200000, scope: 'Toàn sàn', usage: 1250, budgetUsed: 62500000, budgetCap: 100000000, status: 'active', end: '30/06/2026' },
-  { key: '2', code: 'TECH10', discount: '10%', minOrder: 1000000, scope: 'Điện thoại, Laptop', usage: 342, budgetUsed: 85500000, budgetCap: 100000000, status: 'warning', end: '31/05/2026' },
-  { key: '3', code: 'FREESHIPXTRA', discount: '30K', minOrder: 50000, scope: 'Toàn sàn', usage: 5000, budgetUsed: 150000000, budgetCap: 150000000, status: 'exhausted', end: '31/12/2026' },
-];
 
 export default function PlatformVouchers() {
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm();
   const [scope, setScope] = useState('all');
+  const [vouchers, setVouchers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchVouchers = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/admin/vouchers');
+      setVouchers(res.data.map((v: any) => ({
+        ...v,
+        key: v.id,
+        discount: v.discountType === 'PERCENTAGE' ? `${v.discountValue}%` : formatCurrency(v.discountValue),
+        budgetUsed: v.usedCount * (v.discountType === 'PERCENTAGE' ? (v.maxDiscountAmount || 0) : v.discountValue), // Approximated
+        budgetCap: v.usageLimit * (v.discountType === 'PERCENTAGE' ? (v.maxDiscountAmount || 0) : v.discountValue),
+        end: dayjs(v.validTo).format('DD/MM/YYYY'),
+        status: v.usedCount >= v.usageLimit ? 'exhausted' : 'active'
+      })));
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Lỗi tải danh sách voucher');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVouchers();
+  }, []);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+
+  const handleCreate = async (values: any) => {
+    try {
+      const payload = {
+        code: values.code,
+        discountType: values.discountType === 'percent' ? 'PERCENTAGE' : 'FIXED_AMOUNT',
+        discountValue: values.value,
+        minOrderValue: 0,
+        maxDiscountAmount: values.discountType === 'percent' ? values.budget / 100 : values.value,
+        usageLimit: Math.floor(values.budget / (values.discountType === 'percent' ? (values.budget/100) : values.value)),
+        validFrom: values.dates[0].toISOString(),
+        validTo: values.dates[1].toISOString()
+      };
+      await api.post('/admin/vouchers', payload);
+      message.success('Tạo thành công!');
+      setOpen(false);
+      form.resetFields();
+      fetchVouchers();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Lỗi tạo voucher');
+    }
+  };
 
   const columns = [
     { 
@@ -26,12 +70,12 @@ export default function PlatformVouchers() {
       render: (text: string) => <div className="font-mono font-bold text-red-600 bg-red-50 px-2 py-1 rounded w-fit border border-red-200">{text}</div>
     },
     { title: 'Giảm giá', dataIndex: 'discount', key: 'discount', render: (t: string) => <span className="font-semibold">{t}</span> },
-    { title: 'Phạm vi', dataIndex: 'scope', key: 'scope' },
     { 
-      title: 'Ngân sách sử dụng (Budget Cap)', 
+      title: 'Ngân sách (Budget)', 
       key: 'budget',
       width: 250,
       render: (_: any, record: any) => {
+        if (!record.budgetCap) return <span>Không giới hạn</span>;
         const percent = Math.round((record.budgetUsed / record.budgetCap) * 100);
         let strokeColor = '#10B981';
         if (percent >= 80) strokeColor = '#F59E0B';
@@ -81,7 +125,8 @@ export default function PlatformVouchers() {
 
         <Table 
           columns={columns} 
-          dataSource={mockVouchers}
+          dataSource={vouchers}
+          loading={loading}
           className="[&_.ant-table-thead_th]:!bg-gray-50"
           pagination={false}
         />
@@ -94,7 +139,7 @@ export default function PlatformVouchers() {
         open={open}
         extra={<Button type="primary" className="bg-red-600 hover:bg-red-700" onClick={() => form.submit()}>Lưu & Phát hành</Button>}
       >
-        <Form form={form} layout="vertical" onFinish={() => { message.success('Tạo thành công!'); setOpen(false); }}>
+        <Form form={form} layout="vertical" onFinish={handleCreate}>
           <Form.Item name="code" label="Mã Voucher" rules={[{ required: true }]}>
             <Input size="large" placeholder="VD: MEGA_SALE" style={{ textTransform: 'uppercase' }} />
           </Form.Item>
@@ -115,24 +160,7 @@ export default function PlatformVouchers() {
             <InputNumber size="large" className="w-full" addonAfter="VND" formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
           </Form.Item>
 
-          <Form.Item name="scopeType" label="Phạm vi áp dụng" initialValue="all">
-            <Select size="large" onChange={setScope}>
-              <Option value="all">Toàn sàn (Tất cả sản phẩm)</Option>
-              <Option value="category">Chỉ định Danh mục</Option>
-              <Option value="vendor">Chỉ định Cửa hàng</Option>
-            </Select>
-          </Form.Item>
-
-          {scope === 'category' && (
-            <Form.Item name="categories" label="Chọn Danh mục được áp dụng">
-              <Select mode="multiple" size="large" placeholder="VD: Điện thoại, Laptop...">
-                <Option value="dienthoai">Điện thoại</Option>
-                <Option value="laptop">Laptop</Option>
-              </Select>
-            </Form.Item>
-          )}
-
-          <Form.Item label="Thời gian diễn ra">
+          <Form.Item name="dates" label="Thời gian diễn ra" rules={[{ required: true }]}>
             <RangePicker showTime size="large" className="w-full" />
           </Form.Item>
 

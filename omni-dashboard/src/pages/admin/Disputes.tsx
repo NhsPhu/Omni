@@ -1,12 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, List, Avatar, Tag, Button, Input, Select, Modal, message, Divider, Image, Space } from 'antd';
 import { Search, ShieldAlert, CheckCircle, XCircle, MessageCircle, AlertTriangle } from 'lucide-react';
+import dayjs from 'dayjs';
+import api from '../../lib/axios';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
 export default function Disputes() {
   const [selectedDispute, setSelectedDispute] = useState<any>(null);
+  const [disputes, setDisputes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [decision, setDecision] = useState('');
+  const [decisionNote, setDecisionNote] = useState('');
+
+  const loadDisputes = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/admin/disputes');
+      setDisputes(res.data.content || []);
+    } catch (e) {
+      console.error(e);
+      message.error("Lỗi khi tải danh sách tranh chấp");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDisputes();
+  }, []);
 
   const mockDisputes = [
     {
@@ -30,15 +53,33 @@ export default function Disputes() {
   ];
 
   const handleResolve = () => {
+    if (!decision || !decisionNote) {
+      message.warning("Vui lòng chọn kết quả phán quyết và nhập lý do!");
+      return;
+    }
+
     Modal.confirm({
       title: 'Xác nhận Phán quyết',
       content: 'Phán quyết này sẽ KHÔNG THỂ HOÀN TÁC. Hệ thống sẽ tự động gửi email cho cả hai bên và thực hiện luồng hoàn tiền/chuyển tiền tương ứng. Bạn chắc chắn chứ?',
       okText: 'Xác nhận & Thực thi',
       okType: 'danger',
       cancelText: 'Hủy',
-      onOk: () => {
-        message.success('Đã đóng tranh chấp và thực thi phán quyết!');
-        setSelectedDispute(null);
+      onOk: async () => {
+        try {
+          const payload = {
+            customerWins: decision === 'refund_full' || decision === 'refund_partial',
+            refundAmount: decision === 'refund_full' ? 999999 : 0, // This should normally take an input for amount
+            decision: decisionNote
+          };
+          await api.patch(`/admin/disputes/${selectedDispute.id}/resolve`, payload);
+          message.success('Đã đóng tranh chấp và thực thi phán quyết!');
+          setSelectedDispute(null);
+          setDecision('');
+          setDecisionNote('');
+          loadDisputes();
+        } catch (e) {
+          message.error('Lỗi khi thực thi phán quyết');
+        }
       }
     });
   };
@@ -53,7 +94,8 @@ export default function Disputes() {
         <Input placeholder="Tìm mã tranh chấp, mã đơn..." prefix={<Search size={16} className="text-gray-400" />} className="mb-4" />
         
         <List
-          dataSource={mockDisputes}
+          loading={loading}
+          dataSource={disputes}
           renderItem={item => (
             <div 
               className={`p-4 border rounded-lg mb-3 cursor-pointer transition-all ${selectedDispute?.id === item.id ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-red-300'}`}
@@ -61,13 +103,13 @@ export default function Disputes() {
             >
               <div className="flex justify-between items-start mb-2">
                 <span className="font-bold text-red-600">{item.id}</span>
-                <span className="text-xs text-gray-500">{item.date}</span>
+                <span className="text-xs text-gray-500">{dayjs(item.createdAt).format('DD/MM/YYYY')}</span>
               </div>
               <div className="text-sm font-medium mb-1">{item.reason}</div>
               <div className="text-xs text-gray-600 flex justify-between">
                 <span>Đơn: <strong>{item.orderId}</strong></span>
-                <Tag color={item.status === 'pending' ? 'warning' : 'error'} className="m-0">
-                  {item.status === 'pending' ? 'Chờ xử lý' : 'Escalated'}
+                <Tag color={item.status === 'OPEN' ? 'warning' : 'default'} className="m-0">
+                  {item.status === 'OPEN' ? 'Chờ xử lý' : item.status}
                 </Tag>
               </div>
             </div>
@@ -91,7 +133,7 @@ export default function Disputes() {
               <Col span={12} className="border-r border-gray-100">
                 <div className="flex items-center gap-2 mb-4 bg-blue-50 p-2 rounded text-blue-800">
                   <Avatar className="bg-blue-600">KH</Avatar>
-                  <span className="font-bold">{selectedDispute.customer} (Người mua)</span>
+                  <span className="font-bold">{selectedDispute.userId} (Người mua)</span>
                 </div>
                 <div className="space-y-4">
                   <div>
@@ -116,7 +158,7 @@ export default function Disputes() {
               <Col span={12}>
                 <div className="flex items-center gap-2 mb-4 bg-purple-50 p-2 rounded text-purple-800">
                   <Avatar className="bg-purple-600">SH</Avatar>
-                  <span className="font-bold">{selectedDispute.shop} (Người bán)</span>
+                  <span className="font-bold">Người bán</span>
                 </div>
                 <div className="space-y-4">
                   <div>
@@ -141,7 +183,7 @@ export default function Disputes() {
               <h3 className="font-bold mb-3 flex items-center gap-2"><ShieldAlert size={18}/> Khu vực Phán Quyết (Admin Only)</h3>
               <Row gutter={16}>
                 <Col span={8}>
-                  <Select className="w-full" size="large" placeholder="Chọn kết quả phán quyết">
+                  <Select className="w-full" size="large" placeholder="Chọn kết quả phán quyết" value={decision} onChange={setDecision}>
                     <Option value="refund_full">Hoàn tiền 100% cho Khách</Option>
                     <Option value="refund_partial">Hoàn tiền 50%</Option>
                     <Option value="reject_buyer">Bác đơn Khách hàng (Shop nhận tiền)</Option>
@@ -149,7 +191,7 @@ export default function Disputes() {
                   </Select>
                 </Col>
                 <Col span={16}>
-                  <Input size="large" placeholder="Ghi chú nội bộ cho lý do phán quyết (Bắt buộc)..." />
+                  <Input size="large" placeholder="Ghi chú nội bộ cho lý do phán quyết (Bắt buộc)..." value={decisionNote} onChange={e => setDecisionNote(e.target.value)} />
                 </Col>
               </Row>
             </div>
