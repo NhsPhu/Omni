@@ -19,8 +19,8 @@ public class CartController {
 
     // Helper to get userId from JWT authentication
     private UUID getUserId(Authentication authentication) {
-        // Assuming the principal is the userId (String) configured in JwtAuthenticationFilter
-        return UUID.fromString(authentication.getName());
+        com.omni.backend.shared.security.CustomUserDetails userDetails = (com.omni.backend.shared.security.CustomUserDetails) authentication.getPrincipal();
+        return userDetails.getId();
     }
 
     @GetMapping

@@ -37,6 +37,7 @@ public class ParentOrderJpaEntity {
     private UUID platformVoucherId;
 
     @Column(name = "platform_discount", precision = 12, scale = 2)
+    @Builder.Default
     private BigDecimal platformDiscount = BigDecimal.ZERO;
 
     @Column(name = "final_amount", nullable = false, precision = 12, scale = 2)

@@ -35,6 +35,7 @@ public class ChildOrderJpaEntity {
     private UUID shopVoucherId;
 
     @Column(name = "shop_discount", precision = 12, scale = 2)
+    @Builder.Default
     private BigDecimal shopDiscount = BigDecimal.ZERO;
 
     @Column(name = "shipping_fee", precision = 12, scale = 2)
