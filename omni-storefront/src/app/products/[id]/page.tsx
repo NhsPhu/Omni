@@ -23,10 +23,18 @@ export default function ProductDetailPage() {
   const [p, setP] = useState<any>(productDetail); // Fallback to mock temporarily if api fails
   const [activeImg, setActiveImg] = useState(0);
 
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
-  const [selectedStorage, setSelectedStorage] = useState<string | null>(null);
-  const [qty, setQty] = useState(1);
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [wishlisted, setWishlisted] = useState(false);
+
+  useEffect(() => {
+    if (p && typeof window !== "undefined" && localStorage.getItem("token")) {
+      api.get(`/wishlists/${p.id}/check`)
+        .then(res => setWishlisted(res.data))
+        .catch(console.error);
+    }
+  }, [p]);
+
+  const [qty, setQty] = useState(1);
   const [activeTab, setActiveTab] = useState(0);
   const [addedToCart, setAddedToCart] = useState(false);
 
@@ -38,18 +46,40 @@ export default function ProductDetailPage() {
     }
   }, [params?.id]);
 
-  // Derive unique colors / storages
-  const colors   = [...new Set(p?.skus?.map((s:any) => s.color).filter(Boolean) as string[])];
-  const storages = [...new Set(p?.skus?.map((s:any) => s.storage).filter(Boolean) as string[])];
+  if (!p) return null;
+
+
+  // Extract all attribute keys and unique values from SKUs
+  const attributeKeys = new Set<string>();
+  const attributeOptions: Record<string, string[]> = {};
+  
+  p?.skus?.forEach((s: any) => {
+    // Normalize mock to attributes
+    const attrs = { ...(s.attributes || {}) };
+    if (s.color) attrs["Màu sắc"] = s.color;
+    if (s.storage) attrs["Dung lượng"] = s.storage;
+    if (s.size) attrs["Kích thước"] = s.size;
+    
+    Object.entries(attrs).forEach(([k, v]) => {
+      attributeKeys.add(k);
+      if (!attributeOptions[k]) attributeOptions[k] = [];
+      if (!attributeOptions[k].includes(v as string)) attributeOptions[k].push(v as string);
+    });
+    s._normAttributes = attrs;
+  });
+  
+  const availableKeys = Array.from(attributeKeys);
 
   // Find matching SKU
-  const activeSku = p?.skus?.find((s:any) =>
-    (!selectedColor   || s.color   === selectedColor) &&
-    (!selectedStorage || s.storage === selectedStorage)
-  );
+  const activeSku = p?.skus?.find((s:any) => {
+    const attrs = s._normAttributes || {};
+    return availableKeys.every(k => !selectedAttributes[k] || attrs[k] === selectedAttributes[k]);
+  });
+  
   const currentPrice = activeSku?.price ?? p.price;
-  const stockLeft    = activeSku?.stock ?? (p.stock ?? 0);
-  const canAdd       = !!selectedColor && !!selectedStorage && stockLeft > 0;
+  const stockLeft    = activeSku?.stockQuantity ?? activeSku?.stock ?? (p.stock ?? 0);
+  
+  const canAdd = availableKeys.every(k => !!selectedAttributes[k]) && stockLeft > 0;
 
   const handleAddToCart = () => {
     if (!canAdd) return;
@@ -102,15 +132,25 @@ export default function ProductDetailPage() {
   };
 
   const handleWishlist = () => {
-    setWishlisted(!wishlisted);
-    if (!wishlisted) {
-      toast.success("Đã thêm vào danh sách yêu thích ❤️");
-    } else {
-      toast("Đã xóa khỏi danh sách yêu thích");
+    if (typeof window !== "undefined" && !localStorage.getItem("token")) {
+      toast.error("Vui lòng đăng nhập để thêm vào yêu thích");
+      return;
     }
+    const newValue = !wishlisted;
+    setWishlisted(newValue);
+    api.post(`/wishlists/${p.id}`).then(() => {
+      if (newValue) {
+        toast.success("Đã thêm vào danh sách yêu thích");
+      } else {
+        toast.success("Đã xóa khỏi danh sách yêu thích");
+      }
+    }).catch(() => {
+      setWishlisted(!newValue);
+      toast.error("Đã xảy ra lỗi");
+    });
   };
 
-  if (!p) return null;
+
 
   return (
     <>
@@ -158,7 +198,7 @@ export default function ProductDetailPage() {
 
               {/* Thumbnails */}
               <div className="grid grid-cols-4 gap-2">
-                {(p.images ?? [p.image, p.image, p.image, p.image]).map((_: any, i: number) => (
+                {(p.images ?? [p.image ?? '', p.image ?? '', p.image ?? '', p.image ?? '']).map((_: any, i: number) => (
                   <button key={i} onClick={() => setActiveImg(i)}
                     className={`aspect-square rounded-xl overflow-hidden bg-gradient-to-br ${GRADS[i % 4]} cursor-pointer transition-all duration-200`}
                     style={{ border: activeImg === i ? "2px solid var(--gold)" : "1px solid var(--border)", opacity: activeImg === i ? 1 : 0.6 }}>
@@ -189,7 +229,7 @@ export default function ProductDetailPage() {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="px-2.5 py-1 text-xs font-semibold rounded-lg" style={{ background: "var(--gold-dim)", color: "var(--gold)", border: "1px solid var(--border-gold)" }}>Bán chạy</span>
-                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>Đã bán {p.sold.toLocaleString("vi-VN")}</span>
+                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>Đã bán {((p.sold ?? 0).toLocaleString("vi-VN"))}</span>
                 </div>
                 <h1 className="text-2xl lg:text-3xl font-bold leading-tight font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>
                   {p.name}
@@ -197,9 +237,9 @@ export default function ProductDetailPage() {
                 <div className="flex items-center gap-4 mt-3">
                   <div className="flex items-center gap-1.5">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} className={`w-4 h-4 ${i < Math.floor(p.rating) ? "fill-gold text-gold" : "text-border"}`} />
+                      <Star key={i} className={`w-4 h-4 ${i < Math.floor(p.rating ?? 5.0) ? "fill-gold text-gold" : "text-border"}`} />
                     ))}
-                    <span className="text-sm font-semibold ml-1" style={{ color: "var(--gold)" }}>{p.rating}</span>
+                    <span className="text-sm font-semibold ml-1" style={{ color: "var(--gold)" }}>{p.rating ?? 5.0}</span>
                   </div>
                   <span className="text-xs" style={{ color: "var(--text-muted)" }}>({p.reviews?.length ?? 0} đánh giá)</span>
                   <button className="ml-auto flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: "var(--text-muted)" }}>
@@ -222,60 +262,40 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
-              {/* Color selector */}
-              {colors.length > 0 && (
-                <div>
+              {/* Dynamic Attribute Selectors */}
+              {availableKeys.map(key => (
+                <div key={key} className="mb-4">
                   <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-secondary)" }}>
-                    Màu sắc: <span style={{ color: "var(--text-primary)" }}>{selectedColor ?? "Chưa chọn"}</span>
+                    {key}: <span style={{ color: "var(--text-primary)" }}>{selectedAttributes[key] ?? "Chưa chọn"}</span>
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {colors.map((color: any) => {
-                      const sku = p.skus?.find((s:any) => s.color === color && (!selectedStorage || s.storage === selectedStorage));
-                      const outOfStock = (sku?.stock ?? 0) === 0;
-                      return (
-                        <button key={color} disabled={outOfStock} onClick={() => setSelectedColor(color)}
-                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                          style={{
-                            border: selectedColor === color ? "2px solid var(--gold)" : "1px solid var(--border)",
-                            background: selectedColor === color ? "var(--gold-dim)" : "var(--bg-card)",
-                            color: selectedColor === color ? "var(--gold)" : "var(--text-secondary)",
-                          }}>
-                          {sku?.colorHex && <span className="w-4 h-4 rounded-full border border-border flex-shrink-0" style={{ background: sku.colorHex }} />}
-                          {color}
-                          {outOfStock && <span className="text-xs text-red-400">(Hết)</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Storage selector */}
-              {storages.length > 0 && (
-                <div>
-                  <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-secondary)" }}>
-                    Dung lượng: <span style={{ color: "var(--text-primary)" }}>{selectedStorage ?? "Chưa chọn"}</span>
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {storages.map((storage: any) => {
-                      const sku = p.skus?.find((s:any) => s.storage === storage && (!selectedColor || s.color === selectedColor));
-                      const outOfStock = (sku?.stock ?? 0) === 0;
-                      return (
-                        <button key={storage} disabled={outOfStock} onClick={() => setSelectedStorage(storage)}
+                    {attributeOptions[key].map((val) => {
+                       // Find if this option is in stock when combined with other currently selected attributes
+                       const testAttrs = { ...selectedAttributes, [key]: val };
+                       const sku = p.skus?.find((s:any) => {
+                          const a = s._normAttributes || {};
+                          return Object.entries(testAttrs).every(([k, v]) => !v || a[k] === v);
+                       });
+                       const skuStock = sku ? (sku.stockQuantity ?? sku.stock ?? 0) : 0;
+                       const outOfStock = sku ? skuStock === 0 : false;
+                       const isSelected = selectedAttributes[key] === val;
+                       
+                       return (
+                        <button key={val} disabled={outOfStock} onClick={() => setSelectedAttributes({...selectedAttributes, [key]: val})}
                           className="px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
                           style={{
-                            border: selectedStorage === storage ? "2px solid var(--purple)" : "1px solid var(--border)",
-                            background: selectedStorage === storage ? "var(--purple-dim)" : "var(--bg-card)",
-                            color: selectedStorage === storage ? "var(--purple-light)" : "var(--text-secondary)",
+                            border: isSelected ? "2px solid var(--gold)" : "1px solid var(--border)",
+                            background: isSelected ? "var(--gold-dim)" : "var(--bg-card)",
+                            color: isSelected ? "var(--gold)" : "var(--text-secondary)",
                           }}>
-                          {storage}
+                          {val}
                           {outOfStock && <span className="text-xs text-red-400 ml-1">(Hết)</span>}
                         </button>
-                      );
+                       );
                     })}
                   </div>
                 </div>
-              )}
+              ))}
 
               {/* Quantity + Stock */}
               <div className="flex items-center gap-4">
@@ -294,8 +314,8 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Validation hint */}
-              {(!selectedColor || !selectedStorage) && (
-                <p className="text-xs" style={{ color: "var(--gold)" }}>⚠ Vui lòng chọn Màu sắc và Dung lượng trước khi đặt hàng</p>
+              {!availableKeys.every(k => !!selectedAttributes[k]) && (
+                <p className="text-xs" style={{ color: "var(--gold)" }}>⚠ Vui lòng chọn phân loại sản phẩm trước khi đặt hàng</p>
               )}
 
               {/* CTA buttons */}
@@ -378,9 +398,9 @@ export default function ProductDetailPage() {
                   {/* Rating summary */}
                   <div className="flex items-center gap-6 p-6 rounded-2xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
                     <div className="text-center">
-                      <div className="text-5xl font-bold text-gradient-gold font-[family-name:var(--font-heading)]">{p.rating}</div>
+                      <div className="text-5xl font-bold text-gradient-gold font-[family-name:var(--font-heading)]">{p.rating ?? 5.0}</div>
                       <div className="flex justify-center gap-0.5 mt-1">
-                        {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`w-4 h-4 ${i < Math.floor(p.rating) ? "fill-gold text-gold" : "text-border"}`} />)}
+                        {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`w-4 h-4 ${i < Math.floor(p.rating ?? 5.0) ? "fill-gold text-gold" : "text-border"}`} />)}
                       </div>
                       <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{p.reviews?.length} đánh giá</p>
                     </div>

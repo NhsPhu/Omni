@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Bell, Trash2, ShoppingCart, Tag, Truck, Gift } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
@@ -8,17 +9,23 @@ import ProductCard from "@/components/ui/ProductCard";
 import Button from "@/components/ui/Button";
 import { featuredProducts } from "@/data/mock";
 
-const NOTIFICATIONS = [
-  { id: 1, type: "order", title: "Đơn hàng đang được giao", desc: "Đơn hàng OMN-20241115 của bạn đang được giao bởi Giao Hàng Nhanh.", time: "2 giờ trước", icon: Truck, color: "#3B82F6", unread: true },
-  { id: 2, type: "promo", title: "Flash Sale sập sàn cuối tuần!", desc: "Giảm đến 50% cho ngành hàng Điện tử. Nhập mã OMNI2026 giảm thêm 10%.", time: "5 giờ trước", icon: Tag, color: "var(--gold)", unread: true },
-  { id: 3, type: "wishlist", title: "Sản phẩm yêu thích đang giảm giá", desc: "Tai nghe Sony WH-1000XM5 đang giảm 24%. Mua ngay kẻo lỡ!", time: "1 ngày trước", icon: Heart, color: "#EF4444", unread: false },
-  { id: 4, type: "system", title: "Chào mừng đến với Omni", desc: "Tặng bạn voucher 50K cho đơn hàng đầu tiên. Khám phá ngay!", time: "3 ngày trước", icon: Gift, color: "var(--purple-light)", unread: false },
-];
+const NOTIFICATIONS: any[] = [];
 
 export default function WishlistPage() {
   const [activeTab, setActiveTab] = useState<"wishlist" | "notifications">("wishlist");
-  const [wishlist, setWishlist] = useState(featuredProducts.slice(0, 4)); // Mock initial wishlist
+  const [wishlist, setWishlist] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState(NOTIFICATIONS);
+
+  useEffect(() => {
+    api.get("/wishlists").then(res => {
+      setWishlist(res.data);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, []);
 
   const markAllRead = () => setNotifications(p => p.map(n => ({ ...n, unread: false })));
 
@@ -70,7 +77,11 @@ export default function WishlistPage() {
                     {wishlist.map((product, i) => (
                       <div key={product.id} className="relative group">
                         <ProductCard product={product} index={i} />
-                        <button onClick={() => setWishlist(p => p.filter(x => x.id !== product.id))}
+                        <button onClick={() => {
+                            api.post(`/wishlists/${product.id}`).then(() => {
+                                setWishlist(p => p.filter(x => x.id !== product.id));
+                            }).catch(console.error);
+                        }}
                           className="absolute top-3 left-3 z-20 w-8 h-8 flex items-center justify-center rounded-full glass opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer hover:bg-red-500/20"
                           title="Xóa khỏi danh sách">
                           <Trash2 className="w-4 h-4 text-white" />
