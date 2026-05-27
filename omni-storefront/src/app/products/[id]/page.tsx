@@ -63,21 +63,51 @@ export default function ProductDetailPage() {
       return;
     }
     
-    // In real app, call API to add to cart
     api.post("/cart/items", {
       productId: p.id,
       skuId: activeSku?.id,
       quantity: qty
     }).then(() => {
       setAddedToCart(true);
+      toast.success("Đã thêm vào giỏ hàng!");
       setTimeout(() => setAddedToCart(false), 2000);
     }).catch((e: any) => {
-       if (e.response?.status === 401 || e.response?.status === 403) {
-         toast.error("Vui lòng đăng nhập lại");
-       } else {
-         console.error(e);
-       }
+       toast.error(e.response?.data?.message || "Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
     });
+  };
+
+  const handleBuyNow = () => {
+    if (!canAdd) return;
+    if (!isAuthenticated()) {
+      toast.error("Vui lòng đăng nhập để mua hàng", {
+        action: {
+          label: "Đăng nhập",
+          onClick: () => router.push("/auth")
+        }
+      });
+      return;
+    }
+    
+    api.post("/cart/items", {
+      productId: p.id,
+      skuId: activeSku?.id,
+      quantity: qty
+    }).then(() => {
+      // Save selected SKU for checkout and redirect
+      localStorage.setItem("checkout_skus", JSON.stringify([activeSku?.id]));
+      router.push("/checkout");
+    }).catch((e: any) => {
+       toast.error(e.response?.data?.message || "Không thể mua ngay. Vui lòng thử lại.");
+    });
+  };
+
+  const handleWishlist = () => {
+    setWishlisted(!wishlisted);
+    if (!wishlisted) {
+      toast.success("Đã thêm vào danh sách yêu thích ❤️");
+    } else {
+      toast("Đã xóa khỏi danh sách yêu thích");
+    }
   };
 
   if (!p) return null;
@@ -120,7 +150,7 @@ export default function ProductDetailPage() {
                     -{p.discount}%
                   </div>
                 )}
-                <button onClick={() => setWishlisted(!wishlisted)}
+                <button onClick={handleWishlist}
                   className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-xl glass cursor-pointer">
                   <Heart className={`w-5 h-5 transition-all ${wishlisted ? "fill-red-400 text-red-400" : "text-white/70"}`} />
                 </button>
@@ -279,7 +309,7 @@ export default function ProductDetailPage() {
                     }
                   </AnimatePresence>
                 </Button>
-                <Button variant="purple" size="lg" className="flex-1" disabled={!canAdd}>
+                <Button variant="purple" size="lg" className="flex-1" disabled={!canAdd} onClick={handleBuyNow}>
                   <Zap className="w-5 h-5" /> Mua ngay
                 </Button>
               </div>
@@ -408,7 +438,7 @@ export default function ProductDetailPage() {
             <Button variant="glass" size="md" className="flex-1" onClick={handleAddToCart} disabled={!canAdd}>
               <ShoppingCart className="w-4 h-4" /> Giỏ hàng
             </Button>
-            <Button variant="gold" size="md" className="flex-1" disabled={!canAdd}>
+            <Button variant="gold" size="md" className="flex-1" disabled={!canAdd} onClick={handleBuyNow}>
               <Zap className="w-4 h-4" /> Mua ngay
             </Button>
           </div>
