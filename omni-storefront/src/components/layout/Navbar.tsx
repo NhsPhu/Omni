@@ -6,19 +6,26 @@ import Link from "next/link";
 import SearchBar from "@/components/ui/SearchBar";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import Button from "@/components/ui/Button";
+import { useAuthStore } from "@/store/authStore";
+import { User as UserIcon, LogOut } from "lucide-react";
 
 const navLinks = [
-  { label: "Danh mục", href: "#categories", children: ["Điện tử", "Thời trang", "Nhà cửa", "Làm đẹp", "Thể thao"] },
-  { label: "Flash Sale", href: "#flash-sale" },
-  { label: "Cửa hàng", href: "#" },
+  { label: "Danh mục", href: "/#categories", children: ["Điện tử", "Thời trang", "Nhà cửa", "Làm đẹp", "Thể thao"] },
+  { label: "Flash Sale", href: "/#flash-sale" },
+  { label: "Cửa hàng", href: "/#" },
 ];
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  const { user, isAuthenticated, logout } = useAuthStore();
+  const isAuth = isAuthenticated();
 
   useEffect(() => {
+    setMounted(true);
     const fn = () => setScrolled(window.scrollY > 30);
     window.addEventListener("scroll", fn, { passive: true });
     return () => window.removeEventListener("scroll", fn);
@@ -92,7 +99,7 @@ export default function Navbar() {
                         style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}
                       >
                         {link.children.map(child => (
-                          <a key={child} href="#categories"
+                          <a key={child} href="/#categories"
                             className="block px-4 py-2.5 text-sm transition-colors duration-150 cursor-pointer"
                             style={{ color: "var(--text-secondary)" }}
                             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-glass)"; (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
@@ -100,7 +107,7 @@ export default function Navbar() {
                             {child}
                           </a>
                         ))}
-                        <a href="#categories"
+                        <a href="/#categories"
                           className="block px-4 py-2.5 text-sm font-semibold text-gradient-gold"
                           style={{ borderTop: "1px solid var(--border)" }}>
                           Xem tất cả →
@@ -130,8 +137,32 @@ export default function Navbar() {
               </Link>
 
               <div className="hidden sm:flex items-center gap-2">
-                <Link href="/auth"><Button variant="glass" size="sm">Đăng nhập</Button></Link>
-                <Link href="/auth"><Button variant="gold" size="sm">Đăng ký</Button></Link>
+                {!mounted ? (
+                   <div className="w-20 h-9"></div>
+                ) : isAuth ? (
+                  <div className="relative group cursor-pointer">
+                    <div className="flex items-center gap-2 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 rounded-xl glass hover:bg-glass-hover transition-all duration-200">
+                      <div className="w-6 h-6 rounded-full overflow-hidden" style={{ background: "var(--grad-purple)" }}>
+                        <UserIcon className="w-full h-full p-1 text-white" />
+                      </div>
+                      <span className="hidden sm:block text-sm font-medium" style={{ color: "var(--text-primary)" }}>{user?.fullName?.split(" ").pop() || "User"}</span>
+                      <ChevronDown className="hidden sm:block w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                    </div>
+                    {/* User Dropdown */}
+                    <div className="absolute top-full right-0 mt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 rounded-xl overflow-hidden z-50"
+                      style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
+                      <Link href="/orders" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Đơn hàng của tôi</Link>
+                      <button onClick={logout} className="w-full flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5 text-red-400 cursor-pointer">
+                        <LogOut className="w-4 h-4" /> Đăng xuất
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Link href="/auth"><Button variant="glass" size="sm">Đăng nhập</Button></Link>
+                    <Link href="/auth"><Button variant="gold" size="sm">Đăng ký</Button></Link>
+                  </>
+                )}
               </div>
 
               <button onClick={() => setMobileOpen(!mobileOpen)}
@@ -171,8 +202,28 @@ export default function Navbar() {
               ))}
             </nav>
             <div className="p-4 flex flex-col gap-2" style={{ borderTop: "1px solid var(--border)" }}>
-              <Link href="/auth" className="w-full"><Button variant="glass" className="w-full">Đăng nhập</Button></Link>
-              <Link href="/auth" className="w-full"><Button variant="gold" className="w-full">Đăng ký</Button></Link>
+              {!mounted ? (
+                  <div className="h-10"></div>
+              ) : isAuth ? (
+                <>
+                  <div className="flex items-center gap-3 mb-2 px-2">
+                    <div className="w-10 h-10 rounded-full flex flex-shrink-0 items-center justify-center" style={{ background: "var(--grad-purple)" }}>
+                      <UserIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{user?.fullName}</div>
+                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>{user?.email}</div>
+                    </div>
+                  </div>
+                  <Link href="/orders" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Đơn hàng của tôi</Button></Link>
+                  <Button variant="glass" className="w-full justify-start text-red-400" onClick={() => { logout(); setMobileOpen(false); }}>Đăng xuất</Button>
+                </>
+              ) : (
+                <>
+                  <Link href="/auth" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full">Đăng nhập</Button></Link>
+                  <Link href="/auth" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="gold" className="w-full">Đăng ký</Button></Link>
+                </>
+              )}
             </div>
           </motion.div>
         )}
