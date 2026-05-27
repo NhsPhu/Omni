@@ -1,5 +1,13 @@
-node_modules
+﻿node_modules
 dist
 .next
 .env
 .DS_Store
+*.log
+*.py
+*.js
+*.sql
+omni-backend/apache-maven-3.9.6/
+omni-backend/maven.zip
+omni-backend/target/
+products.json
