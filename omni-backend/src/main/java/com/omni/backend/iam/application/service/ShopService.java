@@ -92,9 +92,10 @@ public class ShopService {
         shop.setDescription(dto.getDescription());
         shop.setAddress(dto.getAddress());
         shop.setPickupAddress(dto.getPickupAddress());
-        shop.setBankName(dto.getBankName());
-        shop.setBankAccountNumber(dto.getBankAccountNumber());
-        shop.setBankAccountName(dto.getBankAccountName());
+        
+        if (dto.getBankName() != null) shop.setBankName(dto.getBankName());
+        if (dto.getBankAccountNumber() != null) shop.setBankAccountNumber(dto.getBankAccountNumber());
+        if (dto.getBankAccountName() != null) shop.setBankAccountName(dto.getBankAccountName());
 
         ShopJpaEntity updated = shopRepository.save(shop);
         return mapToDto(updated);
