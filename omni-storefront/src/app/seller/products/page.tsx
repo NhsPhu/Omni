@@ -50,7 +50,7 @@ export default function SellerProductsPage() {
           <p className="text-gray-500">Tất cả sản phẩm của cửa hàng</p>
         </div>
         <button
-          onClick={() => alert("Tính năng Thêm sản phẩm sẽ sớm ra mắt!")}
+          onClick={() => router.push("/seller/products/create")}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition"
         >
           <Plus className="w-4 h-4" /> Thêm sản phẩm mới
@@ -78,7 +78,7 @@ export default function SellerProductsPage() {
             <PackageX className="w-16 h-16 text-gray-300 mb-4" />
             <p className="text-lg font-medium text-gray-900 mb-1">Chưa có sản phẩm nào</p>
             <p className="text-gray-500 mb-6">Bắt đầu bán hàng bằng cách thêm sản phẩm đầu tiên của bạn.</p>
-            <button className="bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
+            <button onClick={() => router.push("/seller/products/create")} className="bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
               <Plus className="w-5 h-5" /> Thêm sản phẩm
             </button>
           </div>

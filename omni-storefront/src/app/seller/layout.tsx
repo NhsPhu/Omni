@@ -59,11 +59,11 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
               {user?.avatarUrl ? (
                 <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-gray-500 text-sm font-bold">{user?.name?.charAt(0)}</span>
+                <span className="text-gray-500 text-sm font-bold">{user?.fullName?.charAt(0) || 'A'}</span>
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
+              <p className="text-sm font-medium text-gray-900 truncate">{user?.fullName}</p>
               <p className="text-xs text-gray-500 truncate">Nhà bán hàng</p>
             </div>
           </div>
