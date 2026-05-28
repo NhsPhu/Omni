@@ -13,6 +13,7 @@ import {
   Store,
   LogOut,
   User
+} from 'lucide-react';
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import NotificationBell from './NotificationBell';
