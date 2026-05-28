@@ -18,7 +18,8 @@ export default function ProductForm() {
   const { id } = useParams<{ id: string }>();
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const { shopId } = useAuthStore();
+  const [fileList, setFileList] = useState<any[]>([]);
+  const { shopId, token } = useAuthStore();
 
   useEffect(() => {
     api.get('/categories').then(res => {
@@ -45,6 +46,14 @@ export default function ProductForm() {
             });
             setSkus([]);
           }
+        }
+        if (p.images && p.images.length > 0) {
+          setFileList(p.images.map((img: any, idx: number) => ({
+            uid: `-${idx}`,
+            name: `image-${idx}.jpg`,
+            status: 'done',
+            url: `http://localhost:8080${img.imageUrl}` // Storefront/Backend prefix if needed, or just img.imageUrl if it's absolute
+          })));
         }
       }).catch(e => console.error(e));
     }
@@ -162,7 +171,22 @@ export default function ProductForm() {
       content: (
         <div className="max-w-2xl mt-8">
           <Form.Item label="Hình ảnh sản phẩm (Tối đa 9 ảnh)">
-            <Dragger multiple listType="picture" maxCount={9} action="/upload">
+            <Dragger 
+              multiple 
+              listType="picture" 
+              maxCount={9} 
+              action="http://localhost:8080/api/upload"
+              headers={{ Authorization: `Bearer ${token}` }}
+              fileList={fileList}
+              onChange={(info) => {
+                setFileList(info.fileList);
+                if (info.file.status === 'done') {
+                  message.success(`${info.file.name} tải lên thành công.`);
+                } else if (info.file.status === 'error') {
+                  message.error(`${info.file.name} tải lên thất bại.`);
+                }
+              }}
+            >
               <p className="ant-upload-drag-icon">
                 <InboxOutlined />
               </p>
@@ -263,7 +287,11 @@ export default function ProductForm() {
           stockQuantity: values.stock || 0,
           attributes: {}
         }],
-        images: []
+        images: fileList.map((file, idx) => ({
+          imageUrl: file.response?.url || file.url?.replace('http://localhost:8080', ''),
+          isPrimary: idx === 0,
+          sortOrder: idx
+        })).filter(img => img.imageUrl)
       };
 
       if (id) {

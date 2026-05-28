@@ -43,6 +43,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/categories/**", "/api/products/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**", "/error").permitAll()
+                .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/api/upload").authenticated()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
