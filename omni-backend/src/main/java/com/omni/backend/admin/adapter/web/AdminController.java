@@ -64,10 +64,10 @@ public class AdminController {
             shop.setApprovedAt(ZonedDateTime.now());
             shop.setApprovedBy(getAdminId(authentication));
             
-            // Upgrade user role to PARTNER
+            // Upgrade user role to VENDOR
             UserJpaEntity owner = userRepository.findById(shop.getOwnerId())
                     .orElseThrow(() -> new RuntimeException("Owner not found"));
-            owner.setRole(com.omni.backend.iam.domain.Role.PARTNER);
+            owner.setRole(com.omni.backend.iam.domain.Role.ROLE_VENDOR);
             userRepository.save(owner);
         } else {
             shop.setStatus("REJECTED"); // Or whatever the rejection status is
