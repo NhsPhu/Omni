@@ -5,8 +5,10 @@ import SearchBar from "@/components/ui/SearchBar";
 import Button from "@/components/ui/Button";
 import { popularSearches, trustStats } from "@/data/mock";
 import * as LucideIcons from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function HeroSection() {
+  const router = useRouter();
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden" style={{ background: "var(--grad-hero)" }}>
 
@@ -63,7 +65,8 @@ export default function HeroSection() {
           className="flex flex-wrap justify-center gap-2 items-center">
           <span className="text-sm" style={{ color: "var(--text-muted)" }}>Phổ biến:</span>
           {popularSearches.slice(0, 5).map(term => (
-            <button key={term} className="px-3 py-1 text-sm rounded-full glass transition-all duration-200 cursor-pointer"
+            <button key={term} onClick={() => router.push(`/search?q=${encodeURIComponent(term)}`)}
+              className="px-3 py-1 text-sm rounded-full glass transition-all duration-200 cursor-pointer"
               style={{ color: "var(--text-secondary)", border: "1px solid var(--border)" }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-gold)"; (e.currentTarget as HTMLElement).style.color = "var(--gold)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}>
@@ -75,10 +78,10 @@ export default function HeroSection() {
         {/* CTAs */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }}
           className="flex flex-col sm:flex-row gap-3">
-          <Button variant="gold" size="lg" className="shadow-[0_8px_40px_rgba(245,158,11,0.35)]">
+          <Button onClick={() => router.push('/search')} variant="gold" size="lg" className="shadow-[0_8px_40px_rgba(245,158,11,0.35)]">
             Khám phá ngay <ArrowRight className="w-5 h-5" />
           </Button>
-          <Button variant="glass" size="lg">Bắt đầu bán hàng</Button>
+          <Button onClick={() => router.push('/seller')} variant="glass" size="lg">Bắt đầu bán hàng</Button>
         </motion.div>
 
         {/* Trust stats */}
