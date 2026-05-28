@@ -4,6 +4,7 @@ import com.omni.backend.iam.adapter.persistence.entity.ShopJpaEntity;
 import com.omni.backend.iam.adapter.persistence.repository.ShopRepository;
 import com.omni.backend.iam.application.dto.ShopRegistrationDto;
 import com.omni.backend.iam.application.dto.ShopResponseDto;
+import com.omni.backend.iam.application.dto.ShopUpdateDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,6 +81,23 @@ public class ShopService {
         return shopRepository.findByOwnerId(ownerId)
                 .map(this::mapToDto)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shop not found for this user"));
+    }
+
+    @Transactional
+    public ShopResponseDto updateShop(UUID ownerId, ShopUpdateDto dto) {
+        ShopJpaEntity shop = shopRepository.findByOwnerId(ownerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shop not found for this user"));
+
+        shop.setName(dto.getName());
+        shop.setDescription(dto.getDescription());
+        shop.setAddress(dto.getAddress());
+        shop.setPickupAddress(dto.getPickupAddress());
+        shop.setBankName(dto.getBankName());
+        shop.setBankAccountNumber(dto.getBankAccountNumber());
+        shop.setBankAccountName(dto.getBankAccountName());
+
+        ShopJpaEntity updated = shopRepository.save(shop);
+        return mapToDto(updated);
     }
 
     private ShopResponseDto mapToDto(ShopJpaEntity entity) {

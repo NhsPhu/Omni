@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
 import Link from "next/link";
 import api from "@/lib/axios";
+import { useCartStore } from "@/store/cartStore";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
@@ -83,6 +84,7 @@ export default function CartPage() {
     setItems(prev => prev.map(it => it.id === id ? { ...it, quantity: Math.max(1, Math.min(it.stock, qty)) } : it));
     try {
       await api.put(`/cart/items/${id}?quantity=${qty}`);
+      useCartStore.getState().fetchCart();
     } catch (e) {
       toast.error("Lỗi cập nhật số lượng");
       fetchCart(); // revert
@@ -93,6 +95,7 @@ export default function CartPage() {
     setItems(prev => prev.filter(it => it.id !== id));
     try {
       await api.delete(`/cart/items/${id}`);
+      useCartStore.getState().fetchCart();
       toast.success("Đã xóa khỏi giỏ hàng");
     } catch (e) {
       toast.error("Lỗi xóa sản phẩm");

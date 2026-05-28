@@ -8,12 +8,14 @@ interface User {
   fullName: string;
   role: string;
   exp: number;
+  avatarUrl?: string;
 }
 
 interface AuthState {
   token: string | null;
   user: User | null;
   setToken: (token: string) => void;
+  updateUser: (data: Partial<User>) => void;
   logout: () => void;
   isAuthenticated: () => boolean;
 }
@@ -25,12 +27,27 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       setToken: (token: string) => {
         try {
-          const decoded = jwtDecode<User>(token);
-          set({ token, user: decoded });
+          const decoded = jwtDecode<any>(token);
+          // Map sub to email if email claim doesn't exist
+          const existingAvatar = get().user?.avatarUrl;
+          const user: User = {
+            id: decoded.userId || decoded.id || "",
+            email: decoded.email || decoded.sub || "",
+            fullName: decoded.fullName || "",
+            role: decoded.role || "ROLE_CUSTOMER",
+            exp: decoded.exp,
+            avatarUrl: existingAvatar
+          };
+          set({ token, user });
           localStorage.setItem("omni_token", token);
         } catch (error) {
           console.error("Invalid token", error);
         }
+      },
+      updateUser: (data: Partial<User>) => {
+        set((state) => ({
+          user: state.user ? { ...state.user, ...data } : null
+        }));
       },
       logout: () => {
         set({ token: null, user: null });

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
@@ -33,6 +34,12 @@ public class PublicProductController {
         
         Page<ProductDocument> results = productSearchService.searchProducts(keyword, categoryId, minPrice, maxPrice, page, size);
         return ResponseEntity.ok(results);
+    }
+
+    @GetMapping("/featured")
+    public ResponseEntity<List<ProductDocument>> getFeaturedProducts(
+            @RequestParam(defaultValue = "bestseller") String tab) {
+        return ResponseEntity.ok(productService.getFeaturedProducts(tab));
     }
 
     @GetMapping("/{id}")

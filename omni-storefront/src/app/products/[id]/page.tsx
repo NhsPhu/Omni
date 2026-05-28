@@ -11,6 +11,7 @@ import api from "@/lib/axios";
 import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
+import { useCartStore } from "@/store/cartStore";
 import { toast } from "sonner";
 
 const GRADS = ["from-violet-600/80 to-indigo-600/80","from-amber-500/80 to-orange-600/80","from-purple-600/80 to-pink-600/80","from-blue-600/80 to-cyan-500/80"];
@@ -99,6 +100,7 @@ export default function ProductDetailPage() {
       quantity: qty
     }).then(() => {
       setAddedToCart(true);
+      useCartStore.getState().fetchCart();
       toast.success("Đã thêm vào giỏ hàng!");
       setTimeout(() => setAddedToCart(false), 2000);
     }).catch((e: any) => {
@@ -123,6 +125,7 @@ export default function ProductDetailPage() {
       skuId: activeSku?.id,
       quantity: qty
     }).then(() => {
+      useCartStore.getState().fetchCart();
       // Save selected SKU for checkout and redirect
       localStorage.setItem("checkout_skus", JSON.stringify([activeSku?.id]));
       router.push("/checkout");

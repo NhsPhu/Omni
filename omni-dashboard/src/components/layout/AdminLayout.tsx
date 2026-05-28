@@ -12,7 +12,8 @@ import {
   Menu as MenuIcon,
   Store,
   LogOut,
-  User
+  User,
+  Settings
 } from 'lucide-react';
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -38,6 +39,7 @@ export default function AdminLayout() {
     { key: '/finance', icon: <Wallet size={18} />, label: 'Tài chính' },
     { key: '/reviews', icon: <MessageCircle size={18} />, label: 'Đánh giá & Hỏi đáp' },
     { key: '/analytics', icon: <LineChart size={18} />, label: 'Phân tích' },
+    { key: '/settings', icon: <Settings size={18} />, label: 'Cài đặt Shop' },
   ];
 
   return (
@@ -86,7 +88,9 @@ export default function AdminLayout() {
                   { key: 'logout', icon: <LogOut size={16} />, label: 'Đăng xuất', danger: true },
                 ],
                 onClick: ({ key }) => {
-                  if (key === 'logout') {
+                  if (key === 'profile') {
+                    navigate('/settings');
+                  } else if (key === 'logout') {
                     logout();
                     navigate('/login');
                   }

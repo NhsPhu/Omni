@@ -17,8 +17,9 @@ export default function FeaturedProducts() {
   const [products, setProducts] = useState<any[]>([]);
 
   useEffect(() => {
-    // In a real app, pass the active tab as a sort/filter parameter
-    api.get("/products?size=8").then(res => setProducts(res.data.content || [])).catch(console.error);
+    api.get(`/products/featured?tab=${active}`)
+      .then(res => setProducts(res.data || []))
+      .catch(console.error);
   }, [active]);
 
   const displayed = products;

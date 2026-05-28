@@ -149,6 +149,43 @@ public class ProductService {
                         .build()); // Return lightweight DTO for list view
     }
 
+    @Transactional(readOnly = true)
+    public List<ProductDocument> getFeaturedProducts(String tab) {
+        PageRequest top8 = PageRequest.of(0, 8);
+        List<ProductJpaEntity> entities;
+        
+        if ("new".equalsIgnoreCase(tab)) {
+            entities = productRepository.findNewestProducts(top8);
+        } else if ("sale".equalsIgnoreCase(tab)) {
+            entities = productRepository.findCheapestProducts(top8);
+        } else { // bestseller or default
+            entities = productRepository.findBestSellerProducts(top8);
+        }
+
+        return entities.stream().map(this::mapToDocument).collect(Collectors.toList());
+    }
+
+    private ProductDocument mapToDocument(ProductJpaEntity product) {
+        String categoryName = categoryRepository.findById(product.getCategoryId())
+                .map(CategoryJpaEntity::getName).orElse("Unknown");
+        List<ProductSkuJpaEntity> skus = productSkuRepository.findByProductId(product.getId());
+        BigDecimal minPrice = skus.stream().map(ProductSkuJpaEntity::getPrice).min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+        BigDecimal maxPrice = skus.stream().map(ProductSkuJpaEntity::getPrice).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+
+        return ProductDocument.builder()
+                .id(product.getId())
+                .shopId(product.getShopId())
+                .categoryId(product.getCategoryId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .priceMin(minPrice)
+                .priceMax(maxPrice)
+                .avgRating(product.getAvgRating())
+                .categoryName(categoryName)
+                .shopName("Omni Shop") // Hardcoded or fetch shop
+                .build();
+    }
+
     private void saveSkusAndImages(UUID productId, ProductDto dto) {
         if (dto.getSkus() != null) {
             List<ProductSkuJpaEntity> skus = dto.getSkus().stream().map(skuDto ->
