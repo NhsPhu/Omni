@@ -31,6 +31,15 @@ export default function AdminLayout() {
     return <Navigate to="/login" replace />;
   }
 
+  if (user.role === 'ROLE_ADMIN') {
+    return <Navigate to="/admin" replace />;
+  }
+
+  if (user.role !== 'ROLE_VENDOR') {
+    window.location.href = 'http://localhost:3000/seller/register';
+    return null;
+  }
+
   const menuItems = [
     { key: '/', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
     { key: '/products', icon: <Package size={18} />, label: 'Sản phẩm' },

@@ -15,8 +15,9 @@ import {
   LogOut,
   ShieldCheck
 } from 'lucide-react';
-import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
+import { useAuthStore } from '../../store/authStore';
 
 const { Header, Sider, Content } = Layout;
 
@@ -24,6 +25,15 @@ export default function SuperAdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, token, logout } = useAuthStore();
+
+  if (!token || !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role !== 'ROLE_ADMIN') {
+    return <Navigate to="/" replace />;
+  }
 
   const menuItems = [
     { key: '/admin/reports', icon: <BarChart size={18} />, label: 'Báo cáo & Cấu hình' },
@@ -81,7 +91,13 @@ export default function SuperAdminLayout() {
                   { key: 'profile', icon: <Settings size={16} />, label: 'Cài đặt hệ thống' },
                   { type: 'divider' },
                   { key: 'logout', icon: <LogOut size={16} />, label: 'Đăng xuất', danger: true },
-                ] 
+                ],
+                onClick: ({ key }) => {
+                  if (key === 'logout') {
+                    logout();
+                    navigate('/login');
+                  }
+                }
               }} 
               placement="bottomRight"
             >

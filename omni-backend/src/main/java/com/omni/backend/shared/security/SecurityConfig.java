@@ -44,6 +44,8 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/categories/**", "/api/products/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**", "/error").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/vendor/**").hasRole("VENDOR")
                 .requestMatchers("/api/upload").authenticated()
                 .anyRequest().authenticated()
             )
