@@ -1,0 +1,33 @@
+package com.omni.backend.iam.adapter.web;
+
+import com.omni.backend.iam.application.dto.ShopRegistrationDto;
+import com.omni.backend.iam.application.dto.ShopResponseDto;
+import com.omni.backend.iam.application.service.ShopService;
+import com.omni.backend.shared.security.JwtAuthenticationToken;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/shops")
+@RequiredArgsConstructor
+public class ShopController {
+
+    private final ShopService shopService;
+
+    @PostMapping("/register")
+    public ResponseEntity<ShopResponseDto> registerShop(
+            Authentication authentication,
+            @Valid @RequestBody ShopRegistrationDto dto) {
+        
+        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
+        UUID ownerId = UUID.fromString(jwtAuth.getUserId());
+        
+        ShopResponseDto response = shopService.registerShop(ownerId, dto);
+        return ResponseEntity.ok(response);
+    }
+}
