@@ -4,6 +4,7 @@ import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import api from '../lib/axios';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
+import { jwtDecode } from "jwt-decode";
 
 const { Title } = Typography;
 
@@ -31,7 +32,14 @@ export default function Login() {
         useAuthStore.getState().setShopId('11111111-1111-1111-1111-111111111111');
       }
       
-      navigate('/');
+      // Decode to check role for routing
+      const decoded: any = jwtDecode(res.data.accessToken || res.data.token);
+      
+      if (decoded.role === 'ROLE_ADMIN') {
+        navigate('/admin/vendors');
+      } else {
+        navigate('/');
+      }
     } catch (e: any) {
       message.error(e.response?.data?.message || 'Đăng nhập thất bại. Sai tài khoản hoặc mật khẩu.');
     } finally {

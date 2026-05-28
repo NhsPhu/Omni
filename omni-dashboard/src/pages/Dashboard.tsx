@@ -26,7 +26,7 @@ export default function Dashboard() {
   const fetchOrders = async () => {
     if (!shopId) return;
     try {
-      const res = await api.get(`/vendor/orders?shopId=${shopId}`);
+      const res = await api.get(`/vendor/orders`);
       setOrders(res.data.map((o: any) => ({
         key: o.id,
         id: o.id.split('-')[0].toUpperCase(),
@@ -47,7 +47,7 @@ export default function Dashboard() {
 
   const confirmOrder = async (id: string) => {
     try {
-      await api.patch(`/vendor/orders/${id}/status?shopId=${shopId}&status=CONFIRMED`);
+      await api.patch(`/vendor/orders/${id}/status?status=CONFIRMED`);
       message.success("Đã xác nhận đơn hàng");
       fetchOrders();
     } catch(e) {
