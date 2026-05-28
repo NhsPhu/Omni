@@ -3,10 +3,14 @@ package com.omni.backend.sales.adapter.web;
 import com.omni.backend.sales.adapter.persistence.entity.ChildOrderJpaEntity;
 import com.omni.backend.sales.adapter.persistence.entity.ParentOrderJpaEntity;
 import com.omni.backend.sales.application.service.OrderService;
+import com.omni.backend.iam.adapter.persistence.repository.ShopRepository;
+import com.omni.backend.iam.adapter.persistence.entity.ShopJpaEntity;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
@@ -17,10 +21,22 @@ import java.util.UUID;
 public class OrderController {
 
     private final OrderService orderService;
+    private final ShopRepository shopRepository;
 
     private UUID getUserId(Authentication authentication) {
         com.omni.backend.shared.security.CustomUserDetails userDetails = (com.omni.backend.shared.security.CustomUserDetails) authentication.getPrincipal();
         return userDetails.getId();
+    }
+
+    private UUID getShopIdForCurrentUser(Authentication authentication) {
+        UUID userId = getUserId(authentication);
+        ShopJpaEntity shop = shopRepository.findByOwnerId(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn chưa đăng ký Shop hoặc Shop chưa được duyệt"));
+        
+        if (!"ACTIVE".equals(shop.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Shop của bạn chưa được duyệt hoặc đang bị khóa");
+        }
+        return shop.getId();
     }
 
     // --- User Endpoints ---
@@ -39,8 +55,8 @@ public class OrderController {
     // --- Vendor Endpoints ---
 
     @GetMapping("/vendor/orders")
-    public ResponseEntity<List<ChildOrderJpaEntity>> getVendorOrders(@RequestParam UUID shopId) {
-        // In real app, you'd check if the auth user actually owns this shopId
+    public ResponseEntity<List<ChildOrderJpaEntity>> getVendorOrders(Authentication authentication) {
+        UUID shopId = getShopIdForCurrentUser(authentication);
         return ResponseEntity.ok(orderService.getVendorOrders(shopId));
     }
 
@@ -48,8 +64,8 @@ public class OrderController {
     public ResponseEntity<Void> updateVendorOrderStatus(
             Authentication authentication,
             @PathVariable UUID id,
-            @RequestParam UUID shopId,
             @RequestParam String status) {
+        UUID shopId = getShopIdForCurrentUser(authentication);
         orderService.updateVendorOrderStatus(shopId, id, status, getUserId(authentication));
         return ResponseEntity.ok().build();
     }
