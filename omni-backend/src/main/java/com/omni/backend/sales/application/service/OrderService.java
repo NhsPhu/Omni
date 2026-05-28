@@ -77,8 +77,24 @@ public class OrderService {
             throw new RuntimeException("Unauthorized");
         }
 
+        validateStateMachine(childOrder.getStatus(), newStatus);
+
         changeChildOrderStatus(childOrder, newStatus, vendorUserId, "Vendor updated status");
         childOrderRepository.save(childOrder);
+    }
+
+    private void validateStateMachine(String currentStatus, String newStatus) {
+        boolean valid = switch (currentStatus) {
+            case "PENDING" -> newStatus.equals("PROCESSING") || newStatus.equals("CANCELLED");
+            case "PROCESSING" -> newStatus.equals("SHIPPED") || newStatus.equals("CANCELLED");
+            case "SHIPPED" -> newStatus.equals("DELIVERED") || newStatus.equals("RETURNED");
+            case "DELIVERED" -> newStatus.equals("COMPLETED") || newStatus.equals("RETURNED");
+            default -> false;
+        };
+
+        if (!valid) {
+            throw new IllegalStateException("Invalid order status transition from " + currentStatus + " to " + newStatus);
+        }
     }
 
     private void changeChildOrderStatus(ChildOrderJpaEntity childOrder, String newStatus, UUID changedBy, String note) {
