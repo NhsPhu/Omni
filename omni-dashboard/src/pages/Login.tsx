@@ -19,7 +19,7 @@ export default function Login() {
         email: values.email,
         password: values.password,
       });
-      setAuth(res.data.token);
+      setAuth(res.data.accessToken || res.data.token);
       message.success("Đăng nhập thành công!");
       
       // Assume getting shop for vendor
