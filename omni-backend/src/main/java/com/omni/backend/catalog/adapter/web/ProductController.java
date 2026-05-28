@@ -6,6 +6,7 @@ import com.omni.backend.iam.adapter.persistence.entity.ShopJpaEntity;
 import com.omni.backend.iam.adapter.persistence.repository.ShopRepository;
 import com.omni.backend.shared.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -38,6 +39,16 @@ public class ProductController {
         if (!product.getShopId().equals(shopId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền thao tác trên sản phẩm này");
         }
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<ProductDto>> getMyProducts(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        UUID shopId = getShopIdForCurrentUser(authentication);
+        Page<ProductDto> products = productService.getProductsByShopId(shopId, page, size);
+        return ResponseEntity.ok(products);
     }
 
     @PostMapping
