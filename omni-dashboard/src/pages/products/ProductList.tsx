@@ -15,15 +15,15 @@ export default function ProductList() {
   const { shopId } = useAuthStore();
 
   const fetchProducts = async () => {
-    if (!shopId) return;
     setLoading(true);
     try {
-      const res = await api.get(`/products/shops/${shopId}?size=100`);
+      const res = await api.get(`/vendor/products?size=100`);
       setProducts(res.data.content.map((p: any) => ({
         key: p.id,
-        id: p.id.split('-')[0].toUpperCase(),
+        id: p.id,
+        shortId: p.id.split('-')[0].toUpperCase(),
         name: p.name,
-        category: p.categoryId,
+        category: p.categoryName || p.categoryId,
         price: p.price,
         stock: p.stock,
         sales: 0,
@@ -39,7 +39,37 @@ export default function ProductList() {
 
   useEffect(() => {
     fetchProducts();
-  }, [shopId]);
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    Modal.confirm({
+      title: 'Xác nhận xóa',
+      content: 'Bạn có chắc chắn muốn xóa sản phẩm này không?',
+      okText: 'Xóa',
+      cancelText: 'Hủy',
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          await api.delete(`/vendor/products/${id}`);
+          message.success('Đã xóa sản phẩm');
+          fetchProducts();
+        } catch (error) {
+          message.error('Không thể xóa sản phẩm');
+        }
+      }
+    });
+  };
+
+  const handleUpdateStatus = async (id: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'active' ? 'HIDDEN' : 'ACTIVE';
+    try {
+      await api.patch(`/vendor/products/${id}/status?status=${newStatus}`);
+      message.success(`Đã ${newStatus === 'ACTIVE' ? 'hiện' : 'ẩn'} sản phẩm`);
+      fetchProducts();
+    } catch (error) {
+      message.error('Cập nhật trạng thái thất bại');
+    }
+  };
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
@@ -53,7 +83,7 @@ export default function ProductList() {
           <img src={record.image} alt={text} className="w-10 h-10 rounded border border-gray-200 object-cover" />
           <div>
             <div className="font-medium text-gray-800 line-clamp-1 max-w-[200px]" title={text}>{text}</div>
-            <div className="text-xs text-gray-500">{record.id}</div>
+            <div className="text-xs text-gray-500">{record.shortId}</div>
           </div>
         </div>
       ),
@@ -93,13 +123,12 @@ export default function ProductList() {
       title: '',
       key: 'action',
       width: 50,
-      render: () => (
+      render: (_: any, record: any) => (
         <Dropdown menu={{ items: [
-          { key: 'edit', icon: <Edit2 size={14} />, label: 'Chỉnh sửa' },
-          { key: 'copy', icon: <Copy size={14} />, label: 'Sao chép' },
-          { key: 'hide', icon: <EyeOff size={14} />, label: 'Ẩn sản phẩm' },
+          { key: 'edit', icon: <Edit2 size={14} />, label: 'Chỉnh sửa', onClick: () => navigate(`/products/edit/${record.id}`) },
+          { key: 'status', icon: <EyeOff size={14} />, label: record.status === 'active' ? 'Ẩn sản phẩm' : 'Hiện sản phẩm', onClick: () => handleUpdateStatus(record.id, record.status) },
           { type: 'divider' },
-          { key: 'delete', icon: <Trash2 size={14} />, label: 'Xóa', danger: true },
+          { key: 'delete', icon: <Trash2 size={14} />, label: 'Xóa', danger: true, onClick: () => handleDelete(record.id) },
         ]}} trigger={['click']}>
           <Button type="text" icon={<MoreVertical size={16} />} />
         </Dropdown>

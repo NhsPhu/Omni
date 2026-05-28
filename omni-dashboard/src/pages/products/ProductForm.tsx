@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Steps, Form, Input, InputNumber, Button, Select, Upload, Switch, Table, Space, message, Row, Col } from 'antd';
 import { InboxOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { ArrowLeft, Save, Eye } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../lib/axios';
 import { useAuthStore } from '../../store/authStore';
 
@@ -15,6 +15,7 @@ export default function ProductForm() {
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const [skus, setSkus] = useState<any[]>([]);
+  const { id } = useParams<{ id: string }>();
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const { shopId } = useAuthStore();
@@ -23,7 +24,31 @@ export default function ProductForm() {
     api.get('/categories').then(res => {
       setCategories(res.data);
     }).catch(e => console.error(e));
-  }, []);
+
+    if (id) {
+      api.get(`/products/${id}`).then(res => {
+        const p = res.data;
+        form.setFieldsValue({
+          name: p.name,
+          categoryId: p.categoryId,
+          description: p.description,
+        });
+        if (p.skus && p.skus.length > 0) {
+          const hasAttributes = p.skus[0].attributes && Object.keys(p.skus[0].attributes).length > 0;
+          if (hasAttributes) {
+            setSkus(p.skus);
+          } else {
+            form.setFieldsValue({
+              price: p.skus[0].price,
+              stock: p.skus[0].stockQuantity,
+              sku: p.skus[0].skuCode
+            });
+            setSkus([]);
+          }
+        }
+      }).catch(e => console.error(e));
+    }
+  }, [id, form]);
   
   // Fake SKU generation for demo
   const generateSkus = (colors: string[], storages: string[]) => {
@@ -241,8 +266,13 @@ export default function ProductForm() {
         images: []
       };
 
-      await api.post('/vendor/products', payload);
-      message.success('Đã xuất bản sản phẩm!');
+      if (id) {
+        await api.put(`/vendor/products/${id}`, payload);
+        message.success('Đã cập nhật sản phẩm!');
+      } else {
+        await api.post('/vendor/products', payload);
+        message.success('Đã xuất bản sản phẩm!');
+      }
       navigate('/products');
     } catch (e: any) {
       console.error(e);
@@ -261,7 +291,7 @@ export default function ProductForm() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button icon={<ArrowLeft size={18} />} type="text" onClick={() => navigate('/products')} />
-          <h1 className="text-xl font-bold text-gray-800 m-0">Thêm sản phẩm mới</h1>
+          <h1 className="text-xl font-bold text-gray-800 m-0">{id ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</h1>
         </div>
         <div className="flex items-center gap-2">
           <Button icon={<Save size={16} />}>Lưu nháp</Button>

@@ -11,10 +11,9 @@ export default function OrderList() {
   const { shopId } = useAuthStore();
 
   const fetchOrders = async () => {
-    if (!shopId) return;
     setLoading(true);
     try {
-      const res = await api.get(`/vendor/orders?shopId=${shopId}`);
+      const res = await api.get('/vendor/orders');
       setOrders(res.data.map((o:any) => ({
         key: o.id,
         id: o.id.split('-')[0].toUpperCase(),
@@ -36,11 +35,11 @@ export default function OrderList() {
 
   useEffect(() => {
     fetchOrders();
-  }, [shopId]);
+  }, []);
 
   const updateStatus = async (id: string, newStatus: string) => {
     try {
-      await api.patch(`/vendor/orders/${id}/status?shopId=${shopId}&status=${newStatus}`);
+      await api.patch(`/vendor/orders/${id}/status?status=${newStatus}`);
       message.success("Cập nhật trạng thái thành công");
       fetchOrders();
     } catch(e) {

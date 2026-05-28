@@ -30,6 +30,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="products" element={<ProductList />} />
           <Route path="products/create" element={<ProductForm />} />
+          <Route path="products/edit/:id" element={<ProductForm />} />
           <Route path="orders" element={<OrderList />} />
           <Route path="vouchers" element={<VoucherList />} />
           <Route path="finance" element={<Wallet />} />
