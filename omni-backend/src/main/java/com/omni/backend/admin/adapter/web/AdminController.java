@@ -26,7 +26,8 @@ public class AdminController {
     private final UserRepository userRepository;
 
     private UUID getAdminId(Authentication authentication) {
-        return UUID.fromString(authentication.getName());
+        com.omni.backend.shared.security.CustomUserDetails userDetails = (com.omni.backend.shared.security.CustomUserDetails) authentication.getPrincipal();
+        return userDetails.getId();
     }
 
     @GetMapping("/users")
@@ -62,6 +63,12 @@ public class AdminController {
             shop.setStatus("ACTIVE");
             shop.setApprovedAt(ZonedDateTime.now());
             shop.setApprovedBy(getAdminId(authentication));
+            
+            // Upgrade user role to PARTNER
+            UserJpaEntity owner = userRepository.findById(shop.getOwnerId())
+                    .orElseThrow(() -> new RuntimeException("Owner not found"));
+            owner.setRole(com.omni.backend.iam.domain.Role.PARTNER);
+            userRepository.save(owner);
         } else {
             shop.setStatus("REJECTED"); // Or whatever the rejection status is
         }
