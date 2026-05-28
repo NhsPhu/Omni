@@ -16,8 +16,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
+import java.util.stream.Collectors;
+import com.omni.backend.sales.application.dto.VendorStatisticsDto;
 
 @Slf4j
 @Service
@@ -66,6 +71,59 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<ChildOrderJpaEntity> getVendorOrders(UUID shopId) {
         return childOrderRepository.findByShopId(shopId);
+    }
+
+    @Transactional(readOnly = true)
+    public VendorStatisticsDto getVendorStatistics(UUID shopId) {
+        List<ChildOrderJpaEntity> orders = childOrderRepository.findByShopId(shopId);
+
+        BigDecimal totalRevenue = orders.stream()
+                .filter(o -> "COMPLETED".equals(o.getStatus()) || "DELIVERED".equals(o.getStatus()))
+                .map(ChildOrderJpaEntity::getTotalAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        long newOrdersCount = orders.stream()
+                .filter(o -> o.getCreatedAt().isAfter(ZonedDateTime.now().minusDays(7)))
+                .count();
+
+        long pendingOrdersCount = orders.stream()
+                .filter(o -> "PENDING".equals(o.getStatus()))
+                .count();
+
+        // Build 7-day revenue chart
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM");
+        ZonedDateTime startOf7Days = ZonedDateTime.now().minusDays(6).withHour(0).withMinute(0).withSecond(0).withNano(0);
+
+        Map<String, List<ChildOrderJpaEntity>> ordersByDate = orders.stream()
+                .filter(o -> !o.getCreatedAt().isBefore(startOf7Days))
+                .collect(Collectors.groupingBy(o -> o.getCreatedAt().format(formatter)));
+
+        List<VendorStatisticsDto.RevenueData> chartData = java.util.stream.IntStream.rangeClosed(0, 6)
+                .mapToObj(i -> {
+                    String dateKey = startOf7Days.plusDays(i).format(formatter);
+                    List<ChildOrderJpaEntity> dailyOrders = ordersByDate.getOrDefault(dateKey, List.of());
+                    
+                    BigDecimal dailyRevenue = dailyOrders.stream()
+                            .filter(o -> "COMPLETED".equals(o.getStatus()) || "DELIVERED".equals(o.getStatus()) || "SHIPPED".equals(o.getStatus()))
+                            .map(ChildOrderJpaEntity::getTotalAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    return VendorStatisticsDto.RevenueData.builder()
+                            .date(dateKey)
+                            .revenue(dailyRevenue)
+                            .orders(dailyOrders.size())
+                            .build();
+                })
+                .toList();
+
+        return VendorStatisticsDto.builder()
+                .totalRevenue(totalRevenue)
+                .newOrdersCount(newOrdersCount)
+                .pendingOrdersCount(pendingOrdersCount)
+                .conversionRate(3.42) // Mock
+                .visitorsCount(13482) // Mock
+                .revenueChart(chartData)
+                .build();
     }
 
     @Transactional(rollbackFor = Exception.class)

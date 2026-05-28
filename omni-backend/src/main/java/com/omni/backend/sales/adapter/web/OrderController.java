@@ -60,6 +60,12 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getVendorOrders(shopId));
     }
 
+    @GetMapping("/vendor/statistics")
+    public ResponseEntity<com.omni.backend.sales.application.dto.VendorStatisticsDto> getVendorStatistics(Authentication authentication) {
+        UUID shopId = getShopIdForCurrentUser(authentication);
+        return ResponseEntity.ok(orderService.getVendorStatistics(shopId));
+    }
+
     @PatchMapping("/vendor/orders/{id}/status")
     public ResponseEntity<Void> updateVendorOrderStatus(
             Authentication authentication,
