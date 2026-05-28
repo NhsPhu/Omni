@@ -21,7 +21,17 @@ const revenueData = [
 export default function Dashboard() {
   const [timeRange, setTimeRange] = useState('7days');
   const [orders, setOrders] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
   const { shopId } = useAuthStore();
+
+  const fetchStats = async () => {
+    try {
+      const res = await api.get('/vendor/statistics');
+      setStats(res.data);
+    } catch(e) {
+      console.error('Lỗi khi lấy thống kê:', e);
+    }
+  };
 
   const fetchOrders = async () => {
     if (!shopId) return;
@@ -43,6 +53,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchOrders();
+    fetchStats();
   }, [shopId]);
 
   const confirmOrder = async (id: string) => {
@@ -101,8 +112,8 @@ export default function Dashboard() {
                 <DollarSign size={24} />
               </div>
               <Statistic 
-                title="Doanh thu" 
-                value={124300000} 
+                title="Doanh thu (7 ngày)" 
+                value={stats?.totalRevenue || 0} 
                 formatter={(val) => formatCurrency(Number(val))}
                 valueStyle={{ fontSize: '24px', fontWeight: 'bold' }}
               />
@@ -122,8 +133,8 @@ export default function Dashboard() {
                 <Package size={24} />
               </div>
               <Statistic 
-                title="Đơn hàng mới" 
-                value={461} 
+                title="Đơn hàng mới (7 ngày)" 
+                value={stats?.newOrdersCount || 0} 
                 valueStyle={{ fontSize: '24px', fontWeight: 'bold' }}
               />
             </div>
@@ -143,7 +154,7 @@ export default function Dashboard() {
               </div>
               <Statistic 
                 title="Tỷ lệ chuyển đổi" 
-                value={3.42} 
+                value={stats?.conversionRate || 3.42} 
                 precision={2}
                 suffix="%"
                 valueStyle={{ fontSize: '24px', fontWeight: 'bold' }}
@@ -165,7 +176,7 @@ export default function Dashboard() {
               </div>
               <Statistic 
                 title="Khách truy cập" 
-                value={13482} 
+                value={stats?.visitorsCount || 13482} 
                 valueStyle={{ fontSize: '24px', fontWeight: 'bold' }}
               />
             </div>
@@ -188,7 +199,7 @@ export default function Dashboard() {
           >
             <div style={{ width: '100%', height: 350 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={revenueData} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
+                <LineChart data={stats?.revenueChart || revenueData} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} dy={10} />
                   <YAxis 
@@ -225,7 +236,7 @@ export default function Dashboard() {
             title={
               <div className="flex items-center gap-2">
                 <span>Đơn hàng chờ xử lý</span>
-                <Tag color="error" className="rounded-full">{orders.filter(o => o.status === 'PENDING').length}</Tag>
+                <Tag color="error" className="rounded-full">{stats?.pendingOrdersCount || 0}</Tag>
               </div>
             }
             className="card-shadow border-none rounded-xl h-full"
