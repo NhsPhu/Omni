@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
 import java.util.UUID;
@@ -77,7 +79,7 @@ public class ShopService {
     public ShopResponseDto getShopByOwner(UUID ownerId) {
         return shopRepository.findByOwnerId(ownerId)
                 .map(this::mapToDto)
-                .orElseThrow(() -> new IllegalArgumentException("Shop not found for this user"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shop not found for this user"));
     }
 
     private ShopResponseDto mapToDto(ShopJpaEntity entity) {
