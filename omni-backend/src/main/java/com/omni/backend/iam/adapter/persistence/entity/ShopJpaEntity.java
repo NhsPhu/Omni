@@ -7,6 +7,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.ZonedDateTime;
 import java.util.UUID;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "shops")
@@ -47,6 +48,30 @@ public class ShopJpaEntity {
     
     @Column(name = "approved_by")
     private UUID approvedBy;
+    
+    @Column(columnDefinition = "TEXT")
+    private String address;
+
+    @Column(name = "pickup_address", columnDefinition = "TEXT")
+    private String pickupAddress;
+
+    @Column(name = "bank_account_number", length = 50)
+    private String bankAccountNumber;
+
+    @Column(name = "bank_name", length = 255)
+    private String bankName;
+
+    @Column(name = "bank_account_name", length = 255)
+    private String bankAccountName;
+
+    @Column(precision = 3, scale = 2)
+    private BigDecimal rating;
+
+    @Column(name = "total_sales")
+    private Integer totalSales;
+
+    @Column(name = "deleted_at")
+    private ZonedDateTime deletedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
