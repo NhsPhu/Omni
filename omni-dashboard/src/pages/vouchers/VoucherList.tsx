@@ -100,19 +100,19 @@ export default function VoucherList() {
     }
   ];
 
-  const onFinish = async (values: any) => {
-    try {
-      const payload = {
-        code: values.code,
-        discountType: values.type.toUpperCase(),
-        discountValue: values.value,
-        minOrderValue: values.minOrder,
-        maxDiscountAmount: values.maxDiscount,
-        usageLimit: values.limitToggle ? values.limit : 0,
-        validFrom: values.timeRange[0].toISOString(),
-        validTo: values.timeRange[1].toISOString(),
-      };
-      await api.post('/vendor/vouchers', payload);
+    const onFinish = async (values: any) => {
+      try {
+        const payload = {
+          code: values.code,
+          discountType: values.type === 'percent' ? 'PERCENTAGE' : 'FIXED_AMOUNT',
+          discountValue: values.value,
+          minOrderValue: values.minOrder,
+          maxDiscountAmount: values.maxDiscount,
+          usageLimit: values.limitToggle ? values.limit : 0,
+          validFrom: values.timeRange[0].toISOString(),
+          validTo: values.timeRange[1].toISOString(),
+        };
+        await api.post('/vendor/vouchers', payload);
       message.success('Đã tạo voucher thành công!');
       setOpen(false);
       form.resetFields();

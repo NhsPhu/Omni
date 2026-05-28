@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,8 +34,17 @@ public class WalletController {
         return ResponseEntity.ok(Map.of(
             "vendorId", vendorId,
             "balance", balance,
-            "currency", "VND"
+            "currency", "VND",
+            "transactions", walletService.getTransactions(vendorId)
         ));
+    }
+
+    @PostMapping("/withdraw")
+    public ResponseEntity<Void> withdraw(Authentication authentication, @RequestBody Map<String, Object> payload) {
+        UUID vendorId = getUserId(authentication);
+        BigDecimal amount = new BigDecimal(payload.get("amount").toString());
+        walletService.withdraw(vendorId, amount);
+        return ResponseEntity.ok().build();
     }
 }
 

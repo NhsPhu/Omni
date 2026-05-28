@@ -5,24 +5,37 @@ import api from '../../lib/axios';
 
 const { Option } = Select;
 
-const mockTransactions = [
-  { key: '1', id: 'TXN-001', date: '23/05/2026 14:30', desc: 'Thanh toán đơn hàng OMN-202401', type: 'income', amount: 1250000, balance: 45000000 },
-  { key: '2', id: 'TXN-002', date: '22/05/2026 09:15', desc: 'Phí hoa hồng đơn hàng OMN-202401 (5%)', type: 'fee', amount: -62500, balance: 44937500 },
-  { key: '3', id: 'TXN-003', date: '20/05/2026 16:45', desc: 'Rút tiền về tài khoản ngân hàng VCB', type: 'withdraw', amount: -10000000, balance: 34937500 },
-  { key: '4', id: 'TXN-004', date: '19/05/2026 11:20', desc: 'Thanh toán đơn hàng OMN-202400', type: 'income', amount: 3400000, balance: 44937500 },
-];
+import dayjs from 'dayjs';
 
 export default function Wallet() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [balance, setBalance] = useState(0);
+  const [transactions, setTransactions] = useState<any[]>([]);
+
+  const fetchWalletData = async () => {
+    try {
+      const res = await api.get('/vendor/wallet');
+      if (res.data) {
+        setBalance(res.data.balance || 0);
+        if (res.data.transactions) {
+          setTransactions(res.data.transactions.map((t: any) => ({
+            key: t.id,
+            id: t.id.split('-')[0].toUpperCase(),
+            date: dayjs(t.createdAt).format('DD/MM/YYYY HH:mm'),
+            desc: t.description,
+            type: t.type === 'CREDIT' ? 'income' : t.description === 'WITHDRAWAL' ? 'withdraw' : 'fee',
+            amount: t.type === 'CREDIT' ? t.amount : -t.amount,
+          })));
+        }
+      }
+    } catch (e) {
+      console.error("Wallet error:", e);
+    }
+  };
 
   useEffect(() => {
-    api.get('/vendor/wallet').then(res => {
-      if (res.data && res.data.balance) {
-        setBalance(res.data.balance);
-      }
-    }).catch(e => console.error("Wallet error:", e));
+    fetchWalletData();
   }, []);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
@@ -55,19 +68,29 @@ export default function Wallet() {
       )
     },
     { 
-      title: 'Số dư cuối', 
-      dataIndex: 'balance', 
-      key: 'balance',
-      render: (val: number) => <span className="font-medium">{formatCurrency(val)}</span>
-    },
+      title: 'Số dư biến động', 
+      dataIndex: 'amount', 
+      key: 'amount',
+      render: (val: number, record: any) => (
+        <span className={`font-semibold ${record.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+          {val > 0 ? '+' : ''}{formatCurrency(val)}
+        </span>
+      )
+    }
   ];
 
-  const handleWithdraw = () => {
-    form.validateFields().then(values => {
+  const handleWithdraw = async () => {
+    try {
+      const values = await form.validateFields();
+      await api.post('/vendor/wallet/withdraw', { amount: values.amount, bank: values.bank });
       message.success('Đã gửi yêu cầu rút tiền thành công!');
       setIsModalOpen(false);
       form.resetFields();
-    });
+      fetchWalletData();
+    } catch (e) {
+      console.error(e);
+      message.error("Có lỗi xảy ra khi rút tiền!");
+    }
   };
 
   return (
@@ -133,9 +156,9 @@ export default function Wallet() {
       >
         <Table 
           columns={columns} 
-          dataSource={mockTransactions}
+          dataSource={transactions}
           className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500"
-          pagination={false}
+          pagination={{ pageSize: 10 }}
         />
       </Card>
 

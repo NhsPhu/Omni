@@ -82,4 +82,16 @@ public class WalletService {
         transactionRepository.save(tx);
         log.info("Debited {} from wallet {}, refOrder={}", amount, wallet.getId(), referenceOrderId);
     }
+
+    @Transactional(readOnly = true)
+    public java.util.List<WalletTransactionJpaEntity> getTransactions(UUID vendorId) {
+        WalletJpaEntity wallet = getOrCreateWallet(vendorId);
+        return transactionRepository.findByWalletIdOrderByCreatedAtDesc(wallet.getId());
+    }
+
+    @Transactional
+    public void withdraw(UUID vendorId, BigDecimal amount) {
+        // Withdraw acts as a debit, description "WITHDRAWAL"
+        debit(vendorId, amount, null, "WITHDRAWAL");
+    }
 }
