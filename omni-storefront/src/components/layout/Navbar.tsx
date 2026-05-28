@@ -3,13 +3,13 @@ import { useState, useEffect } from "react";
 import { ShoppingCart, Bell, Menu, X, ChevronDown, Store, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import api from "@/lib/axios";
 import SearchBar from "@/components/ui/SearchBar";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import Button from "@/components/ui/Button";
 import { useAuthStore } from "@/store/authStore";
+import { useCartStore } from "@/store/cartStore";
 import { User as UserIcon, LogOut } from "lucide-react";
-import api from "@/lib/axios";
-
 const staticNavLinks = [
   { label: "Danh mục", href: "/#categories" },
   { label: "Flash Sale", href: "/#flash-sale" },
@@ -25,6 +25,9 @@ export default function Navbar() {
 
   const { user, isAuthenticated, logout } = useAuthStore();
   const isAuth = isAuthenticated();
+  
+  const itemCount = useCartStore(state => state.itemCount);
+  const fetchCart = useCartStore(state => state.fetchCart);
 
   useEffect(() => {
     setMounted(true);
@@ -34,6 +37,18 @@ export default function Navbar() {
     api.get("/categories")
        .then(res => setCategories(res.data))
        .catch(console.error);
+       
+    if (isAuthenticated()) {
+      fetchCart();
+      api.get("/users/profile").then(res => {
+        if (res.data) {
+          useAuthStore.getState().updateUser({ 
+            avatarUrl: res.data.avatarUrl,
+            fullName: res.data.fullName
+          });
+        }
+      }).catch(() => {});
+    }
        
     return () => window.removeEventListener("scroll", fn);
   }, []);
@@ -140,6 +155,16 @@ export default function Navbar() {
               {/* Cart */}
               <Link href="/cart" className="relative w-9 h-9 flex items-center justify-center rounded-xl glass hover:bg-glass-hover transition-all duration-200 cursor-pointer" aria-label="Giỏ hàng">
                 <ShoppingCart className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
+                {mounted && isAuth && itemCount > 0 && (
+                  <motion.span 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white rounded-full"
+                    style={{ background: "var(--grad-gold)", boxShadow: "0 2px 4px rgba(245, 158, 11, 0.4)" }}
+                  >
+                    {itemCount > 99 ? "99+" : itemCount}
+                  </motion.span>
+                )}
               </Link>
 
               <div className="hidden sm:flex items-center gap-2">
@@ -148,8 +173,12 @@ export default function Navbar() {
                 ) : isAuth ? (
                   <div className="relative group cursor-pointer">
                     <div className="flex items-center gap-2 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 rounded-xl glass hover:bg-glass-hover transition-all duration-200">
-                      <div className="w-6 h-6 rounded-full overflow-hidden" style={{ background: "var(--grad-purple)" }}>
-                        <UserIcon className="w-full h-full p-1 text-white" />
+                      <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center" style={{ background: "var(--grad-purple)" }}>
+                        {user?.avatarUrl ? (
+                          <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <UserIcon className="w-full h-full p-1 text-white" />
+                        )}
                       </div>
                       <span className="hidden sm:block text-sm font-medium" style={{ color: "var(--text-primary)" }}>{user?.fullName?.split(" ").pop() || "User"}</span>
                       <ChevronDown className="hidden sm:block w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
@@ -157,6 +186,8 @@ export default function Navbar() {
                     {/* User Dropdown */}
                     <div className="absolute top-full right-0 mt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 rounded-xl overflow-hidden z-50"
                       style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
+                      <Link href="/seller" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Kênh Người Bán</Link>
+                      <Link href="/profile" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Tài khoản của tôi</Link>
                       <Link href="/orders" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Đơn hàng của tôi</Link>
                       <button onClick={logout} className="w-full flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5 text-red-400 cursor-pointer">
                         <LogOut className="w-4 h-4" /> Đăng xuất
@@ -197,14 +228,14 @@ export default function Navbar() {
               </button>
             </div>
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-              {navLinks.map(link => (
-                <a key={link.label} href={link.href} onClick={() => setMobileOpen(false)}
+              {categories.slice(0, 5).map(link => (
+                <Link key={link.id} href={`/search?category=${link.id}`} onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 text-base font-medium rounded-xl transition-all duration-200 cursor-pointer"
                   style={{ color: "var(--text-secondary)" }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-glass)"; (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}>
-                  {link.label}
-                </a>
+                  {link.name}
+                </Link>
               ))}
             </nav>
             <div className="p-4 flex flex-col gap-2" style={{ borderTop: "1px solid var(--border)" }}>
@@ -213,14 +244,19 @@ export default function Navbar() {
               ) : isAuth ? (
                 <>
                   <div className="flex items-center gap-3 mb-2 px-2">
-                    <div className="w-10 h-10 rounded-full flex flex-shrink-0 items-center justify-center" style={{ background: "var(--grad-purple)" }}>
-                      <UserIcon className="w-6 h-6 text-white" />
+                    <div className="w-10 h-10 rounded-full flex flex-shrink-0 items-center justify-center overflow-hidden" style={{ background: "var(--grad-purple)" }}>
+                      {user?.avatarUrl ? (
+                        <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <UserIcon className="w-6 h-6 text-white" />
+                      )}
                     </div>
                     <div>
                       <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{user?.fullName}</div>
                       <div className="text-xs" style={{ color: "var(--text-muted)" }}>{user?.email}</div>
                     </div>
                   </div>
+                  <Link href="/seller" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Kênh Người Bán</Button></Link>
                   <Link href="/orders" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Đơn hàng của tôi</Button></Link>
                   <Button variant="glass" className="w-full justify-start text-red-400" onClick={() => { logout(); setMobileOpen(false); }}>Đăng xuất</Button>
                 </>
