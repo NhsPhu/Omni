@@ -13,9 +13,9 @@ import {
   Store,
   LogOut,
   User
-} from 'lucide-react';
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import NotificationBell from './NotificationBell';
 
 const { Header, Sider, Content } = Layout;
 
@@ -75,9 +75,7 @@ export default function AdminLayout() {
           />
           
           <div className="flex items-center gap-6">
-            <Badge count={3} size="small">
-              <Bell size={20} className="text-gray-500 cursor-pointer hover:text-blue-600 transition-colors" />
-            </Badge>
+            <NotificationBell />
             
             <Dropdown 
               menu={{ 

@@ -16,6 +16,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import NotificationBell from './NotificationBell';
 
 const { Header, Sider, Content } = Layout;
 
@@ -72,9 +73,7 @@ export default function SuperAdminLayout() {
           />
           
           <div className="flex items-center gap-6">
-            <Badge count={5} size="small">
-              <Bell size={20} className="text-gray-500 cursor-pointer hover:text-blue-600 transition-colors" />
-            </Badge>
+            <NotificationBell />
             
             <Dropdown 
               menu={{ 
