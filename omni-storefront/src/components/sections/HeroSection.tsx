@@ -81,7 +81,7 @@ export default function HeroSection() {
           <Button onClick={() => router.push('/search')} variant="gold" size="lg" className="shadow-[0_8px_40px_rgba(245,158,11,0.35)]">
             Khám phá ngay <ArrowRight className="w-5 h-5" />
           </Button>
-          <Button onClick={() => router.push('/seller')} variant="glass" size="lg">Bắt đầu bán hàng</Button>
+          <Button onClick={() => window.location.href = 'http://localhost:5173'} variant="glass" size="lg">Bắt đầu bán hàng</Button>
         </motion.div>
 
         {/* Trust stats */}

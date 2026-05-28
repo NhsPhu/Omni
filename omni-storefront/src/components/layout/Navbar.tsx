@@ -186,7 +186,7 @@ export default function Navbar() {
                     {/* User Dropdown */}
                     <div className="absolute top-full right-0 mt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 rounded-xl overflow-hidden z-50"
                       style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
-                      <Link href="/seller" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Kênh Người Bán</Link>
+                      <a href="http://localhost:5173" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Kênh Người Bán</a>
                       <Link href="/profile" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Tài khoản của tôi</Link>
                       <Link href="/orders" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Đơn hàng của tôi</Link>
                       <button onClick={logout} className="w-full flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5 text-red-400 cursor-pointer">
@@ -256,7 +256,7 @@ export default function Navbar() {
                       <div className="text-xs" style={{ color: "var(--text-muted)" }}>{user?.email}</div>
                     </div>
                   </div>
-                  <Link href="/seller" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Kênh Người Bán</Button></Link>
+                  <a href="http://localhost:5173" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Kênh Người Bán</Button></a>
                   <Link href="/orders" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Đơn hàng của tôi</Button></Link>
                   <Button variant="glass" className="w-full justify-start text-red-400" onClick={() => { logout(); setMobileOpen(false); }}>Đăng xuất</Button>
                 </>
