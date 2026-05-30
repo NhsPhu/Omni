@@ -46,8 +46,14 @@ export default function SellerOrdersPage() {
     }
 
     try {
-      await api.patch(`/vendor/orders/${id}/status?status=${newStatus}`);
-      setOrders(orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
+      if (newStatus === "SHIPPED") {
+        const res = await api.post(`/vendor/orders/${id}/ship`);
+        setOrders(orders.map(o => o.id === id ? { ...o, status: "SHIPPED", trackingCode: res.data.trackingCode } : o));
+        alert("Giao hàng cho GHN thành công! Mã vận đơn: " + res.data.trackingCode);
+      } else {
+        await api.patch(`/vendor/orders/${id}/status?status=${newStatus}`);
+        setOrders(orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
+      }
     } catch (err: any) {
       alert(err.response?.data?.message || "Cập nhật trạng thái thất bại!");
     }
@@ -136,6 +142,11 @@ export default function SellerOrdersPage() {
                         <span className={getStatusBadge(order.status)}>
                           {order.status}
                         </span>
+                        {order.trackingCode && (
+                          <div className="mt-2 text-xs font-mono text-gray-500 bg-gray-100 inline-block px-2 py-1 rounded">
+                            📦 {order.trackingCode}
+                          </div>
+                        )}
                       </td>
                       <td className="p-4 text-right">
                         {nextStatuses.length > 0 ? (
