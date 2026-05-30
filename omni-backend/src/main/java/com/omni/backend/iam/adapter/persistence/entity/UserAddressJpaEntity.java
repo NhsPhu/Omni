@@ -24,18 +24,26 @@ public class UserAddressJpaEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "full_name", nullable = false)
-    private String fullName;
+    @Column(name = "label")
+    private String label;
 
-    @Column(nullable = false)
-    private String phone;
+    @Column(name = "receiver_name", nullable = false)
+    private String receiverName;
 
-    @Column(nullable = false)
-    private String street;
+    @Column(name = "receiver_phone", nullable = false)
+    private String receiverPhone;
 
-    private String ward;
+    @Column(name = "province", nullable = false)
+    private String province;
+
+    @Column(name = "district", nullable = false)
     private String district;
-    private String city;
+
+    @Column(name = "ward", nullable = false)
+    private String ward;
+
+    @Column(name = "detail", nullable = false)
+    private String detail;
 
     @Column(name = "is_default")
     @Builder.Default

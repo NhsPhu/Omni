@@ -1,17 +1,16 @@
 package com.omni.backend.finance.application.service;
 
-import com.omni.backend.finance.adapter.persistence.entity.SystemCommissionJpaEntity;
-import com.omni.backend.finance.adapter.persistence.repository.SystemCommissionRepository;
+import com.omni.backend.finance.adapter.persistence.entity.CommissionSnapshotJpaEntity;
+import com.omni.backend.finance.adapter.persistence.repository.CommissionSnapshotRepository;
 import com.omni.backend.sales.adapter.persistence.entity.ChildOrderJpaEntity;
 import com.omni.backend.sales.adapter.persistence.repository.ChildOrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -20,56 +19,57 @@ public class SettlementService {
 
     private final ChildOrderRepository childOrderRepository;
     private final WalletService walletService;
-    private final SystemCommissionRepository commissionRepository;
+    private final CommissionSnapshotRepository commissionSnapshotRepository;
 
-    private static final BigDecimal PLATFORM_COMMISSION_RATE = new BigDecimal("5.00"); // 5%
+    public BigDecimal getCurrentCommissionRate() {
+        return new BigDecimal("0.0500"); // 5% default
+    }
 
-    // Runs every day at 1:00 AM
-    @Scheduled(cron = "0 0 1 * * ?")
-    @Transactional(rollbackFor = Exception.class)
-    public void processSettlements() {
-        log.info("Starting daily settlement job...");
-        
-        // Find all COMPLETED orders. In a real app, you'd add an "is_settled" flag to avoid pulling all historical orders.
-        // For simplicity, we just pull COMPLETED and check if commission already exists.
-        List<ChildOrderJpaEntity> completedOrders = childOrderRepository.findAll().stream()
-                .filter(o -> "COMPLETED".equals(o.getStatus()))
-                .toList();
-                
-        int settledCount = 0;
+    @Transactional
+    public void settle(UUID shopOrderId) {
+        // ChildOrderJpaEntity is equivalent to ShopOrder in the plan
+        ChildOrderJpaEntity order = childOrderRepository.findById(shopOrderId)
+                .orElseThrow(() -> new RuntimeException("ShopOrder not found"));
 
-        for (ChildOrderJpaEntity order : completedOrders) {
-            // Check if already settled
-            if (commissionRepository.findByOrderId(order.getId()).isPresent()) {
-                continue;
-            }
-
-            BigDecimal totalAmount = order.getTotalAmount();
-            BigDecimal commissionAmount = totalAmount.multiply(PLATFORM_COMMISSION_RATE)
-                                                     .divide(new BigDecimal("100"));
-            BigDecimal vendorAmount = totalAmount.subtract(commissionAmount);
-
-            // 1. Ghi nhận doanh thu cho hệ thống
-            SystemCommissionJpaEntity commission = SystemCommissionJpaEntity.builder()
-                    .vendorId(order.getShopId())
-                    .orderId(order.getId())
-                    .orderAmount(totalAmount)
-                    .commissionRate(PLATFORM_COMMISSION_RATE)
-                    .commissionAmount(commissionAmount)
-                    .build();
-            commissionRepository.save(commission);
-
-            // 2. Chuyển tiền (95%) vào ví của Vendor
-            walletService.credit(
-                    order.getShopId(), 
-                    vendorAmount, 
-                    order.getId(), 
-                    "Settlement for order " + order.getId()
-            );
-
-            settledCount++;
+        // Guard 1: phải đúng trạng thái DELIVERED
+        if (!"DELIVERED".equals(order.getStatus())) {
+            log.warn("Settlement skipped: order {} is {}", shopOrderId, order.getStatus());
+            return;
         }
 
-        log.info("Settlement job finished. Settled {} orders.", settledCount);
+        // Guard 2: chưa có commission snapshot
+        if (commissionSnapshotRepository.existsByShopOrderId(shopOrderId)) {
+            log.warn("Settlement skipped: snapshot already exists for {}", shopOrderId);
+            return;
+        }
+
+        BigDecimal rate = getCurrentCommissionRate();
+        
+        long orderAmount = order.getTotalAmount().longValue(); 
+        // Need to ensure getTotalAmount returns a value that can be mapped to long.
+        // Assuming totalAmount is BigDecimal in ChildOrderJpaEntity, we convert to long.
+        
+        long commissionAmount = (long) (orderAmount * rate.doubleValue());
+        long vendorAmount = orderAmount - commissionAmount;
+
+        CommissionSnapshotJpaEntity snapshot = CommissionSnapshotJpaEntity.builder()
+                .shopOrderId(shopOrderId)
+                .commissionRate(rate)
+                .orderAmount(orderAmount)
+                .commissionAmount(commissionAmount)
+                .vendorAmount(vendorAmount)
+                .settledAt(java.time.ZonedDateTime.now())
+                .build();
+        commissionSnapshotRepository.save(snapshot);
+
+        walletService.settleToVendor(shopOrderId, order.getShopId(), vendorAmount, commissionAmount);
+
+        order.setStatus("COMPLETED");
+        order.setCompletedAt(java.time.ZonedDateTime.now());
+        childOrderRepository.save(order);
+        
+        // TODO: OrderStatusHistory record and Event publishing
+
+        log.info("Settlement completed for shop_order {}", shopOrderId);
     }
 }

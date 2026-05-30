@@ -9,11 +9,12 @@ import java.util.UUID;
 @Builder
 public class AddressDto {
     private UUID id;
-    private String fullName;
-    private String phone;
-    private String street;
-    private String ward;
+    private String label;
+    private String receiverName;
+    private String receiverPhone;
+    private String province;
     private String district;
-    private String city;
+    private String ward;
+    private String detail;
     private Boolean isDefault;
 }

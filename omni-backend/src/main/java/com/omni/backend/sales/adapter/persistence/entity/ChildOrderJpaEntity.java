@@ -53,6 +53,30 @@ public class ChildOrderJpaEntity {
     @Column(nullable = false, length = 50)
     private String status; // PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
 
+    @Column(name = "tracking_code", length = 100)
+    private String trackingCode;
+
+    @Column(name = "ghn_order_code", length = 100)
+    private String ghnOrderCode;
+
+    @Column(name = "shipped_at")
+    private ZonedDateTime shippedAt;
+
+    @Column(name = "delivered_at")
+    private ZonedDateTime deliveredAt;
+
+    @Column(name = "completed_at")
+    private ZonedDateTime completedAt;
+
+    @Column(name = "cancelled_at")
+    private ZonedDateTime cancelledAt;
+
+    @Column(name = "cancel_reason", columnDefinition = "TEXT")
+    private String cancelReason;
+
+    @Column(name = "auto_complete_at")
+    private ZonedDateTime autoCompleteAt;
+
     @OneToMany(mappedBy = "childOrder", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<OrderItemJpaEntity> items = new ArrayList<>();

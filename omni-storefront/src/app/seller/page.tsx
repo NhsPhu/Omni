@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/axios";
 import { TrendingUp, Package, ShoppingCart, DollarSign } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function SellerDashboardPage() {
   const router = useRouter();
@@ -118,26 +119,42 @@ export default function SellerDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex flex-col">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Biểu đồ doanh thu 7 ngày qua</h2>
-          <div className="flex-1 min-h-[200px] flex items-end justify-between gap-2 mt-4 pt-8 border-t border-gray-100 relative">
+          <div className="flex-1 min-h-[300px] mt-4 pt-4 border-t border-gray-100">
             {vendorStats?.revenueChart && vendorStats.revenueChart.length > 0 ? (
-              vendorStats.revenueChart.map((point: any, idx: number) => {
-                const maxRev = Math.max(...vendorStats.revenueChart.map((p:any) => p.revenue));
-                const height = maxRev > 0 ? (point.revenue / maxRev) * 100 : 0;
-                return (
-                  <div key={idx} className="flex flex-col items-center flex-1 group h-full justify-end">
-                    <div className="relative w-full flex justify-center h-full items-end">
-                      <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 text-white text-xs py-1 px-2 rounded pointer-events-none whitespace-nowrap z-10 text-center">
-                        {formatCurrency(point.revenue)}<br/>{point.orders} đơn
-                      </div>
-                      <div 
-                        className="w-full max-w-[40px] bg-blue-500 rounded-t-sm hover:bg-blue-600 transition-all duration-500"
-                        style={{ height: `${Math.max(height, 5)}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-[10px] text-gray-500 mt-2 truncate w-full text-center">{point.date}</span>
-                  </div>
-                );
-              })
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={vendorStats.revenueChart} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                  <XAxis 
+                    dataKey="date" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 12, fill: '#9ca3af' }} 
+                    dy={10}
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 12, fill: '#9ca3af' }}
+                    tickFormatter={(value) => {
+                      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                      return value;
+                    }}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => [formatCurrency(value), 'Doanh thu']}
+                    labelFormatter={(label) => `Ngày ${label}`}
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                </AreaChart>
+              </ResponsiveContainer>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
                 <TrendingUp className="w-12 h-12 text-gray-300 mb-3" />

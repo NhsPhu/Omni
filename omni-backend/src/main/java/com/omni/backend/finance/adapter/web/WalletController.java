@@ -14,6 +14,9 @@ import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 
+import com.omni.backend.finance.adapter.persistence.entity.VendorWalletJpaEntity;
+import org.springframework.data.domain.PageRequest;
+
 @RestController
 @RequestMapping("/api/vendor/wallet")
 @RequiredArgsConstructor
@@ -29,21 +32,27 @@ public class WalletController {
     @GetMapping
     public ResponseEntity<Map<String, Object>> getBalance(Authentication authentication) {
         UUID vendorId = getUserId(authentication);
-        BigDecimal balance = walletService.getBalance(vendorId);
+        VendorWalletJpaEntity wallet = walletService.getVendorWallet(vendorId);
         
         return ResponseEntity.ok(Map.of(
             "vendorId", vendorId,
-            "balance", balance,
+            "availableBalance", wallet.getAvailableBalance(),
+            "pendingBalance", wallet.getPendingBalance(),
+            "totalEarned", wallet.getTotalEarned(),
             "currency", "VND",
-            "transactions", walletService.getTransactions(vendorId)
+            "transactions", walletService.getTransactionHistory(wallet.getId(), PageRequest.of(0, 50))
         ));
     }
 
     @PostMapping("/withdraw")
     public ResponseEntity<Void> withdraw(Authentication authentication, @RequestBody Map<String, Object> payload) {
         UUID vendorId = getUserId(authentication);
-        BigDecimal amount = new BigDecimal(payload.get("amount").toString());
-        walletService.withdraw(vendorId, amount);
+        long amount = Long.parseLong(payload.get("amount").toString());
+        String bankName = (String) payload.get("bankName");
+        String bankAccountNo = (String) payload.get("bankAccountNumber");
+        String bankAccountName = (String) payload.get("bankAccountName");
+        
+        walletService.requestWithdrawal(vendorId, amount, bankName, bankAccountNo, bankAccountName);
         return ResponseEntity.ok().build();
     }
 }

@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface ChildOrderRepository extends JpaRepository<ChildOrderJpaEntity, UUID> {
     List<ChildOrderJpaEntity> findByShopId(UUID shopId);
+    List<ChildOrderJpaEntity> findByParentOrderId(UUID parentOrderId);
+    ChildOrderJpaEntity findByTrackingCode(String trackingCode);
 }

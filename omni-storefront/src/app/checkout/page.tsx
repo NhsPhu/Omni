@@ -32,7 +32,7 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [showNewAddr, setShowNewAddr] = useState(false);
-  const [newAddr, setNewAddr] = useState({ fullName: "", phone: "", street: "", ward: "", district: "", city: "" });
+  const [newAddr, setNewAddr] = useState({ receiverName: "", receiverPhone: "", detail: "", ward: "", district: "", province: "" });
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
@@ -158,8 +158,8 @@ export default function CheckoutPage() {
                             {selectedAddr === a.id && <span className="text-[9px] text-black font-bold">✓</span>}
                           </div>
                           <div>
-                            <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{a.fullName} — {a.phone}</p>
-                            <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>{a.street}, {a.ward}, {a.district}, {a.city}</p>
+                            <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{a.receiverName} — {a.receiverPhone}</p>
+                            <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>{a.detail}, {a.ward}, {a.district}, {a.province}</p>
                           </div>
                         </div>
                       </div>
@@ -173,23 +173,23 @@ export default function CheckoutPage() {
                       {showNewAddr && (
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
                           <div className="grid grid-cols-2 gap-3">
-                            <input placeholder="Họ và tên" value={newAddr.fullName} onChange={e => setNewAddr({...newAddr, fullName: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
-                            <input placeholder="Số điện thoại" value={newAddr.phone} onChange={e => setNewAddr({...newAddr, phone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                            <input placeholder="Họ và tên" value={newAddr.receiverName} onChange={e => setNewAddr({...newAddr, receiverName: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                            <input placeholder="Số điện thoại" value={newAddr.receiverPhone} onChange={e => setNewAddr({...newAddr, receiverPhone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
                           </div>
-                          <input placeholder="Số nhà, Tên đường" value={newAddr.street} onChange={e => setNewAddr({...newAddr, street: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                          <input placeholder="Số nhà, Tên đường" value={newAddr.detail} onChange={e => setNewAddr({...newAddr, detail: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
                           <div className="grid grid-cols-3 gap-3">
                             <input placeholder="Phường/Xã" value={newAddr.ward} onChange={e => setNewAddr({...newAddr, ward: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
                             <input placeholder="Quận/Huyện" value={newAddr.district} onChange={e => setNewAddr({...newAddr, district: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
-                            <input placeholder="Tỉnh/Thành phố" value={newAddr.city} onChange={e => setNewAddr({...newAddr, city: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                            <input placeholder="Tỉnh/Thành phố" value={newAddr.province} onChange={e => setNewAddr({...newAddr, province: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
                           </div>
                           <Button variant="gold" className="w-full" onClick={async () => {
-                            if (!newAddr.fullName || !newAddr.phone || !newAddr.street) return toast.error("Vui lòng điền đủ thông tin bắt buộc");
+                            if (!newAddr.receiverName || !newAddr.receiverPhone || !newAddr.detail) return toast.error("Vui lòng điền đủ thông tin bắt buộc");
                             try {
                               const res = await api.post("/me/addresses", newAddr);
                               setAddresses([res.data, ...addresses]);
                               setSelectedAddr(res.data.id);
                               setShowNewAddr(false);
-                              setNewAddr({ fullName: "", phone: "", street: "", ward: "", district: "", city: "" });
+                              setNewAddr({ receiverName: "", receiverPhone: "", detail: "", ward: "", district: "", province: "" });
                               toast.success("Đã thêm địa chỉ");
                             } catch(e) {
                               toast.error("Lỗi khi thêm địa chỉ");

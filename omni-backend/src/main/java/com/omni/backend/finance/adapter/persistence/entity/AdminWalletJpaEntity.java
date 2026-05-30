@@ -2,35 +2,35 @@ package com.omni.backend.finance.adapter.persistence.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.ZonedDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "wallets")
+@Table(name = "admin_wallet")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class WalletJpaEntity {
+public class AdminWalletJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "vendor_id", nullable = false)
-    private UUID vendorId;
-
-    @Column(nullable = false, length = 10)
+    @Column(name = "total_balance")
     @Builder.Default
-    private String currency = "VND";
+    private long totalBalance = 0L;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private ZonedDateTime createdAt;
+    @Column(name = "pending_balance")
+    @Builder.Default
+    private long pendingBalance = 0L;
+
+    @Column(name = "available_balance")
+    @Builder.Default
+    private long availableBalance = 0L;
 
     @UpdateTimestamp
     @Column(name = "updated_at")

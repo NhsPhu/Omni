@@ -23,12 +23,13 @@ public class AddressController {
     private AddressDto mapToDto(UserAddressJpaEntity entity) {
         return AddressDto.builder()
                 .id(entity.getId())
-                .fullName(entity.getFullName())
-                .phone(entity.getPhone())
-                .street(entity.getStreet())
-                .ward(entity.getWard())
+                .label(entity.getLabel())
+                .receiverName(entity.getReceiverName())
+                .receiverPhone(entity.getReceiverPhone())
+                .province(entity.getProvince())
                 .district(entity.getDistrict())
-                .city(entity.getCity())
+                .ward(entity.getWard())
+                .detail(entity.getDetail())
                 .isDefault(entity.getIsDefault())
                 .build();
     }
@@ -51,12 +52,13 @@ public class AddressController {
 
         UserAddressJpaEntity entity = UserAddressJpaEntity.builder()
                 .userId(userDetails.getId())
-                .fullName(dto.getFullName())
-                .phone(dto.getPhone())
-                .street(dto.getStreet())
-                .ward(dto.getWard())
+                .label(dto.getLabel())
+                .receiverName(dto.getReceiverName())
+                .receiverPhone(dto.getReceiverPhone())
+                .province(dto.getProvince())
                 .district(dto.getDistrict())
-                .city(dto.getCity())
+                .ward(dto.getWard())
+                .detail(dto.getDetail())
                 .isDefault(dto.getIsDefault())
                 .build();
 
@@ -72,12 +74,13 @@ public class AddressController {
             unsetOtherDefaults(userDetails.getId());
         }
 
-        entity.setFullName(dto.getFullName());
-        entity.setPhone(dto.getPhone());
-        entity.setStreet(dto.getStreet());
-        entity.setWard(dto.getWard());
+        entity.setLabel(dto.getLabel());
+        entity.setReceiverName(dto.getReceiverName());
+        entity.setReceiverPhone(dto.getReceiverPhone());
+        entity.setProvince(dto.getProvince());
         entity.setDistrict(dto.getDistrict());
-        entity.setCity(dto.getCity());
+        entity.setWard(dto.getWard());
+        entity.setDetail(dto.getDetail());
         
         if (dto.getIsDefault() != null) {
             entity.setIsDefault(dto.getIsDefault());

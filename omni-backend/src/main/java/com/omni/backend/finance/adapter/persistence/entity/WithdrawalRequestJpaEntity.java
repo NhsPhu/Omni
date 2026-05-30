@@ -5,7 +5,6 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.UUID;
 
@@ -22,11 +21,14 @@ public class WithdrawalRequestJpaEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "shop_id", nullable = false)
+    private UUID shopId;
+
     @Column(name = "wallet_id", nullable = false)
     private UUID walletId;
 
-    @Column(nullable = false, precision = 15, scale = 2)
-    private BigDecimal amount;
+    @Column(nullable = false)
+    private long amount;
 
     @Column(name = "bank_name", nullable = false, length = 100)
     private String bankName;
@@ -34,17 +36,21 @@ public class WithdrawalRequestJpaEntity {
     @Column(name = "bank_account_number", nullable = false, length = 50)
     private String bankAccountNumber;
 
-    @Column(name = "bank_account_name", nullable = false, length = 100)
+    @Column(name = "bank_account_name", nullable = false, length = 255)
     private String bankAccountName;
 
-    @Column(nullable = false, length = 50)
-    private String status; // PENDING, APPROVED, REJECTED, COMPLETED
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private String status = "PENDING"; // PENDING | APPROVED | REJECTED | TRANSFERRED
 
     @Column(name = "admin_note", columnDefinition = "TEXT")
     private String adminNote;
 
-    @Column(name = "processed_at")
-    private ZonedDateTime processedAt;
+    @Column(name = "approved_by")
+    private UUID approvedBy;
+
+    @Column(name = "approved_at")
+    private ZonedDateTime approvedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
