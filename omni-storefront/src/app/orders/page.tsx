@@ -12,6 +12,9 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
+import { Modal, Form, Input, Rate } from "antd";
+
+const { TextArea } = Input;
 
 const TABS = [
   { id: "all", label: "Tất cả" },
@@ -38,6 +41,27 @@ export default function OrdersPage() {
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedItemToReview, setSelectedItemToReview] = useState<any>(null);
+  const [form] = Form.useForm();
+
+  const handleReviewSubmit = async (values: any) => {
+    try {
+      await api.post("/me/reviews", {
+        productId: selectedItemToReview.productId,
+        orderItemId: selectedItemToReview.id,
+        rating: values.rating,
+        comment: values.comment,
+        imageUrls: [] // Optional: implement image upload later
+      });
+      toast.success("Đánh giá sản phẩm thành công!");
+      setReviewModalOpen(false);
+      form.resetFields();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Lỗi khi đánh giá sản phẩm");
+    }
+  };
+
   const fetchOrders = async () => {
     try {
       const res = await api.get("/me/orders");
@@ -56,8 +80,11 @@ export default function OrdersPage() {
               createdAt: new Date(parent.createdAt).toLocaleDateString("vi-VN"),
               total: child.totalAmount,
               items: child.items?.map((it:any) => ({
+                id: it.id, // orderItemId
+                productId: it.productId,
+                skuId: it.skuId,
                 name: it.productName || ("Sản phẩm " + it.productId.substring(0, 4)),
-                price: it.price,
+                price: it.priceAtPurchase || it.price,
                 quantity: it.quantity,
                 image: it.imageUrl,
               })) || [],
@@ -172,6 +199,13 @@ export default function OrdersPage() {
                               </div>
                               <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>x{item.quantity}</p>
                             </div>
+                            {order.status === "delivered" && (
+                              <Button variant="glass" size="sm" className="ml-4" onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedItemToReview(item);
+                                setReviewModalOpen(true);
+                              }}>Đánh giá</Button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -204,7 +238,6 @@ export default function OrdersPage() {
                           {order.status === "delivered" && (
                             <>
                               <Button variant="ghost" size="sm" className="flex-1 sm:flex-none">Trả hàng</Button>
-                              <Button variant="gold" size="sm" className="flex-1 sm:flex-none">Đánh giá</Button>
                               <Button variant="glass" size="sm" className="flex-1 sm:flex-none">Mua lại</Button>
                             </>
                           )}
@@ -221,6 +254,35 @@ export default function OrdersPage() {
           </div>
         </div>
       </main>
+
+      <Modal
+        title="Đánh giá sản phẩm"
+        open={reviewModalOpen}
+        onCancel={() => setReviewModalOpen(false)}
+        onOk={() => form.submit()}
+        okText="Gửi đánh giá"
+        cancelText="Hủy"
+        okButtonProps={{ className: "bg-purple-600 hover:bg-purple-700 border-none" }}
+      >
+        {selectedItemToReview && (
+          <div className="flex gap-4 mb-4">
+            <img src={selectedItemToReview.image} alt="Product" className="w-16 h-16 rounded-xl object-cover" />
+            <div>
+              <p className="font-semibold text-sm">{selectedItemToReview.name}</p>
+              <p className="text-xs text-gray-500">{formatPrice(selectedItemToReview.price)}</p>
+            </div>
+          </div>
+        )}
+        <Form form={form} layout="vertical" onFinish={handleReviewSubmit}>
+          <Form.Item name="rating" label="Đánh giá chất lượng" rules={[{ required: true, message: 'Vui lòng chọn số sao' }]}>
+            <Rate className="text-yellow-400" />
+          </Form.Item>
+          <Form.Item name="comment" label="Nhận xét" rules={[{ required: true, message: 'Vui lòng viết nhận xét' }]}>
+            <TextArea rows={4} placeholder="Hãy chia sẻ trải nghiệm của bạn về sản phẩm này nhé..." />
+          </Form.Item>
+        </Form>
+      </Modal>
+
       <Footer />
     </>
   );

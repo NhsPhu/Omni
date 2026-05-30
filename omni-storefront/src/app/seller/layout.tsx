@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Store } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Store, Wallet } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
@@ -18,6 +18,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
     { name: "Tổng quan", href: "/seller", icon: LayoutDashboard },
     { name: "Sản phẩm", href: "/seller/products", icon: Package },
     { name: "Đơn hàng", href: "/seller/orders", icon: ShoppingBag },
+    { name: "Tài chính", href: "/seller/wallet", icon: Wallet },
     { name: "Cài đặt Shop", href: "/seller/settings", icon: Settings },
   ];
 
