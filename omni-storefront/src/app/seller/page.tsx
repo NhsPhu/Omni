@@ -11,6 +11,8 @@ export default function SellerDashboardPage() {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [shop, setShop] = useState<any>(null);
+  const [vendorStats, setVendorStats] = useState<any>(null);
+  const [activeProductsCount, setActiveProductsCount] = useState(0);
 
   useEffect(() => {
     const fetchShopInfo = async () => {
@@ -23,6 +25,16 @@ export default function SellerDashboardPage() {
         // Fetch the user's shop
         const res = await api.get(`/shops/me`);
         setShop(res.data);
+        
+        // Fetch stats if shop is active
+        if (res.data.status === "ACTIVE") {
+          const [statsRes, productsRes] = await Promise.all([
+            api.get("/vendor/statistics"),
+            api.get("/vendor/products?page=0&size=1")
+          ]);
+          setVendorStats(statsRes.data);
+          setActiveProductsCount(productsRes.data.totalElements || 0);
+        }
       } catch (err: any) {
         if (err.response?.status === 404) {
           // No shop found, redirect to registration
@@ -68,11 +80,15 @@ export default function SellerDashboardPage() {
     );
   }
 
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
+  };
+
   const stats = [
-    { title: "Tổng Doanh Thu", value: "0 ₫", icon: DollarSign, color: "text-green-600", bg: "bg-green-100" },
-    { title: "Đơn Hàng Mới", value: "0", icon: ShoppingCart, color: "text-blue-600", bg: "bg-blue-100" },
-    { title: "Đang Xử Lý", value: "0", icon: TrendingUp, color: "text-orange-600", bg: "bg-orange-100" },
-    { title: "Sản Phẩm Đang Bán", value: "0", icon: Package, color: "text-purple-600", bg: "bg-purple-100" },
+    { title: "Tổng Doanh Thu", value: formatCurrency(vendorStats?.totalRevenue || 0), icon: DollarSign, color: "text-green-600", bg: "bg-green-100" },
+    { title: "Đơn Hàng Mới", value: `${vendorStats?.newOrdersCount || 0}`, icon: ShoppingCart, color: "text-blue-600", bg: "bg-blue-100" },
+    { title: "Đang Xử Lý", value: `${vendorStats?.pendingOrdersCount || 0}`, icon: TrendingUp, color: "text-orange-600", bg: "bg-orange-100" },
+    { title: "Sản Phẩm Đang Bán", value: `${activeProductsCount}`, icon: Package, color: "text-purple-600", bg: "bg-purple-100" },
   ];
 
   return (
@@ -100,12 +116,34 @@ export default function SellerDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Orders Placeholder */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Đơn hàng gần đây</h2>
-          <div className="text-center py-10 text-gray-500">
-            <ShoppingCart className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p>Chưa có đơn hàng nào.</p>
+        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex flex-col">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Biểu đồ doanh thu 7 ngày qua</h2>
+          <div className="flex-1 min-h-[200px] flex items-end justify-between gap-2 mt-4 pt-8 border-t border-gray-100 relative">
+            {vendorStats?.revenueChart && vendorStats.revenueChart.length > 0 ? (
+              vendorStats.revenueChart.map((point: any, idx: number) => {
+                const maxRev = Math.max(...vendorStats.revenueChart.map((p:any) => p.revenue));
+                const height = maxRev > 0 ? (point.revenue / maxRev) * 100 : 0;
+                return (
+                  <div key={idx} className="flex flex-col items-center flex-1 group h-full justify-end">
+                    <div className="relative w-full flex justify-center h-full items-end">
+                      <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 text-white text-xs py-1 px-2 rounded pointer-events-none whitespace-nowrap z-10 text-center">
+                        {formatCurrency(point.revenue)}<br/>{point.orders} đơn
+                      </div>
+                      <div 
+                        className="w-full max-w-[40px] bg-blue-500 rounded-t-sm hover:bg-blue-600 transition-all duration-500"
+                        style={{ height: `${Math.max(height, 5)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-[10px] text-gray-500 mt-2 truncate w-full text-center">{point.date}</span>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
+                <TrendingUp className="w-12 h-12 text-gray-300 mb-3" />
+                <p>Chưa có dữ liệu doanh thu.</p>
+              </div>
+            )}
           </div>
         </div>
 

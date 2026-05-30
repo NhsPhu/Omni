@@ -108,7 +108,7 @@ export default function SellerProductsPage() {
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button className="p-2 text-gray-400 hover:text-blue-600 transition" title="Sửa">
+                        <button onClick={() => router.push(`/seller/products/edit/${product.id}`)} className="p-2 text-gray-400 hover:text-blue-600 transition" title="Sửa">
                           <Edit className="w-4 h-4" />
                         </button>
                         <button onClick={() => handleDelete(product.id)} className="p-2 text-gray-400 hover:text-red-600 transition" title="Xóa">

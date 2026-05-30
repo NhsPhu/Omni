@@ -51,9 +51,9 @@ export default function Users() {
       key: 'user',
       render: (_: any, record: any) => (
         <div className="flex items-center gap-3">
-          <Avatar src={`https://api.dicebear.com/7.x/notionists/svg?seed=${record.name}`} />
+          <Avatar src={`https://api.dicebear.com/7.x/notionists/svg?seed=${record.fullName}`} />
           <div>
-            <div className="font-medium text-gray-800">{record.name}</div>
+            <div className="font-medium text-gray-800">{record.fullName}</div>
             <div className="text-xs text-gray-500">{record.id}</div>
           </div>
         </div>
@@ -138,7 +138,7 @@ export default function Users() {
         okButtonProps={{ danger: selectedUser?.status === 'ACTIVE' }}
       >
         <div className="mb-4 text-gray-600">
-          Bạn đang thực hiện thao tác trên tài khoản <strong>{selectedUser?.name}</strong> ({selectedUser?.email}). 
+          Bạn đang thực hiện thao tác trên tài khoản <strong>{selectedUser?.fullName}</strong> ({selectedUser?.email}). 
           Thao tác này sẽ được lưu vào Audit Log.
         </div>
         <Form form={form} layout="vertical">
@@ -157,9 +157,9 @@ export default function Users() {
         {selectedUser && (
           <div className="space-y-6">
             <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg">
-              <Avatar size={64} src={`https://api.dicebear.com/7.x/notionists/svg?seed=${selectedUser.name}`} />
+              <Avatar size={64} src={`https://api.dicebear.com/7.x/notionists/svg?seed=${selectedUser.fullName}`} />
               <div>
-                <h3 className="text-lg font-bold m-0">{selectedUser.name}</h3>
+                <h3 className="text-lg font-bold m-0">{selectedUser.fullName}</h3>
                 <div className="text-gray-500">{selectedUser.email}</div>
                 <div className="mt-1">
                   <Tag color={selectedUser.status === 'ACTIVE' ? 'success' : 'error'}>{selectedUser.status === 'ACTIVE' ? 'Hoạt động' : 'Bị khóa'}</Tag>

@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/axios";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Save, UploadCloud } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 
-export default function CreateProductPage() {
+export default function EditProductPage() {
   const router = useRouter();
+  const params = useParams();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState("");
   
   const [formData, setFormData] = useState({
@@ -23,24 +25,51 @@ export default function CreateProductPage() {
   });
 
   const [categories, setCategories] = useState<{id: string, name: string}[]>([]);
-  
-  useEffect(() => {
-    api.get("/categories").then(res => {
-      const flat: any[] = [];
-      const traverse = (cats: any[], prefix = "") => {
-        cats.forEach(c => {
-          flat.push({ id: c.id, name: prefix + c.name });
-          if (c.subCategories) traverse(c.subCategories, prefix + "-- ");
-        });
-      };
-      traverse(res.data);
-      setCategories(flat);
-      if (flat.length > 0) setFormData(f => ({ ...f, categoryId: flat[0].id }));
-    }).catch(console.error);
-  }, []);
-
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
+  const [existingImageUrl, setExistingImageUrl] = useState<string>("");
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        // Fetch categories
+        const catRes = await api.get("/categories");
+        const flat: any[] = [];
+        const traverse = (cats: any[], prefix = "") => {
+          cats.forEach(c => {
+            flat.push({ id: c.id, name: prefix + c.name });
+            if (c.subCategories) traverse(c.subCategories, prefix + "-- ");
+          });
+        };
+        traverse(catRes.data);
+        setCategories(flat);
+
+        // Fetch product
+        const prodRes = await api.get(`/public/products/${params.id}`);
+        const p = prodRes.data;
+        setFormData({
+          name: p.name,
+          description: p.description,
+          categoryId: p.categoryId,
+          brand: p.brand || "",
+          price: p.skus && p.skus.length > 0 ? p.skus[0].price : "",
+          stockQuantity: p.skus && p.skus.length > 0 ? p.skus[0].stockQuantity : "",
+        });
+        if (p.images && p.images.length > 0) {
+          setExistingImageUrl(p.images[0].imageUrl);
+          setImagePreview(p.images[0].imageUrl);
+        }
+      } catch (err: any) {
+        console.error(err);
+        setError("Không thể tải thông tin sản phẩm");
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    if (user && params.id) {
+      fetchInitialData();
+    }
+  }, [user, params.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -65,16 +94,16 @@ export default function CreateProductPage() {
     setError("");
 
     try {
-      let uploadedImageUrl = "";
+      let finalImageUrl = existingImageUrl;
 
-      // 1. Upload Image First
+      // 1. Upload Image if new one selected
       if (imageFile) {
         const formDataObj = new FormData();
         formDataObj.append("file", imageFile);
         const uploadRes = await api.post("/upload", formDataObj, {
           headers: { "Content-Type": "multipart/form-data" }
         });
-        uploadedImageUrl = uploadRes.data.url;
+        finalImageUrl = uploadRes.data.url;
       }
 
       // 2. Create Product Payload
@@ -85,20 +114,20 @@ export default function CreateProductPage() {
         brand: formData.brand || "OMNI",
         skus: [
           {
-            skuCode: `SKU-${Date.now()}`,
+            skuCode: `SKU-${Date.now()}`, // Or keep original if we had it
             price: Number(formData.price),
             stockQuantity: Number(formData.stockQuantity)
           }
         ],
-        images: uploadedImageUrl ? [
-          { imageUrl: uploadedImageUrl, isPrimary: true, sortOrder: 0 }
+        images: finalImageUrl ? [
+          { imageUrl: finalImageUrl, isPrimary: true, sortOrder: 0 }
         ] : [],
         attributes: {}
       };
 
-      // 3. Post to API
-      await api.post("/vendor/products", payload);
-      alert("Thêm sản phẩm thành công!");
+      // 3. Put to API
+      await api.put(`/vendor/products/${params.id}`, payload);
+      alert("Cập nhật sản phẩm thành công!");
       router.push("/seller/products");
     } catch (err: any) {
       console.error(err);
@@ -108,6 +137,10 @@ export default function CreateProductPage() {
     }
   };
 
+  if (initialLoading) {
+    return <div className="p-12 text-center text-gray-500">Đang tải thông tin...</div>;
+  }
+
   return (
     <div className="max-w-4xl mx-auto pb-12">
       <div className="flex items-center gap-4 mb-8">
@@ -115,8 +148,8 @@ export default function CreateProductPage() {
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Thêm sản phẩm mới</h1>
-          <p className="text-gray-500">Điền thông tin chi tiết để đăng bán sản phẩm</p>
+          <h1 className="text-2xl font-bold text-gray-900">Sửa sản phẩm</h1>
+          <p className="text-gray-500">Cập nhật thông tin chi tiết của sản phẩm</p>
         </div>
       </div>
 
@@ -181,7 +214,7 @@ export default function CreateProductPage() {
                 <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                 <button
                   type="button"
-                  onClick={() => { setImageFile(null); setImagePreview(""); }}
+                  onClick={() => { setImageFile(null); setImagePreview(""); setExistingImageUrl(""); }}
                   className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
                 >
                   ✕
@@ -262,7 +295,7 @@ export default function CreateProductPage() {
             className="bg-blue-600 text-white px-8 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
-            {loading ? "Đang lưu..." : "Lưu & Đăng bán"}
+            {loading ? "Đang lưu..." : "Cập nhật sản phẩm"}
           </button>
         </div>
       </form>

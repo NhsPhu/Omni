@@ -49,15 +49,17 @@ export default function OrdersPage() {
           parent.childOrders.forEach((child: any) => {
             mapped.push({
               id: child.id,
+              parentOrderId: parent.id,
               shopId: child.shopId,
-              shopName: "Shop " + child.shopId.substring(0, 8),
+              shopName: child.shopName || ("Shop " + child.shopId.substring(0, 8)),
               status: child.status.toLowerCase(), // 'pending', 'confirmed', 'shipping', 'delivered', 'cancelled'
               createdAt: new Date(parent.createdAt).toLocaleDateString("vi-VN"),
               total: child.totalAmount,
-              items: child.orderItems?.map((it:any) => ({
-                name: "Sản phẩm " + it.productId.substring(0, 4),
+              items: child.items?.map((it:any) => ({
+                name: it.productName || ("Sản phẩm " + it.productId.substring(0, 4)),
                 price: it.price,
                 quantity: it.quantity,
+                image: it.imageUrl,
               })) || [],
             });
           });
@@ -157,7 +159,11 @@ export default function OrdersPage() {
                         {order.items.map((item: any, idx: number) => (
                           <div key={idx} className="flex gap-4 cursor-pointer group">
                             <div className="w-20 h-20 rounded-xl overflow-hidden bg-gradient-to-br from-violet-600/80 to-indigo-600/80 flex items-center justify-center flex-shrink-0">
-                               <ShoppingBag className="w-6 h-6 text-white/20" />
+                               {item.image ? (
+                                 <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                               ) : (
+                                 <ShoppingBag className="w-6 h-6 text-white/20" />
+                               )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex justify-between items-start gap-2">
@@ -182,11 +188,12 @@ export default function OrdersPage() {
                             <>
                               <Button variant="ghost" size="sm" className="flex-1 sm:flex-none" onClick={async () => {
                                 try {
-                                  // Call to parent order cancel or child order?
-                                  // The endpoint is /me/orders/{id}/cancel which cancels parent order.
-                                  // For simplicity, we assume we just call it.
-                                  toast.error("Tính năng hủy đang phát triển");
-                                } catch(e) {}
+                                  await api.patch(`/me/orders/${order.parentOrderId}/cancel`);
+                                  toast.success("Đã hủy đơn hàng thành công");
+                                  fetchOrders();
+                                } catch(e) {
+                                  toast.error("Lỗi khi hủy đơn hàng");
+                                }
                               }}>Hủy đơn</Button>
                               <Button variant="gold" size="sm" className="flex-1 sm:flex-none">Thanh toán ngay</Button>
                             </>

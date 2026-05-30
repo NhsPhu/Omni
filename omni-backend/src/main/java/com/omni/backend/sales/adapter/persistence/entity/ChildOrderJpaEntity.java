@@ -31,6 +31,9 @@ public class ChildOrderJpaEntity {
     @Column(name = "shop_id", nullable = false)
     private UUID shopId;
 
+    @Column(name = "shop_name")
+    private String shopName;
+
     @Column(name = "shop_voucher_id")
     private UUID shopVoucherId;
 

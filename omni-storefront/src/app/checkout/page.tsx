@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Truck, CreditCard, CheckCircle, ChevronRight, ShoppingCart, Edit2 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Button from "@/components/ui/Button";
-import { mockAddresses, shippingMethods, paymentMethods } from "@/data/mock";
+import { shippingMethods, paymentMethods } from "@/data/mock";
 import { formatPrice } from "@/lib/utils";
 import * as LucideIcons from "lucide-react";
 import api from "@/lib/axios";
@@ -22,13 +22,17 @@ const STEPS = [
 
 export default function CheckoutPage() {
   const [step, setStep] = useState(1);
-  const [selectedAddr, setSelectedAddr] = useState(mockAddresses?.[0]?.id || "");
+  const [selectedAddr, setSelectedAddr] = useState("");
+  const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedShipping, setSelectedShipping] = useState(shippingMethods?.[0]?.id || "");
   const [selectedPayment, setSelectedPayment] = useState(paymentMethods?.[0]?.id || "");
   const [voucher, setVoucher] = useState("");
+  const [activeVoucher, setActiveVoucher] = useState<any>(null);
   const [placed, setPlaced] = useState(false);
   const [orderId, setOrderId] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [showNewAddr, setShowNewAddr] = useState(false);
+  const [newAddr, setNewAddr] = useState({ fullName: "", phone: "", street: "", ward: "", district: "", city: "" });
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
 
@@ -69,6 +73,14 @@ export default function CheckoutPage() {
       }).catch((e: any) => {
         if (e.response?.status !== 401 && e.response?.status !== 403) console.error(e);
       });
+      api.get("/me/addresses").then(res => {
+        setAddresses(res.data);
+        if (res.data.length > 0) {
+          const defaultAddr = res.data.find((a: any) => a.isDefault);
+          setSelectedAddr(defaultAddr ? defaultAddr.id : res.data[0].id);
+        }
+      }).catch(console.error);
+
     } catch (e) {
       console.error(e);
     }
@@ -78,7 +90,7 @@ export default function CheckoutPage() {
   const subtotal  = selectedItems.reduce((s, it) => s + it.price * it.quantity, 0);
   const shipFee   = shippingMethods.find(s => s.id === selectedShipping)?.price || 0;
   const total     = subtotal + shipFee;
-  const addr      = mockAddresses.find(a => a.id === selectedAddr);
+  const addr      = addresses.find(a => a.id === selectedAddr);
 
   if (placed) return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 text-center px-4" style={{ background: "var(--bg-base)" }}>
@@ -135,7 +147,7 @@ export default function CheckoutPage() {
                 {step === 1 && (
                   <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
                     <h2 className="text-lg font-bold font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Chọn địa chỉ giao hàng</h2>
-                    {mockAddresses.map(a => (
+                    {addresses.map(a => (
                       <div key={a.id} onClick={() => setSelectedAddr(a.id)}
                         className="p-5 rounded-2xl cursor-pointer transition-all duration-200 relative"
                         style={{ background: "var(--bg-card)", border: selectedAddr === a.id ? "2px solid var(--gold)" : "1px solid var(--border)" }}>
@@ -146,17 +158,51 @@ export default function CheckoutPage() {
                             {selectedAddr === a.id && <span className="text-[9px] text-black font-bold">✓</span>}
                           </div>
                           <div>
-                            <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{a.name} — {a.phone}</p>
+                            <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{a.fullName} — {a.phone}</p>
                             <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>{a.street}, {a.ward}, {a.district}, {a.city}</p>
                           </div>
                         </div>
                       </div>
                     ))}
-                    <button className="w-full py-3 rounded-2xl text-sm font-semibold cursor-pointer transition-colors duration-150 flex items-center justify-center gap-2"
+                    <button onClick={() => setShowNewAddr(!showNewAddr)} className="w-full py-3 rounded-2xl text-sm font-semibold cursor-pointer transition-colors duration-150 flex items-center justify-center gap-2"
                       style={{ border: "1.5px dashed var(--border)", color: "var(--text-muted)" }}>
-                      + Thêm địa chỉ mới
+                      {showNewAddr ? "- Hủy thêm địa chỉ" : "+ Thêm địa chỉ mới"}
                     </button>
-                    <Button variant="gold" className="w-full" onClick={() => setStep(2)}>
+
+                    <AnimatePresence>
+                      {showNewAddr && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
+                          <div className="grid grid-cols-2 gap-3">
+                            <input placeholder="Họ và tên" value={newAddr.fullName} onChange={e => setNewAddr({...newAddr, fullName: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                            <input placeholder="Số điện thoại" value={newAddr.phone} onChange={e => setNewAddr({...newAddr, phone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                          </div>
+                          <input placeholder="Số nhà, Tên đường" value={newAddr.street} onChange={e => setNewAddr({...newAddr, street: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                          <div className="grid grid-cols-3 gap-3">
+                            <input placeholder="Phường/Xã" value={newAddr.ward} onChange={e => setNewAddr({...newAddr, ward: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                            <input placeholder="Quận/Huyện" value={newAddr.district} onChange={e => setNewAddr({...newAddr, district: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                            <input placeholder="Tỉnh/Thành phố" value={newAddr.city} onChange={e => setNewAddr({...newAddr, city: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                          </div>
+                          <Button variant="gold" className="w-full" onClick={async () => {
+                            if (!newAddr.fullName || !newAddr.phone || !newAddr.street) return toast.error("Vui lòng điền đủ thông tin bắt buộc");
+                            try {
+                              const res = await api.post("/me/addresses", newAddr);
+                              setAddresses([res.data, ...addresses]);
+                              setSelectedAddr(res.data.id);
+                              setShowNewAddr(false);
+                              setNewAddr({ fullName: "", phone: "", street: "", ward: "", district: "", city: "" });
+                              toast.success("Đã thêm địa chỉ");
+                            } catch(e) {
+                              toast.error("Lỗi khi thêm địa chỉ");
+                            }
+                          }}>Lưu địa chỉ mới</Button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <Button variant="gold" className="w-full" onClick={() => {
+                      if (!selectedAddr) return toast.error("Vui lòng chọn địa chỉ giao hàng");
+                      setStep(2);
+                    }}>
                       Tiếp theo: Vận chuyển <ChevronRight className="w-4 h-4" />
                     </Button>
                   </motion.div>
@@ -194,8 +240,28 @@ export default function CheckoutPage() {
                         <input value={voucher} onChange={e => setVoucher(e.target.value)} placeholder="Nhập mã voucher..."
                           className="flex-1 px-4 py-3 rounded-xl text-sm outline-none bg-transparent font-[family-name:var(--font-body)]"
                           style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
-                        <Button variant="glass" onClick={() => {}}>Áp dụng</Button>
+                        <Button variant={activeVoucher ? "glass" : "gold"} onClick={async () => {
+                          if (activeVoucher) {
+                            setActiveVoucher(null);
+                            setVoucher("");
+                            return;
+                          }
+                          if (!voucher.trim()) return;
+                          try {
+                            const res = await api.get(`/public/vouchers/validate?code=${voucher.toUpperCase()}`);
+                            const v = res.data;
+                            if (subtotal < v.minOrderValue) {
+                              toast.error(`Đơn hàng tối thiểu ${formatPrice(v.minOrderValue)} để áp dụng mã này`);
+                              return;
+                            }
+                            setActiveVoucher(v);
+                            toast.success("Áp dụng mã thành công");
+                          } catch (e: any) {
+                            toast.error(e.response?.data?.message || "Mã giảm giá không hợp lệ");
+                          }
+                        }}>{activeVoucher ? "Hủy" : "Áp dụng"}</Button>
                       </div>
+                      {activeVoucher && <p className="text-xs mt-2" style={{ color: "#10B981" }}>✓ Đã áp dụng giảm {activeVoucher.discountPercent}%</p>}
                     </div>
 
                     <div className="flex gap-3">
@@ -256,10 +322,12 @@ export default function CheckoutPage() {
                       <Button variant="gold" className="flex-1" loading={loading} onClick={async () => {
                         setLoading(true);
                         try {
-                          const res = await api.post("/checkout", {
-                            shippingAddressId: "00000000-0000-0000-0000-000000000001", // Valid seeded address UUID
-                            skuIds: selectedItems.map(it => it.id)
-                          });
+                          const payload = {
+                            shippingAddressId: selectedAddr, // Valid seeded address UUID
+                            skuIds: selectedItems.map(it => it.id),
+                            platformVoucherId: activeVoucher?.id || null
+                          };
+                          const res = await api.post("/checkout", payload);
                           const parentOrderId = res.data.parentOrderId;
                           setOrderId(parentOrderId);
 
@@ -303,15 +371,23 @@ export default function CheckoutPage() {
                   ))}
                 </div>
                 <div className="space-y-2 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
-                  {[["Tạm tính", formatPrice(subtotal)], ["Vận chuyển", formatPrice(shipFee)]].map(([l, v]) => (
+                  {[
+                    ["Tạm tính", formatPrice(subtotal)], 
+                    ...(activeVoucher ? [["Giảm giá", `-${formatPrice(
+                      Math.min((subtotal * activeVoucher.discountPercent) / 100, activeVoucher.maxDiscountAmount || 999999999)
+                    )}`]] : []),
+                    ["Vận chuyển", formatPrice(shipFee)]
+                  ].map(([l, v]) => (
                     <div key={l} className="flex justify-between text-sm">
                       <span style={{ color: "var(--text-secondary)" }}>{l}</span>
-                      <span style={{ color: "var(--text-primary)" }}>{v}</span>
+                      <span className={l === "Giảm giá" ? "text-green-400" : ""} style={{ color: l === "Giảm giá" ? undefined : "var(--text-primary)" }}>{v}</span>
                     </div>
                   ))}
                   <div className="flex justify-between font-bold pt-2" style={{ borderTop: "1px solid var(--border)" }}>
                     <span style={{ color: "var(--text-primary)" }}>Tổng</span>
-                    <span className="text-gradient-gold font-[family-name:var(--font-heading)]">{formatPrice(total)}</span>
+                    <span className="text-gradient-gold font-[family-name:var(--font-heading)]">{formatPrice(
+                      subtotal + shipFee - (activeVoucher ? Math.min((subtotal * activeVoucher.discountPercent) / 100, activeVoucher.maxDiscountAmount || 999999999) : 0)
+                    )}</span>
                   </div>
                 </div>
               </div>

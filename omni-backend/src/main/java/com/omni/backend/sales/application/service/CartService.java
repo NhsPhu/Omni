@@ -7,8 +7,12 @@ import com.omni.backend.catalog.adapter.persistence.entity.ProductJpaEntity;
 import com.omni.backend.catalog.adapter.persistence.entity.ProductSkuJpaEntity;
 import com.omni.backend.catalog.adapter.persistence.repository.ProductRepository;
 import com.omni.backend.catalog.adapter.persistence.repository.ProductSkuRepository;
+import com.omni.backend.catalog.adapter.persistence.repository.ProductImageRepository;
+import com.omni.backend.catalog.adapter.persistence.entity.ProductImageJpaEntity;
 import com.omni.backend.sales.application.dto.CartDto;
 import com.omni.backend.sales.application.dto.CartItemDto;
+import com.omni.backend.iam.adapter.persistence.repository.ShopRepository;
+import com.omni.backend.iam.adapter.persistence.entity.ShopJpaEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -27,6 +31,8 @@ public class CartService {
     private final ObjectMapper objectMapper;
     private final ProductRepository productRepository;
     private final ProductSkuRepository productSkuRepository;
+    private final ProductImageRepository productImageRepository;
+    private final ShopRepository shopRepository;
 
     private static final String CART_PREFIX = "cart:";
     private static final Duration CART_TTL = Duration.ofDays(7);
@@ -74,15 +80,27 @@ public class CartService {
             // Refresh price in case it changed
             item.setPrice(sku.getPrice());
         } else {
+            String shopName = shopRepository.findById(product.getShopId())
+                    .map(ShopJpaEntity::getName)
+                    .orElse("Unknown Shop");
+            
+            // Try to find image url from product or sku
+            String primaryImage = null;
+            List<ProductImageJpaEntity> images = productImageRepository.findByProductIdOrderBySortOrderAsc(product.getId());
+            if (images != null && !images.isEmpty()) {
+                primaryImage = images.get(0).getImageUrl();
+            }
+
             items.add(CartItemDto.builder()
                     .productId(product.getId())
                     .skuId(skuId)
                     .shopId(product.getShopId())
+                    .shopName(shopName)
                     .productName(product.getName())
                     .skuCode(sku.getSkuCode())
                     .price(sku.getPrice())
                     .quantity(quantity)
-                    .imageUrl(null) // Should map primary image if needed
+                    .imageUrl(primaryImage)
                     .build());
         }
 

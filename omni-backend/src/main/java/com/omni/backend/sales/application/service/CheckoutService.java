@@ -10,6 +10,8 @@ import com.omni.backend.sales.application.dto.CartDto;
 import com.omni.backend.sales.application.dto.CartItemDto;
 import com.omni.backend.sales.application.dto.CheckoutRequest;
 import com.omni.backend.sales.application.dto.CheckoutResponse;
+import com.omni.backend.sales.adapter.persistence.entity.VoucherJpaEntity;
+import com.omni.backend.sales.adapter.persistence.repository.VoucherRepository;
 import com.omni.backend.sales.domain.event.OrderPlacedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +33,7 @@ public class CheckoutService {
     private final CartService cartService;
     private final ProductSkuRepository productSkuRepository;
     private final ParentOrderRepository parentOrderRepository;
+    private final VoucherRepository voucherRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(rollbackFor = Exception.class)
@@ -73,9 +76,11 @@ public class CheckoutService {
             List<CartItemDto> shopItems = entry.getValue();
 
             BigDecimal shopSubtotal = BigDecimal.ZERO;
+            String shopName = shopItems.isEmpty() ? "Unknown Shop" : shopItems.get(0).getShopName();
             ChildOrderJpaEntity childOrder = ChildOrderJpaEntity.builder()
                     .parentOrder(parentOrder)
                     .shopId(shopId)
+                    .shopName(shopName)
                     .status("PENDING")
                     // Note: Cần thêm logic tìm shopVoucherId nếu req gửi lên list
                     // và apply shipping_fee 
@@ -102,6 +107,8 @@ public class CheckoutService {
                         .childOrder(childOrder)
                         .productId(item.getProductId())
                         .skuId(item.getSkuId())
+                        .productName(item.getProductName())
+                        .imageUrl(item.getImageUrl())
                         .quantity(item.getQuantity())
                         .priceAtPurchase(sku.getPrice())
                         .build();
@@ -116,9 +123,26 @@ public class CheckoutService {
             grandTotal = grandTotal.add(childOrder.getTotalAmount());
         }
 
-        // Apply Platform voucher discount logic here (skip for simple demo)
+        // Apply Platform voucher discount logic here
+        BigDecimal platformDiscount = BigDecimal.ZERO;
+        if (request.getPlatformVoucherId() != null) {
+            VoucherJpaEntity voucher = voucherRepository.findById(request.getPlatformVoucherId())
+                    .orElse(null);
+            
+            if (voucher != null && voucher.getActive() && voucher.getExpiryDate().isAfter(java.time.ZonedDateTime.now())) {
+                if (grandTotal.compareTo(voucher.getMinOrderValue()) >= 0) {
+                    BigDecimal calculatedDiscount = grandTotal.multiply(voucher.getDiscountPercent()).divide(BigDecimal.valueOf(100));
+                    if (voucher.getMaxDiscountAmount() != null && calculatedDiscount.compareTo(voucher.getMaxDiscountAmount()) > 0) {
+                        calculatedDiscount = voucher.getMaxDiscountAmount();
+                    }
+                    platformDiscount = calculatedDiscount;
+                }
+            }
+        }
+
+        parentOrder.setPlatformDiscount(platformDiscount);
         parentOrder.setTotalAmount(grandTotal);
-        parentOrder.setFinalAmount(grandTotal.subtract(parentOrder.getPlatformDiscount()));
+        parentOrder.setFinalAmount(grandTotal.subtract(platformDiscount));
 
         // Lưu toàn bộ tree: Parent -> Child -> Items
         parentOrder = parentOrderRepository.save(parentOrder);

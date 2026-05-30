@@ -31,7 +31,7 @@ const GRADS = ["from-violet-600/80 to-indigo-600/80","from-amber-500/80 to-orang
 export default function CartPage() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [voucher, setVoucher] = useState("");
-  const [voucherApplied, setVoucherApplied] = useState(false);
+  const [activeVoucher, setActiveVoucher] = useState<any>(null);
   const { isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +52,7 @@ export default function CartPage() {
           newItems.push({
             id: it.skuId, // using skuId as unique cart item ID
             shopId: it.shopId,
-            shopName: "Shop " + it.shopId.substring(0, 8), // Backend doesn't return shopName in CartDto yet
+            shopName: it.shopName || ("Shop " + it.shopId.substring(0, 8)),
             name: it.productName,
             sku: it.skuCode,
             price: it.price,
@@ -106,7 +106,11 @@ export default function CartPage() {
   const allChecked = items.filter(it => it.stock > 0).every(it => it.selected);
   const selectedItems = items.filter(it => it.selected);
   const subtotal = selectedItems.reduce((s, it) => s + it.price * it.quantity, 0);
-  const discount = voucherApplied ? Math.round(subtotal * 0.1) : 0;
+  
+  const discount = activeVoucher 
+    ? Math.min((subtotal * activeVoucher.discountPercent) / 100, activeVoucher.maxDiscountAmount || 999999999) 
+    : 0;
+    
   const shipping = selectedItems.length > 0 ? 30000 : 0;
   const total = subtotal - discount + shipping;
 
@@ -233,12 +237,31 @@ export default function CartPage() {
                     <input value={voucher} onChange={e => setVoucher(e.target.value)} placeholder="Nhập mã voucher..."
                       className="flex-1 px-3 py-2 rounded-xl text-sm bg-transparent outline-none font-[family-name:var(--font-body)]"
                       style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
-                    <Button variant={voucherApplied ? "glass" : "gold"} size="sm"
-                      onClick={() => { if (voucher.trim()) setVoucherApplied(!voucherApplied); }}>
-                      {voucherApplied ? "Hủy" : "Áp dụng"}
+                    <Button variant={activeVoucher ? "glass" : "gold"} size="sm"
+                      onClick={async () => {
+                        if (activeVoucher) {
+                          setActiveVoucher(null);
+                          setVoucher("");
+                          return;
+                        }
+                        if (!voucher.trim()) return;
+                        try {
+                          const res = await api.get(`/public/vouchers/validate?code=${voucher.toUpperCase()}`);
+                          const v = res.data;
+                          if (subtotal < v.minOrderValue) {
+                            toast.error(`Đơn hàng tối thiểu ${formatPrice(v.minOrderValue)} để áp dụng mã này`);
+                            return;
+                          }
+                          setActiveVoucher(v);
+                          toast.success("Áp dụng mã thành công");
+                        } catch (e: any) {
+                          toast.error(e.response?.data?.message || "Mã giảm giá không hợp lệ");
+                        }
+                      }}>
+                      {activeVoucher ? "Hủy" : "Áp dụng"}
                     </Button>
                   </div>
-                  {voucherApplied && <p className="text-xs" style={{ color: "#10B981" }}>✓ Đã áp dụng giảm 10%</p>}
+                  {activeVoucher && <p className="text-xs" style={{ color: "#10B981" }}>✓ Đã áp dụng giảm {activeVoucher.discountPercent}%</p>}
                 </div>
 
                 {/* Summary */}
@@ -246,7 +269,7 @@ export default function CartPage() {
                   <h3 className="font-bold font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Tóm tắt đơn hàng</h3>
                   {[
                     ["Tạm tính", formatPrice(subtotal)],
-                    ...(discount > 0 ? [["Giảm giá (OMNI2026)", `-${formatPrice(discount)}`]] : []),
+                    ...(discount > 0 ? [["Giảm giá" + (activeVoucher ? ` (${activeVoucher.code})` : ""), `-${formatPrice(discount)}`]] : []),
                     ["Phí vận chuyển", selectedItems.length > 0 ? formatPrice(shipping) : "—"],
                   ].map(([label, val]) => (
                     <div key={label} className="flex items-center justify-between text-sm">
