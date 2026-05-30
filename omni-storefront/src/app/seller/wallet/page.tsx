@@ -32,7 +32,7 @@ export default function SellerWalletPage() {
 
   const handleWithdrawSubmit = async (values: any) => {
     try {
-      if (values.amount > wallet?.balance) {
+      if (values.amount > (wallet?.availableBalance || 0)) {
         toast.error("Số tiền rút không được vượt quá số dư khả dụng");
         return;
       }
@@ -76,11 +76,21 @@ export default function SellerWalletPage() {
               <span className="text-blue-100 font-medium">Số dư khả dụng</span>
             </div>
             <div className="text-4xl font-bold mb-6">
-              {formatPrice(wallet?.balance || 0)}
+              {formatPrice(wallet?.availableBalance || 0)}
+            </div>
+            <div className="flex justify-between items-center mt-4 border-t border-white/20 pt-4">
+              <div>
+                <div className="text-xs text-blue-200">Đang chờ xử lý</div>
+                <div className="font-semibold">{formatPrice(wallet?.pendingBalance || 0)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-blue-200">Tổng doanh thu</div>
+                <div className="font-semibold">{formatPrice(wallet?.totalEarned || 0)}</div>
+              </div>
             </div>
             <Button 
               variant="glass" 
-              className="w-full bg-white/20 hover:bg-white/30 text-white border-0"
+              className="w-full bg-white/20 hover:bg-white/30 text-white border-0 mt-6"
               onClick={() => setWithdrawModalOpen(true)}
             >
               <ArrowDownCircle className="w-4 h-4 mr-2" /> Rút tiền
@@ -94,19 +104,19 @@ export default function SellerWalletPage() {
           <h2 className="text-lg font-bold text-gray-900 mb-4">Lịch sử giao dịch</h2>
           
           <div className="space-y-4">
-            {(!wallet?.transactions || wallet.transactions.length === 0) ? (
+            {(!wallet?.transactions?.content || wallet.transactions.content.length === 0) ? (
               <div className="text-center py-8 text-gray-500">Chưa có giao dịch nào</div>
             ) : (
-              wallet.transactions.map((tx: any, idx: number) => (
+              wallet.transactions.content.map((tx: any, idx: number) => (
                 <div key={idx} className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      tx.type === 'IN' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'
+                      tx.type.startsWith('CREDIT') ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'
                     }`}>
-                      {tx.type === 'IN' ? <ArrowUpCircle className="w-5 h-5" /> : <ArrowDownCircle className="w-5 h-5" />}
+                      {tx.type.startsWith('CREDIT') ? <ArrowUpCircle className="w-5 h-5" /> : <ArrowDownCircle className="w-5 h-5" />}
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">{tx.description || (tx.type === 'IN' ? 'Nhận tiền từ Đơn hàng' : 'Rút tiền')}</p>
+                      <p className="font-semibold text-gray-900">{tx.note || (tx.type.startsWith('CREDIT') ? 'Nhận tiền từ Đơn hàng' : 'Rút tiền/Phí')}</p>
                       <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
                         <span>{new Date(tx.createdAt).toLocaleString('vi-VN')}</span>
                         <span>•</span>
@@ -115,8 +125,8 @@ export default function SellerWalletPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-bold ${tx.type === 'IN' ? 'text-green-600' : 'text-gray-900'}`}>
-                      {tx.type === 'IN' ? '+' : '-'}{formatPrice(tx.amount)}
+                    <p className={`font-bold ${tx.type.startsWith('CREDIT') ? 'text-green-600' : 'text-gray-900'}`}>
+                      {tx.type.startsWith('CREDIT') ? '+' : '-'}{formatPrice(tx.amount)}
                     </p>
                   </div>
                 </div>
@@ -136,7 +146,7 @@ export default function SellerWalletPage() {
         okButtonProps={{ className: "bg-blue-600 hover:bg-blue-700 border-none" }}
       >
         <div className="bg-blue-50 text-blue-800 p-3 rounded-lg text-sm mb-4">
-          Số dư khả dụng: <strong className="text-lg ml-1">{formatPrice(wallet?.balance || 0)}</strong>
+          Số dư khả dụng: <strong className="text-lg ml-1">{formatPrice(wallet?.availableBalance || 0)}</strong>
         </div>
         <Form form={form} layout="vertical" onFinish={handleWithdrawSubmit}>
           <Form.Item name="amount" label="Số tiền rút (VND)" rules={[{ required: true, message: 'Vui lòng nhập số tiền' }]}>
@@ -145,7 +155,7 @@ export default function SellerWalletPage() {
               size="large" 
               formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
               min={50000} 
-              max={wallet?.balance} 
+              max={wallet?.availableBalance || 0} 
             />
           </Form.Item>
           

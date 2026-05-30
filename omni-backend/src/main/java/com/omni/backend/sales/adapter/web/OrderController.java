@@ -75,5 +75,11 @@ public class OrderController {
         orderService.updateVendorOrderStatus(shopId, id, status, getUserId(authentication));
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/vendor/orders/{id}/ship")
+    public ResponseEntity<ChildOrderJpaEntity> shipVendorOrder(Authentication authentication, @PathVariable UUID id) {
+        UUID shopId = getShopIdForCurrentUser(authentication);
+        return ResponseEntity.ok(orderService.shipVendorOrder(shopId, id, getUserId(authentication)));
+    }
 }
 

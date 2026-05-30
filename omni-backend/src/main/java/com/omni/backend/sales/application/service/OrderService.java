@@ -33,6 +33,7 @@ public class OrderService {
     private final ChildOrderRepository childOrderRepository;
     private final OrderStatusHistoryRepository historyRepository;
     private final ProductSkuRepository productSkuRepository;
+    private final com.omni.backend.shipping.application.service.GhnShippingClient ghnShippingClient;
 
     @Transactional(readOnly = true)
     public List<ParentOrderJpaEntity> getUserOrders(UUID userId) {
@@ -139,6 +140,39 @@ public class OrderService {
 
         changeChildOrderStatus(childOrder, newStatus, vendorUserId, "Vendor updated status");
         childOrderRepository.save(childOrder);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public ChildOrderJpaEntity shipVendorOrder(UUID shopId, UUID childOrderId, UUID vendorUserId) {
+        ChildOrderJpaEntity childOrder = childOrderRepository.findById(childOrderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if (!childOrder.getShopId().equals(shopId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        if (!"PROCESSING".equals(childOrder.getStatus())) {
+            throw new IllegalStateException("Order must be in PROCESSING status to be shipped");
+        }
+
+        ParentOrderJpaEntity parent = childOrder.getParentOrder();
+        
+        // Ensure values are not null
+        String address = "Unknown Address";
+        String ward = "0000";
+        int district = 0;
+        
+        String trackingCode = ghnShippingClient.createOrder(
+            "Customer", "0900000000", address, ward, district,
+            500, 20, 15, 5, childOrder.getTotalAmount().longValue()
+        );
+
+        childOrder.setTrackingCode(trackingCode);
+        childOrder.setGhnOrderCode(trackingCode);
+        childOrder.setShippedAt(ZonedDateTime.now());
+        
+        changeChildOrderStatus(childOrder, "SHIPPED", vendorUserId, "Vendor shipped via GHN: " + trackingCode);
+        return childOrderRepository.save(childOrder);
     }
 
     private void validateStateMachine(String currentStatus, String newStatus) {
