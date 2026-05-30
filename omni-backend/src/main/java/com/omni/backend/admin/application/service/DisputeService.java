@@ -62,7 +62,9 @@ public class DisputeService {
             dispute.setRefundAmount(refundAmount);
             
             // Debit the vendor's wallet (rollback the payment/settlement)
-            walletService.debit(order.getShopId(), refundAmount, order.getId(), "Dispute Refund: " + decision);
+            // Ideally we check if settled, here we assume it's settled for a dispute
+            long refundAmountLong = refundAmount.longValue();
+            walletService.processRefund(order.getId(), order.getShopId(), refundAmountLong, true, 0L); // 0L commission assumption for now
             order.setStatus("REFUNDED");
         } else {
             dispute.setStatus("RESOLVED_VENDOR_WINS");
