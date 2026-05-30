@@ -3,6 +3,7 @@ package com.omni.backend.sales.adapter.persistence.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
@@ -23,6 +24,7 @@ public class OrderItemJpaEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "child_order_id", nullable = false)
+    @JsonIgnore
     private ChildOrderJpaEntity childOrder;
 
     @Column(name = "product_id", nullable = false)

@@ -90,4 +90,44 @@ public class GhnShippingClient {
             return "GHN_DEV_" + System.currentTimeMillis();
         }
     }
+
+    public long calculateFee(int toDistrictId, String toWardCode, int weight, int length, int width, int height) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Token", ghnApiToken);
+            headers.set("ShopId", ghnShopId);
+
+            Map<String, Object> body = new HashMap<>();
+            body.put("service_type_id", 2); // 2 = E-commerce delivery
+            body.put("to_district_id", toDistrictId);
+            body.put("to_ward_code", toWardCode);
+            body.put("weight", weight);
+            body.put("length", length);
+            body.put("width", width);
+            body.put("height", height);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    ghnApiUrl + "/shipping-order/fee",
+                    HttpMethod.POST,
+                    request,
+                    String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                JsonNode rootNode = objectMapper.readTree(response.getBody());
+                if (rootNode.has("data") && rootNode.get("data").has("total")) {
+                    return rootNode.get("data").get("total").asLong();
+                }
+            }
+            
+            return 30000L; // Fallback
+            
+        } catch (Exception e) {
+            log.error("Error calculating GHN fee", e);
+            return 30000L; // Fallback
+        }
+    }
 }

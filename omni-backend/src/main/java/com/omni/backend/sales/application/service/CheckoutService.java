@@ -35,6 +35,7 @@ public class CheckoutService {
     private final ParentOrderRepository parentOrderRepository;
     private final VoucherRepository voucherRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final com.omni.backend.shipping.application.service.GhnShippingClient ghnShippingClient;
 
     @Transactional(rollbackFor = Exception.class)
     public CheckoutResponse checkout(UUID userId, CheckoutRequest request) {
@@ -77,6 +78,7 @@ public class CheckoutService {
 
             BigDecimal shopSubtotal = BigDecimal.ZERO;
             String shopName = shopItems.isEmpty() ? "Unknown Shop" : shopItems.get(0).getShopName();
+            long shippingFee = ghnShippingClient.calculateFee(0, "0000", 500, 20, 15, 5);
             ChildOrderJpaEntity childOrder = ChildOrderJpaEntity.builder()
                     .parentOrder(parentOrder)
                     .shopId(shopId)
@@ -84,7 +86,7 @@ public class CheckoutService {
                     .status("PENDING")
                     // Note: Cần thêm logic tìm shopVoucherId nếu req gửi lên list
                     // và apply shipping_fee 
-                    .shippingFee(BigDecimal.valueOf(30000)) // Giả lập phí ship 30k
+                    .shippingFee(BigDecimal.valueOf(shippingFee)) // Gọi GHN tính phí
                     .build();
 
             for (CartItemDto item : shopItems) {

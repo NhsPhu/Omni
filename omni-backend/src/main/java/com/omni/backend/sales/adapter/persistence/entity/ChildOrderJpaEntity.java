@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
@@ -26,6 +27,7 @@ public class ChildOrderJpaEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_order_id", nullable = false)
+    @JsonIgnore
     private ParentOrderJpaEntity parentOrder;
 
     @Column(name = "shop_id", nullable = false)
