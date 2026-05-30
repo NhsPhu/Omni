@@ -20,20 +20,20 @@ public class OrderStatusHistoryJpaEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "order_id", nullable = false)
-    private UUID orderId;
+    @Column(name = "shop_order_id", nullable = false)
+    private UUID shopOrderId;
 
-    @Column(name = "order_type", nullable = false, length = 20)
-    private String orderType; // PARENT, CHILD
-
-    @Column(name = "old_status", length = 50)
+    @Column(name = "old_status", length = 30)
     private String oldStatus;
 
-    @Column(name = "new_status", nullable = false, length = 50)
+    @Column(name = "new_status", nullable = false, length = 30)
     private String newStatus;
 
-    @Column(name = "changed_by_user_id")
-    private UUID changedByUserId;
+    @Column(name = "changed_by")
+    private UUID changedBy;
+
+    @Column(length = 20)
+    private String actor;
 
     @Column(columnDefinition = "TEXT")
     private String note;

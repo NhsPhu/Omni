@@ -160,11 +160,10 @@ public class OrderService {
         childOrder.setStatus(newStatus);
         
         OrderStatusHistoryJpaEntity history = OrderStatusHistoryJpaEntity.builder()
-                .orderId(childOrder.getId())
-                .orderType("CHILD")
+                .shopOrderId(childOrder.getId())
                 .oldStatus(oldStatus)
                 .newStatus(newStatus)
-                .changedByUserId(changedBy)
+                .changedBy(changedBy)
                 .note(note)
                 .build();
         

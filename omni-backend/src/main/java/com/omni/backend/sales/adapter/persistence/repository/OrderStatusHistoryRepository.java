@@ -9,5 +9,5 @@ import java.util.UUID;
 
 @Repository
 public interface OrderStatusHistoryRepository extends JpaRepository<OrderStatusHistoryJpaEntity, UUID> {
-    List<OrderStatusHistoryJpaEntity> findByOrderIdOrderByCreatedAtDesc(UUID orderId);
+    List<OrderStatusHistoryJpaEntity> findByShopOrderIdOrderByCreatedAtDesc(UUID shopOrderId);
 }
