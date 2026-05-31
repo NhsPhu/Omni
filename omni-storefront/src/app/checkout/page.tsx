@@ -37,6 +37,15 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [ghnFee, setGhnFee] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (step === 2 && selectedAddr) {
+      api.get(`/checkout/shipping-fee?addressId=${selectedAddr}`)
+        .then(res => setGhnFee(res.data))
+        .catch(console.error);
+    }
+  }, [step, selectedAddr]);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -88,7 +97,15 @@ export default function CheckoutPage() {
 
   const selectedItems = cartItems;
   const subtotal  = selectedItems.reduce((s, it) => s + it.price * it.quantity, 0);
-  const shipFee   = shippingMethods.find(s => s.id === selectedShipping)?.price || 0;
+  
+  const displayMethods = shippingMethods.map(m => {
+    if (m.id === "standard") return { ...m, price: ghnFee !== null ? ghnFee : m.price, label: "Giao hàng tiêu chuẩn (GHN)" };
+    if (m.id === "express") return { ...m, price: ghnFee !== null ? ghnFee + 20000 : m.price, label: "Giao hàng hỏa tốc (GHN)" };
+    if (m.id === "same_day") return { ...m, price: ghnFee !== null ? ghnFee + 55000 : m.price, label: "Giao trong ngày (AhaMove)" };
+    return m;
+  });
+
+  const shipFee   = displayMethods.find(s => s.id === selectedShipping)?.price || 0;
   const total     = subtotal + shipFee;
   const addr      = addresses.find(a => a.id === selectedAddr);
 
@@ -214,7 +231,7 @@ export default function CheckoutPage() {
                     <div>
                       <h2 className="text-lg font-bold mb-4 font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Phương thức vận chuyển</h2>
                       <div className="space-y-3">
-                        {shippingMethods.map(m => (
+                        {displayMethods.map(m => (
                           <div key={m.id} onClick={() => setSelectedShipping(m.id)}
                             className="flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all duration-200"
                             style={{ background: "var(--bg-card)", border: selectedShipping === m.id ? "2px solid var(--purple)" : "1px solid var(--border)" }}>
@@ -307,12 +324,12 @@ export default function CheckoutPage() {
                       <h3 className="font-bold text-sm font-[family-name:var(--font-body)]" style={{ color: "var(--text-primary)" }}>Xác nhận đơn hàng</h3>
                       <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                         <MapPin className="w-4 h-4 flex-shrink-0" style={{ color: "var(--gold)" }} />
-                        {addr ? `${addr.street}, ${addr.ward}, ${addr.district}` : "Chưa chọn địa chỉ"}
+                        {addr ? `${addr.detail}, ${addr.ward}, ${addr.district}` : "Chưa chọn địa chỉ"}
                         <button onClick={() => setStep(1)} className="ml-auto cursor-pointer"><Edit2 className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} /></button>
                       </div>
                       <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                         <Truck className="w-4 h-4 flex-shrink-0" style={{ color: "var(--purple-light)" }} />
-                        {shippingMethods.find(s => s.id === selectedShipping)?.label || "Chưa chọn vận chuyển"}
+                        {displayMethods.find(s => s.id === selectedShipping)?.label || "Chưa chọn vận chuyển"}
                         <button onClick={() => setStep(2)} className="ml-auto cursor-pointer"><Edit2 className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} /></button>
                       </div>
                     </div>

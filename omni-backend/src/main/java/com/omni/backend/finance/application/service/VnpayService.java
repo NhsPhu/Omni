@@ -8,11 +8,15 @@ import com.omni.backend.sales.adapter.persistence.entity.ChildOrderJpaEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 @Slf4j
@@ -23,12 +27,11 @@ public class VnpayService {
     private final ParentOrderRepository parentOrderRepository;
     private final ChildOrderRepository childOrderRepository;
     private final WalletService walletService; 
-    // private final RedisTemplate<String, String> redisTemplate;
 
     private static final String VNP_PAY_URL = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
-    private static final String VNP_RETURN_URL = "http://localhost:5173/payment/callback";
+    private static final String VNP_RETURN_URL = "http://localhost:3000/payment/callback";
     private static final String VNP_TMN_CODE = "DEMO_TMN"; // Should be in config
-    private static final String VNP_HASH_SECRET = "DEMO_SECRET"; // Should be in config
+    private static final String VNP_HASH_SECRET = "DEMO_SECRET_KEY_FOR_VNPAY_SANDBOX_TESTING_ONLY"; // Should be in config
 
     public String createPaymentUrl(UUID orderId, BigDecimal amount, String ipAddress) {
         long amountInVnd = amount.longValue() * 100;
@@ -60,7 +63,9 @@ public class VnpayService {
         StringBuilder hashData = new StringBuilder();
         StringBuilder query = new StringBuilder();
         
-        for (String fieldName : fieldNames) {
+        Iterator<String> itr = fieldNames.iterator();
+        while (itr.hasNext()) {
+            String fieldName = itr.next();
             String fieldValue = vnp_Params.get(fieldName);
             if (fieldValue != null && fieldValue.length() > 0) {
                 // Build hash data
@@ -73,22 +78,20 @@ public class VnpayService {
                 query.append('=');
                 query.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII));
                 
-                if (!fieldName.equals(fieldNames.get(fieldNames.size() - 1))) {
+                if (itr.hasNext()) {
                     query.append('&');
                     hashData.append('&');
                 }
             }
         }
         
-        // Hash (Skipping actual HMAC generation here for brevity, assume simple hash or mock)
-        // String vnp_SecureHash = hmacSHA512(VNP_HASH_SECRET, hashData.toString());
-        String vnp_SecureHash = "mock_hash"; 
-        
+        String vnp_SecureHash = hmacSHA512(VNP_HASH_SECRET, hashData.toString());
         query.append("&vnp_SecureHash=").append(vnp_SecureHash);
         
         return VNP_PAY_URL + "?" + query.toString();
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public String processIpnCallback(Map<String, String> params) {
         // 1. Validate signature
         if (!validateSignature(params)) {
@@ -102,7 +105,7 @@ public class VnpayService {
         String vnpBankCode = params.get("vnp_BankCode");
 
         if (!"00".equals(vnpResponseCode)) {
-            log.info("VNPAY IPN: Transaction failed for {}", vnpTxnRef);
+            log.info("VNPAY IPN: Transaction failed for {} with code {}", vnpTxnRef, vnpResponseCode);
             return "00";
         }
 
@@ -120,40 +123,81 @@ public class VnpayService {
             return "01";
         }
 
+        // Prevent duplicate processing: if already PAID, skip
+        if ("PAID".equals(order.getStatus())) {
+            log.info("VNPAY IPN: Order {} already paid, skipping", orderId);
+            return "00";
+        }
+
         long amountInVnd = Long.parseLong(vnpAmountStr) / 100;
-        // Assume ParentOrderJpaEntity has getFinalAmount returning long
-        // If not, we might need to adjust based on exact entity methods.
-        // For now, let's assume getFinalAmount() exists.
-        // if (amountInVnd != order.getFinalAmount().longValue()) {
-        //    log.warn("VNPAY IPN: Invalid amount for order {}. Expected: {}, Received: {}", orderId, order.getFinalAmount(), amountInVnd);
-        //    return "04";
-        // }
 
-        // TODO: Redis SETNX to prevent duplicate processing
-        // Boolean isNew = redisTemplate.opsForValue().setIfAbsent("ipn:" + vnpTxnRef, "done", 24, TimeUnit.HOURS);
-        // if (Boolean.FALSE.equals(isNew)) return "00";
+        // Update parent order status to PAID
+        order.setStatus("PAID");
+        parentOrderRepository.save(order);
 
-        // if ("PAID".equals(order.getPaymentStatus())) return "00";
+        // Update all child orders to PROCESSING (seller can start fulfilling)
+        List<ChildOrderJpaEntity> children = childOrderRepository.findByParentOrderId(orderId);
+        children.forEach(child -> {
+            child.setStatus("PROCESSING");
+            childOrderRepository.save(child);
+        });
 
-        // order.setPaymentStatus("PAID");
-        // order.setPaidAt(java.time.ZonedDateTime.now());
-        // order.setVnpayBankCode(vnpBankCode);
-        // parentOrderRepository.save(order);
-
-        // List<ChildOrderJpaEntity> children = childOrderRepository.findByParentOrderId(orderId);
-        // children.forEach(child -> {
-        //     child.setStatus("PROCESSING");
-        //     childOrderRepository.save(child);
-        // });
-
+        // Credit admin wallet with pending amount
         walletService.creditAdminPending(orderId, amountInVnd);
 
-        log.info("VNPAY IPN: Successfully processed payment for order {}", orderId);
+        log.info("VNPAY IPN: Successfully processed payment for order {}. Amount: {} VND, Bank: {}", 
+                orderId, amountInVnd, vnpBankCode);
         return "00";
     }
 
     public boolean validateSignature(Map<String, String> params) {
-        // Simplified signature validation for now
-        return true;
+        String vnpSecureHash = params.get("vnp_SecureHash");
+        if (vnpSecureHash == null) return false;
+
+        // Remove hash params before re-computing
+        Map<String, String> fields = new HashMap<>(params);
+        fields.remove("vnp_SecureHash");
+        fields.remove("vnp_SecureHashType");
+
+        List<String> fieldNames = new ArrayList<>(fields.keySet());
+        Collections.sort(fieldNames);
+
+        StringBuilder hashData = new StringBuilder();
+        Iterator<String> itr = fieldNames.iterator();
+        while (itr.hasNext()) {
+            String fieldName = itr.next();
+            String fieldValue = fields.get(fieldName);
+            if (fieldValue != null && fieldValue.length() > 0) {
+                hashData.append(fieldName);
+                hashData.append('=');
+                hashData.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII));
+                if (itr.hasNext()) {
+                    hashData.append('&');
+                }
+            }
+        }
+
+        String computedHash = hmacSHA512(VNP_HASH_SECRET, hashData.toString());
+        return computedHash.equalsIgnoreCase(vnpSecureHash);
+    }
+
+    /**
+     * HMAC-SHA512 implementation for VNPay signature
+     */
+    private String hmacSHA512(String key, String data) {
+        try {
+            Mac hmac512 = Mac.getInstance("HmacSHA512");
+            SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
+            hmac512.init(secretKey);
+            byte[] bytes = hmac512.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hash = new StringBuilder();
+            for (byte b : bytes) {
+                hash.append(String.format("%02x", b));
+            }
+            return hash.toString();
+        } catch (Exception e) {
+            log.error("Error computing HMAC-SHA512", e);
+            return "";
+        }
     }
 }

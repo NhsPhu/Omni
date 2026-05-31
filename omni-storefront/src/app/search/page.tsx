@@ -275,7 +275,7 @@ function SearchContent() {
                               {p.originalPrice && <span className="text-xs line-through" style={{ color: "var(--text-muted)" }}>{formatPrice(p.originalPrice)}</span>}
                             </div>
                           </div>
-                          <Button variant="gold" size="sm" className="self-center">Mua ngay</Button>
+                          <Button variant="gold" size="sm" className="self-center" onClick={() => window.location.href = `/products/${p.id}`}>Mua ngay</Button>
                         </motion.div>
                       )
                   ))}

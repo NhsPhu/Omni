@@ -7,8 +7,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -30,6 +32,14 @@ public class CheckoutController {
         UUID userId = getUserId(authentication);
         CheckoutResponse response = checkoutService.checkout(userId, request);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/shipping-fee")
+    public ResponseEntity<Long> calculateShippingFee(
+            @RequestParam(required = false) UUID addressId) {
+        // Mock distance calculation based on address, calling GHN
+        long fee = checkoutService.calculateShippingFee(addressId);
+        return ResponseEntity.ok(fee);
     }
 }
 

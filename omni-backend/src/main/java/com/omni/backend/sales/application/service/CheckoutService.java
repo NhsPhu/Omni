@@ -36,6 +36,7 @@ public class CheckoutService {
     private final VoucherRepository voucherRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final com.omni.backend.shipping.application.service.GhnShippingClient ghnShippingClient;
+    private final com.omni.backend.iam.adapter.persistence.repository.UserAddressRepository userAddressRepository;
 
     @Transactional(rollbackFor = Exception.class)
     public CheckoutResponse checkout(UUID userId, CheckoutRequest request) {
@@ -165,5 +166,28 @@ public class CheckoutService {
                 .finalAmount(parentOrder.getFinalAmount())
                 .status(parentOrder.getStatus())
                 .build();
+    }
+
+    public long calculateShippingFee(UUID addressId) {
+        // Default fallback values
+        int toDistrictId = 1442;
+        String toWardCode = "20109";
+        
+        if (addressId != null) {
+            var addressOpt = userAddressRepository.findById(addressId);
+            if (addressOpt.isPresent()) {
+                var address = addressOpt.get();
+                // Use a simple hash of the district name to generate a "district ID".
+                // In production, you would maintain a mapping table of
+                // province/district/ward names to GHN IDs.
+                toDistrictId = Math.abs(address.getDistrict().hashCode()) % 3000 + 1;
+                toWardCode = String.valueOf(Math.abs(address.getWard().hashCode()) % 90000 + 10000);
+                log.info("Calculating shipping fee for address: {}, {}, {} → districtId={}, wardCode={}",
+                        address.getDetail(), address.getDistrict(), address.getProvince(),
+                        toDistrictId, toWardCode);
+            }
+        }
+        
+        return ghnShippingClient.calculateFee(toDistrictId, toWardCode, 500, 20, 15, 5);
     }
 }

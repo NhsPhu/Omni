@@ -78,15 +78,30 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         style={{ boxShadow: "var(--shadow-card-hover)", border: "1px solid var(--border-purple)" }} />
 
       {/* Image */}
-      <div className={`relative aspect-[4/3] overflow-hidden bg-gradient-to-br ${grad}`}>
-        {/* Noise texture overlay */}
-        <div className="absolute inset-0 opacity-20"
-          style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E\")", backgroundSize: "200px" }} />
-        
-        {/* Center icon */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <ShoppingCart className="w-10 h-10 text-white/30 group-hover:text-white/50 transition-colors duration-300" />
-        </div>
+      <div className={`relative aspect-[4/3] overflow-hidden ${!(product.image || (product as any).imageUrl) ? `bg-gradient-to-br ${grad}` : ''}`}>
+        {/* Product image or gradient fallback */}
+        {(product.image || (product as any).imageUrl) ? (
+          <img
+            src={product.image || (product as any).imageUrl}
+            alt={product.name}
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={(e) => {
+              // Hide broken image, show gradient fallback
+              (e.target as HTMLImageElement).style.display = 'none';
+              (e.target as HTMLImageElement).parentElement!.classList.add(`bg-gradient-to-br`, ...grad.split(' '));
+            }}
+          />
+        ) : (
+          <>
+            {/* Noise texture overlay */}
+            <div className="absolute inset-0 opacity-20"
+              style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E\")", backgroundSize: "200px" }} />
+            {/* Center icon */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <ShoppingCart className="w-10 h-10 text-white/30 group-hover:text-white/50 transition-colors duration-300" />
+            </div>
+          </>
+        )}
 
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
