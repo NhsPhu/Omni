@@ -1,8 +1,8 @@
 package com.omni.backend.sales.adapter.web;
 
-import com.omni.backend.sales.adapter.persistence.entity.VoucherJpaEntity;
-import com.omni.backend.sales.adapter.persistence.repository.VoucherRepository;
-import com.omni.backend.sales.application.dto.VoucherDto;
+import com.omni.backend.sales.adapter.persistence.entity.PlatformVoucherJpaEntity;
+import com.omni.backend.sales.adapter.persistence.repository.PlatformVoucherRepository;
+import com.omni.backend.sales.application.dto.PlatformVoucherDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,27 +14,32 @@ import java.time.ZonedDateTime;
 @RequiredArgsConstructor
 public class VoucherController {
 
-    private final VoucherRepository voucherRepository;
+    private final PlatformVoucherRepository platformVoucherRepository;
 
     @GetMapping("/validate")
-    public ResponseEntity<VoucherDto> validateVoucher(@RequestParam String code) {
-        VoucherJpaEntity voucher = voucherRepository.findByCodeAndActiveTrue(code)
+    public ResponseEntity<PlatformVoucherDto> validateVoucher(@RequestParam String code) {
+        PlatformVoucherJpaEntity voucher = platformVoucherRepository.findByCode(code)
                 .orElseThrow(() -> new RuntimeException("Voucher not found or inactive"));
 
-        if (voucher.getExpiryDate().isBefore(ZonedDateTime.now())) {
-            throw new RuntimeException("Voucher has expired");
+        if (voucher.getValidTo().isBefore(ZonedDateTime.now()) || voucher.getValidFrom().isAfter(ZonedDateTime.now())) {
+            throw new RuntimeException("Voucher is not valid at this time");
+        }
+        
+        if (voucher.getUsageLimit() > 0 && voucher.getUsedCount() >= voucher.getUsageLimit()) {
+            throw new RuntimeException("Voucher usage limit reached");
         }
 
-        VoucherDto dto = VoucherDto.builder()
+        PlatformVoucherDto dto = PlatformVoucherDto.builder()
                 .id(voucher.getId())
                 .code(voucher.getCode())
-                .description(voucher.getDescription())
-                .discountPercent(voucher.getDiscountPercent())
+                .discountType(voucher.getDiscountType())
+                .discountValue(voucher.getDiscountValue())
                 .maxDiscountAmount(voucher.getMaxDiscountAmount())
                 .minOrderValue(voucher.getMinOrderValue())
-                .shopId(voucher.getShopId())
-                .expiryDate(voucher.getExpiryDate())
-                .active(voucher.getActive())
+                .usageLimit(voucher.getUsageLimit())
+                .usedCount(voucher.getUsedCount())
+                .validFrom(voucher.getValidFrom())
+                .validTo(voucher.getValidTo())
                 .build();
 
         return ResponseEntity.ok(dto);

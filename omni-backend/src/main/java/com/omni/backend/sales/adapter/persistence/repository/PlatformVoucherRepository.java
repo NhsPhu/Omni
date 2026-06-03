@@ -6,6 +6,9 @@ import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
 
+import java.util.Optional;
+
 @Repository
 public interface PlatformVoucherRepository extends JpaRepository<PlatformVoucherJpaEntity, UUID> {
+    Optional<PlatformVoucherJpaEntity> findByCode(String code);
 }

@@ -59,6 +59,7 @@ export default function CartPage() {
             quantity: it.quantity,
             stock: 999, // default
             selected: true,
+            imageUrl: it.imageUrl,
           });
         });
       });
@@ -108,7 +109,9 @@ export default function CartPage() {
   const subtotal = selectedItems.reduce((s, it) => s + it.price * it.quantity, 0);
   
   const discount = activeVoucher 
-    ? Math.min((subtotal * activeVoucher.discountPercent) / 100, activeVoucher.maxDiscountAmount || 999999999) 
+    ? (activeVoucher.discountType === "PERCENTAGE" 
+       ? Math.min((subtotal * activeVoucher.discountValue) / 100, activeVoucher.maxDiscountAmount || 999999999) 
+       : Math.min(activeVoucher.discountValue, subtotal))
     : 0;
     
   const shipping = selectedItems.length > 0 ? 30000 : 0;
@@ -181,8 +184,12 @@ export default function CartPage() {
                           <Checkbox checked={item.selected} onChange={() => toggle(item.id)} disabled={item.stock === 0} />
 
                           {/* Image */}
-                          <div className={`w-20 h-20 rounded-xl flex-shrink-0 bg-gradient-to-br ${GRADS[idx % 4]} flex items-center justify-center`}>
-                            <ShoppingCart className="w-6 h-6 text-white/25" />
+                          <div className={`w-20 h-20 rounded-xl flex-shrink-0 bg-gradient-to-br ${GRADS[idx % 4]} flex items-center justify-center relative overflow-hidden`}>
+                            {item.imageUrl ? (
+                              <img src={item.imageUrl.startsWith('http') ? item.imageUrl : `http://localhost:8080${item.imageUrl}`} className="w-full h-full object-cover" alt={item.name} />
+                            ) : (
+                              <ShoppingCart className="w-6 h-6 text-white/25" />
+                            )}
                           </div>
 
                           {/* Info */}
@@ -261,7 +268,7 @@ export default function CartPage() {
                       {activeVoucher ? "Hủy" : "Áp dụng"}
                     </Button>
                   </div>
-                  {activeVoucher && <p className="text-xs" style={{ color: "#10B981" }}>✓ Đã áp dụng giảm {activeVoucher.discountPercent}%</p>}
+                  {activeVoucher && <p className="text-xs" style={{ color: "#10B981" }}>✓ Đã áp dụng giảm {activeVoucher.discountType === "PERCENTAGE" ? `${activeVoucher.discountValue}%` : formatPrice(activeVoucher.discountValue)}</p>}
                 </div>
 
                 {/* Summary */}
