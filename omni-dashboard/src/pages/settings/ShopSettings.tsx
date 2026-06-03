@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Button, Card, message, Spin, Row, Col, Typography, Divider } from 'antd';
+import { Form, Input, Button, Card, message, Spin, Row, Col, Typography, Divider, Select } from 'antd';
 import { Store, MapPin, Building, CreditCard, Save } from 'lucide-react';
 import api from '../../lib/axios';
 
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 interface ShopSettingsFormData {
   name: string;
@@ -13,6 +14,9 @@ interface ShopSettingsFormData {
   bankName: string;
   bankAccountName: string;
   bankAccountNumber: string;
+  warehouseProvinceId: number;
+  warehouseDistrictId: number;
+  warehouseWardCode: string;
 }
 
 export default function ShopSettings() {
@@ -20,14 +24,52 @@ export default function ShopSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+
   useEffect(() => {
     fetchShopData();
+    fetchProvinces();
   }, []);
+
+  const fetchProvinces = async () => {
+    try {
+      const res = await api.get('/public/ghn/provinces');
+      setProvinces(res.data);
+    } catch (error) {
+      console.error('Failed to load provinces:', error);
+    }
+  };
+
+  const fetchDistricts = async (provinceId: number) => {
+    try {
+      const res = await api.get(`/public/ghn/districts?provinceId=${provinceId}`);
+      setDistricts(res.data);
+    } catch (error) {
+      console.error('Failed to load districts:', error);
+    }
+  };
+
+  const fetchWards = async (districtId: number) => {
+    try {
+      const res = await api.get(`/public/ghn/wards?districtId=${districtId}`);
+      setWards(res.data);
+    } catch (error) {
+      console.error('Failed to load wards:', error);
+    }
+  };
 
   const fetchShopData = async () => {
     try {
       const res = await api.get('/shops/me');
       form.setFieldsValue(res.data);
+      if (res.data.warehouseProvinceId) {
+        fetchDistricts(res.data.warehouseProvinceId);
+      }
+      if (res.data.warehouseDistrictId) {
+        fetchWards(res.data.warehouseDistrictId);
+      }
     } catch (error) {
       console.error('Failed to load shop settings:', error);
       message.error('Không thể tải thông tin cửa hàng.');
@@ -58,11 +100,11 @@ export default function ShopSettings() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
         <div>
-          <Title level={2} className="!m-0">Cài đặt Cửa hàng</Title>
-          <Text type="secondary">Quản lý thông tin hồ sơ và địa chỉ của cửa hàng</Text>
+          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Cài đặt Cửa hàng</h1>
+          <p className="text-gray-500 mt-1 font-medium">Quản lý thông tin hồ sơ và địa chỉ của cửa hàng.</p>
         </div>
       </div>
 
@@ -74,7 +116,7 @@ export default function ShopSettings() {
       >
         <Row gutter={[24, 24]}>
           <Col xs={24} lg={16}>
-            <Card title={<><Store className="inline-block w-5 h-5 mr-2 -mt-1" /> Thông tin chung</>}>
+            <Card className="border-0 rounded-3xl shadow-sm" title={<span className="font-bold text-gray-800 text-lg"><Store className="inline-block w-5 h-5 mr-2 -mt-1 text-indigo-500" /> Thông tin chung</span>} styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}>
               <Form.Item
                 name="name"
                 label="Tên cửa hàng"
@@ -91,7 +133,7 @@ export default function ShopSettings() {
               </Form.Item>
             </Card>
 
-            <Card title={<><MapPin className="inline-block w-5 h-5 mr-2 -mt-1" /> Địa chỉ</>} className="mt-6">
+            <Card className="border-0 rounded-3xl shadow-sm mt-6" title={<span className="font-bold text-gray-800 text-lg"><MapPin className="inline-block w-5 h-5 mr-2 -mt-1 text-indigo-500" /> Địa chỉ</span>} styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}>
               <Form.Item
                 name="address"
                 label="Địa chỉ kinh doanh"
@@ -104,15 +146,64 @@ export default function ShopSettings() {
                 name="pickupAddress"
                 label="Địa chỉ lấy hàng"
                 rules={[{ required: true, message: 'Vui lòng nhập địa chỉ lấy hàng!' }]}
-                extra="Địa chỉ để shipper đến lấy hàng khi có đơn mới."
+                extra="Địa chỉ chi tiết để shipper đến lấy hàng khi có đơn mới."
               >
-                <Input size="large" placeholder="Nhập địa chỉ lấy hàng" />
+                <Input size="large" placeholder="Nhập số nhà, tên đường..." />
               </Form.Item>
+
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Form.Item name="warehouseProvinceId" label="Tỉnh/Thành phố" rules={[{ required: true, message: 'Chọn Tỉnh/Thành!' }]}>
+                    <Select 
+                      size="large" 
+                      placeholder="Chọn Tỉnh/Thành" 
+                      onChange={(val) => {
+                        form.setFieldsValue({ warehouseDistrictId: undefined, warehouseWardCode: undefined });
+                        setDistricts([]);
+                        setWards([]);
+                        fetchDistricts(val);
+                      }}
+                    >
+                      {provinces.map(p => <Option key={p.ProvinceID} value={p.ProvinceID}>{p.ProvinceName}</Option>)}
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item name="warehouseDistrictId" label="Quận/Huyện" rules={[{ required: true, message: 'Chọn Quận/Huyện!' }]}>
+                    <Select 
+                      size="large" 
+                      placeholder="Chọn Quận/Huyện"
+                      disabled={!form.getFieldValue('warehouseProvinceId')}
+                      onChange={(val) => {
+                        form.setFieldsValue({ warehouseWardCode: undefined });
+                        setWards([]);
+                        fetchWards(val);
+                      }}
+                    >
+                      {districts.map(d => <Option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</Option>)}
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item name="warehouseWardCode" label="Phường/Xã" rules={[{ required: true, message: 'Chọn Phường/Xã!' }]}>
+                    <Select 
+                      size="large" 
+                      placeholder="Chọn Phường/Xã"
+                      disabled={!form.getFieldValue('warehouseDistrictId')}
+                    >
+                      {wards.map(w => <Option key={w.WardCode} value={w.WardCode}>{w.WardName}</Option>)}
+                    </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Text type="warning" className="block mt-2">
+                * Thiết lập địa chỉ kho để tính toán phí giao hàng chính xác qua GHN.
+              </Text>
             </Card>
           </Col>
 
           <Col xs={24} lg={8}>
-            <Card title={<><CreditCard className="inline-block w-5 h-5 mr-2 -mt-1" /> Thông tin Thanh toán</>}>
+            <Card className="border-0 rounded-3xl shadow-sm" title={<span className="font-bold text-gray-800 text-lg"><CreditCard className="inline-block w-5 h-5 mr-2 -mt-1 text-indigo-500" /> Thông tin Thanh toán</span>} styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}>
               <Text type="secondary" className="block mb-4">
                 Thông tin tài khoản ngân hàng để nhận thanh toán doanh thu từ hệ thống.
               </Text>
@@ -147,10 +238,10 @@ export default function ShopSettings() {
         <Divider />
 
         <div className="flex justify-end gap-4">
-          <Button size="large" onClick={() => form.resetFields()}>
+          <Button size="large" onClick={() => form.resetFields()} className="rounded-xl">
             Hủy thay đổi
           </Button>
-          <Button type="primary" htmlType="submit" size="large" loading={saving} icon={<Save className="w-4 h-4" />}>
+          <Button type="primary" htmlType="submit" size="large" loading={saving} icon={<Save className="w-4 h-4" />} className="bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md">
             Lưu Cài đặt
           </Button>
         </div>

@@ -91,7 +91,7 @@ public class GhnShippingClient {
         }
     }
 
-    public long calculateFee(int toDistrictId, String toWardCode, int weight, int length, int width, int height) {
+    public long calculateFee(int fromDistrictId, String fromWardCode, int toDistrictId, String toWardCode, int weight, int length, int width, int height) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -100,6 +100,8 @@ public class GhnShippingClient {
 
             Map<String, Object> body = new HashMap<>();
             body.put("service_type_id", 2); // 2 = E-commerce delivery
+            if (fromDistrictId > 0) body.put("from_district_id", fromDistrictId);
+            if (fromWardCode != null && !fromWardCode.isEmpty()) body.put("from_ward_code", fromWardCode);
             body.put("to_district_id", toDistrictId);
             body.put("to_ward_code", toWardCode);
             body.put("weight", weight);
@@ -123,11 +125,11 @@ public class GhnShippingClient {
                 }
             }
             
-            return 30000L; // Fallback
+            throw new RuntimeException("GHN API failed: Cannot calculate shipping fee");
             
         } catch (Exception e) {
-            log.error("Error calculating GHN fee", e);
-            return 30000L; // Fallback
+            log.error("Error calculating GHN fee, returning mock fee", e);
+            return 35000L; // Mock fee if API fails
         }
     }
 }

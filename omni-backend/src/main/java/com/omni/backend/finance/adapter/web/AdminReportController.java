@@ -21,4 +21,10 @@ public class AdminReportController {
     public ResponseEntity<SystemReportDto> getSystemReport() {
         return ResponseEntity.ok(adminReportService.getSystemReport());
     }
+
+    @GetMapping("/daily")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<java.util.List<java.util.Map<String, Object>>> getPlatformDailyRevenue(@org.springframework.web.bind.annotation.RequestParam(defaultValue = "30") int days) {
+        return ResponseEntity.ok(adminReportService.getPlatformDailyRevenue(days));
+    }
 }

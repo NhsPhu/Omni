@@ -94,10 +94,17 @@ export default function Wallet() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800 m-0">Ví nội bộ & Tài chính</h1>
-        <Button type="primary" size="large" onClick={() => setIsModalOpen(true)}>Yêu cầu rút tiền</Button>
+    <div className="space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Ví nội bộ & Tài chính</h1>
+          <p className="text-gray-500 mt-1 font-medium">Quản lý doanh thu, sao kê và yêu cầu rút tiền.</p>
+        </div>
+        <div className="mt-4 md:mt-0 flex gap-3">
+          <Button type="primary" size="large" className="bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md" onClick={() => setIsModalOpen(true)}>
+            Yêu cầu rút tiền
+          </Button>
+        </div>
       </div>
 
       <Row gutter={[24, 24]}>
@@ -138,10 +145,11 @@ export default function Wallet() {
         title={
           <div className="flex items-center gap-2">
             <History size={18} />
-            <span>Lịch sử giao dịch</span>
+            <span className="font-bold text-gray-800">Lịch sử giao dịch</span>
           </div>
         }
-        className="card-shadow border-none rounded-xl"
+        className="border-0 rounded-3xl shadow-sm"
+        styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}
         extra={
           <Space>
             <Select defaultValue="all" style={{ width: 120 }}>
@@ -157,7 +165,7 @@ export default function Wallet() {
         <Table 
           columns={columns} 
           dataSource={transactions}
-          className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500"
+          className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500 [&_.ant-table-thead_th]:!font-semibold"
           pagination={{ pageSize: 10 }}
         />
       </Card>

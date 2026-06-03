@@ -85,9 +85,17 @@ export default function Disputes() {
   };
 
   return (
-    <div className="flex gap-6 h-full">
-      <Card className="card-shadow border-none rounded-xl w-1/3 min-w-[350px]">
-        <div className="flex justify-between items-center mb-4">
+    <div className="space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Giải quyết tranh chấp</h1>
+          <p className="text-gray-500 mt-1 font-medium">Trung tâm xử lý khiếu nại giữa Người mua và Người bán.</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-6 h-full">
+        <Card className="border-0 rounded-3xl shadow-sm lg:w-1/3 min-w-[350px]" styles={{ body: { padding: '24px' } }}>
+          <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold m-0">Tranh chấp cần xử lý</h2>
           <Tag color="error">{mockDisputes.length}</Tag>
         </div>
@@ -115,9 +123,9 @@ export default function Disputes() {
             </div>
           )}
         />
-      </Card>
+        </Card>
 
-      <Card className="card-shadow border-none rounded-xl flex-1 flex flex-col">
+        <Card className="border-0 rounded-3xl shadow-sm flex-1 flex flex-col" styles={{ body: { padding: '24px', flex: 1, display: 'flex', flexDirection: 'column' } }}>
         {selectedDispute ? (
           <div className="h-full flex flex-col">
             <div className="flex justify-between items-center mb-6">
@@ -202,7 +210,8 @@ export default function Disputes() {
             <p>Chọn một tranh chấp ở danh sách bên trái để xem bằng chứng 2 phía</p>
           </div>
         )}
-      </Card>
-    </div>
-  );
-}
+          </Card>
+        </div>
+      </div>
+    );
+  }

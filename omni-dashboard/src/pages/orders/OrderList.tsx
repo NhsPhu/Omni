@@ -135,18 +135,27 @@ export default function OrderList() {
   ];
 
   return (
-    <Card className="card-shadow border-none rounded-xl">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-        <h1 className="text-xl font-bold text-gray-800 m-0">Xử lý đơn hàng</h1>
-        <div className="flex gap-2">
+    <div className="space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Xử lý đơn hàng</h1>
+          <p className="text-gray-500 mt-1 font-medium">Theo dõi và cập nhật trạng thái đơn hàng của bạn.</p>
+        </div>
+        <div className="mt-4 md:mt-0 flex gap-3">
+          <Button size="large" className="rounded-xl shadow-sm border-gray-200 text-gray-700 hover:text-indigo-600 hover:border-indigo-300" icon={<Printer size={18} />}>
+            In mã vạch hàng loạt
+          </Button>
+        </div>
+      </div>
+
+      <Card className="border-0 rounded-3xl shadow-sm" styles={{ body: { padding: '24px' } }}>
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
           <Input 
             placeholder="Tìm theo Mã đơn, SĐT..." 
             prefix={<Search size={16} className="text-gray-400" />}
             style={{ width: 250 }}
           />
-          <Button icon={<Printer size={16} />}>In mã vạch hàng loạt</Button>
         </div>
-      </div>
 
       <Tabs 
         activeKey={activeTab} 
@@ -164,9 +173,10 @@ export default function OrderList() {
         columns={columns} 
         dataSource={filteredOrders}
         loading={loading}
-        className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500"
+        className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500 [&_.ant-table-thead_th]:!font-semibold"
         pagination={{ total: filteredOrders.length, pageSize: 10, showSizeChanger: true }}
       />
-    </Card>
+      </Card>
+    </div>
   );
 }

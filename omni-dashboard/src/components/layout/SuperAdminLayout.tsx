@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layout, Menu, Avatar, Dropdown, Button, Space, Badge } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Button, Space, Badge, Drawer, Grid } from 'antd';
 import { 
   Users, 
   Store, 
@@ -23,6 +23,8 @@ const { Header, Sider, Content } = Layout;
 
 export default function SuperAdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const screens = Grid.useBreakpoint();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, token, logout } = useAuthStore();
@@ -45,40 +47,69 @@ export default function SuperAdminLayout() {
     { key: '/admin/withdrawals', icon: <Coins size={18} />, label: 'Duyệt lệnh rút tiền' },
   ];
 
+  const sidebarContent = (
+    <>
+      <div className="h-16 flex items-center justify-center gap-2 border-b border-gray-800 px-4">
+        <div className="w-8 h-8 rounded bg-red-600 flex items-center justify-center text-white shrink-0">
+          <ShieldCheck size={18} />
+        </div>
+        {!collapsed && <span className="font-bold text-lg text-white truncate">Omni Admin</span>}
+      </div>
+      <div className="py-4">
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={menuItems}
+          onClick={({ key }) => {
+            navigate(key);
+            setDrawerVisible(false);
+          }}
+          className="border-none bg-transparent"
+        />
+      </div>
+    </>
+  );
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider 
-        trigger={null} 
-        collapsible 
-        collapsed={collapsed}
-        width={260}
-        theme="dark"
-        style={{ background: '#001529' }}
-      >
-        <div className="h-16 flex items-center justify-center gap-2 border-b border-gray-800 px-4">
-          <div className="w-8 h-8 rounded bg-red-600 flex items-center justify-center text-white shrink-0">
-            <ShieldCheck size={18} />
-          </div>
-          {!collapsed && <span className="font-bold text-lg text-white truncate">Omni Admin</span>}
-        </div>
-        <div className="py-4">
-          <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={[location.pathname]}
-            items={menuItems}
-            onClick={({ key }) => navigate(key)}
-            className="border-none bg-transparent"
-          />
-        </div>
-      </Sider>
+      {screens.lg ? (
+        <Sider 
+          trigger={null} 
+          collapsible 
+          collapsed={collapsed}
+          width={260}
+          theme="dark"
+          style={{ background: '#001529' }}
+        >
+          {sidebarContent}
+        </Sider>
+      ) : (
+        <Drawer
+          title={null}
+          placement="left"
+          closable={false}
+          onClose={() => setDrawerVisible(false)}
+          open={drawerVisible}
+          bodyStyle={{ padding: 0, background: '#001529' }}
+          width={260}
+        >
+          {sidebarContent}
+        </Drawer>
+      )}
 
       <Layout>
         <Header className="flex items-center justify-between px-6 bg-white shadow-sm" style={{ padding: '0 24px' }}>
           <Button 
             type="text"
             icon={<MenuIcon size={20} />}
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => {
+              if (screens.lg) {
+                setCollapsed(!collapsed);
+              } else {
+                setDrawerVisible(!drawerVisible);
+              }
+            }}
             className="text-gray-600"
           />
           

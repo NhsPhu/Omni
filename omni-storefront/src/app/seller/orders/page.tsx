@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/axios";
 import { Search, Inbox, ChevronDown } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function SellerOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -13,23 +14,24 @@ export default function SellerOrdersPage() {
   const { user } = useAuthStore();
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const res = await api.get("/vendor/orders");
-        setOrders(res.data);
-      } catch (err: any) {
-        if (err.response?.status === 403 || err.response?.status === 404) {
-          router.push("/seller/register");
-        } else {
-          setError("Không thể tải danh sách đơn hàng.");
-        }
-      } finally {
-        setLoading(false);
+  const fetchOrders = useCallback(async () => {
+    try {
+      const res = await api.get("/vendor/orders");
+      setOrders(res.data);
+    } catch (err: any) {
+      if (err.response?.status === 403 || err.response?.status === 404) {
+        router.push("/seller/register");
+      } else {
+        setError("Không thể tải danh sách đơn hàng.");
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
+  useEffect(() => {
     if (user) fetchOrders();
-  }, [user, router]);
+  }, [user, fetchOrders]);
 
   const updateStatus = async (id: string, currentStatus: string, newStatus: string) => {
     // Basic state machine validation for UI
@@ -41,7 +43,7 @@ export default function SellerOrdersPage() {
     };
 
     if (!validTransitions[currentStatus]?.includes(newStatus)) {
-      alert(`Không thể chuyển trạng thái từ ${currentStatus} sang ${newStatus}`);
+      toast.error(`Không thể chuyển trạng thái từ ${currentStatus} sang ${newStatus}`);
       return;
     }
 
@@ -49,13 +51,13 @@ export default function SellerOrdersPage() {
       if (newStatus === "SHIPPED") {
         const res = await api.post(`/vendor/orders/${id}/ship`);
         setOrders(orders.map(o => o.id === id ? { ...o, status: "SHIPPED", trackingCode: res.data.trackingCode } : o));
-        alert("Giao hàng cho GHN thành công! Mã vận đơn: " + res.data.trackingCode);
+        toast.success("Giao hàng cho GHN thành công! Mã vận đơn: " + res.data.trackingCode);
       } else {
         await api.patch(`/vendor/orders/${id}/status?status=${newStatus}`);
         setOrders(orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || "Cập nhật trạng thái thất bại!");
+      toast.error(err.response?.data?.message || "Cập nhật trạng thái thất bại!");
     }
   };
 

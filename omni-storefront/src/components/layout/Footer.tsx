@@ -1,6 +1,9 @@
 "use client";
-import { Store, Share2, Play, Camera, MessageCircle, Mail, Phone, MapPin, ArrowRight, Send } from "lucide-react";
+import { useState } from "react";
+import { Store, Share2, Play, Camera, MessageCircle, Mail, Phone, MapPin, ArrowRight, Send, Loader2 } from "lucide-react";
 import { footerLinks } from "@/data/mock";
+import { toast } from "sonner";
+import api from "@/lib/axios";
 
 const socialLinks = [
   { icon: Share2,        label: "Facebook",  href: "#", color: "#3B82F6" },
@@ -10,6 +13,32 @@ const socialLinks = [
 ];
 
 export default function Footer() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async () => {
+    if (!email) {
+      toast.error("Vui lòng nhập email của bạn");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Email không hợp lệ");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await api.post("/newsletter/subscribe", { email });
+      toast.success(res.data.message || "Đăng ký thành công!");
+      setEmail("");
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <footer style={{ background: "var(--bg-surface)", borderTop: "1px solid var(--border)" }}>
       {/* Newsletter */}
@@ -24,11 +53,23 @@ export default function Footer() {
             <div className="flex w-full lg:w-auto max-w-md gap-2">
               <div className="flex-1 flex items-center px-4 rounded-xl glass" style={{ border: "1px solid var(--border)" }}>
                 <Send className="w-4 h-4 flex-shrink-0 mr-2" style={{ color: "var(--text-muted)" }} />
-                <input type="email" placeholder="Email của bạn..." className="flex-1 py-3 bg-transparent outline-none text-sm font-[family-name:var(--font-body)]" style={{ color: "var(--text-primary)" }} />
+                <input 
+                  type="email" 
+                  placeholder="Email của bạn..." 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSubscribe()}
+                  className="flex-1 py-3 bg-transparent outline-none text-sm font-[family-name:var(--font-body)]" 
+                  style={{ color: "var(--text-primary)" }} 
+                />
               </div>
-              <button className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-300 font-[family-name:var(--font-body)] hover:shadow-[0_4px_20px_rgba(245,158,11,0.4)]"
+              <button 
+                onClick={handleSubscribe}
+                disabled={loading}
+                className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-300 font-[family-name:var(--font-body)] hover:shadow-[0_4px_20px_rgba(245,158,11,0.4)] disabled:opacity-70 disabled:cursor-not-allowed"
                 style={{ background: "var(--grad-gold)", color: "#050509" }}>
-                Đăng ký <ArrowRight className="w-4 h-4" />
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Đăng ký"} 
+                {!loading && <ArrowRight className="w-4 h-4" />}
               </button>
             </div>
           </div>

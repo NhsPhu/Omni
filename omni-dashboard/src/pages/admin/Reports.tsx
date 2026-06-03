@@ -45,42 +45,61 @@ export default function Reports() {
     <div className="space-y-6">
       <Row gutter={[24, 24]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="card-shadow border-none rounded-xl">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                <DollarSign size={24} />
+          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-blue-50 to-indigo-50">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-300">
+              <DollarSign size={80} />
+            </div>
+            <div className="relative z-10">
+              <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 mb-4">
+                <DollarSign size={28} />
               </div>
-              <Statistic title="Tổng GMV toàn sàn" value={report?.totalGmv || 0} formatter={(v) => formatCurrency(Number(v))} valueStyle={{ fontSize: '20px', fontWeight: 'bold' }} />
+              <p className="text-gray-600 font-medium mb-1">Tổng GMV toàn sàn</p>
+              <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">{formatCurrency(report?.totalGmv || 0)}</h3>
             </div>
           </Card>
         </Col>
+
         <Col xs={24} sm={12} lg={6}>
-          <Card className="card-shadow border-none rounded-xl">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                <TrendingUp size={24} />
+          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-emerald-50 to-teal-50">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-300">
+              <TrendingUp size={80} />
+            </div>
+            <div className="relative z-10">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30 mb-4">
+                <TrendingUp size={28} />
               </div>
-              <Statistic title="Doanh thu Sàn (Hoa hồng)" value={report?.totalRevenue || 0} formatter={(v) => formatCurrency(Number(v))} valueStyle={{ fontSize: '20px', fontWeight: 'bold' }} />
+              <p className="text-gray-600 font-medium mb-1">Doanh thu Sàn (Hoa hồng)</p>
+              <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">{formatCurrency(report?.totalRevenue || 0)}</h3>
             </div>
           </Card>
         </Col>
+
         <Col xs={24} sm={12} lg={6}>
-          <Card className="card-shadow border-none rounded-xl">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
-                <Store size={24} />
+          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-orange-50 to-amber-50">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-300">
+              <Store size={80} />
+            </div>
+            <div className="relative z-10">
+              <div className="w-14 h-14 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 mb-4">
+                <Store size={28} />
               </div>
-              <Statistic title="Gian hàng hoạt động" value={report?.activeShops || 0} valueStyle={{ fontSize: '24px', fontWeight: 'bold' }} />
+              <p className="text-gray-600 font-medium mb-1">Gian hàng hoạt động</p>
+              <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">{report?.activeShops || 0}</h3>
             </div>
           </Card>
         </Col>
+
         <Col xs={24} sm={12} lg={6}>
-          <Card className="card-shadow border-none rounded-xl">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
-                <ShoppingBag size={24} />
+          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-purple-50 to-fuchsia-50">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-300">
+              <ShoppingBag size={80} />
+            </div>
+            <div className="relative z-10">
+              <div className="w-14 h-14 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-lg shadow-purple-500/30 mb-4">
+                <ShoppingBag size={28} />
               </div>
-              <Statistic title="Tổng đơn hàng" value={report?.totalOrders || 0} valueStyle={{ fontSize: '24px', fontWeight: 'bold' }} />
+              <p className="text-gray-600 font-medium mb-1">Tổng đơn hàng</p>
+              <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">{report?.totalOrders || 0}</h3>
             </div>
           </Card>
         </Col>
@@ -88,56 +107,58 @@ export default function Reports() {
 
       <Row gutter={[24, 24]}>
         <Col xs={24} lg={16}>
-          <Card title="Biểu đồ GMV & Doanh thu Sàn" className="card-shadow border-none rounded-xl h-full">
-            <div style={{ width: '100%', height: 350 }}>
+          <Card title={<span className="text-lg font-bold text-gray-800">Biểu đồ GMV & Doanh thu Sàn</span>} className="border-0 rounded-3xl shadow-sm h-full" styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}>
+            <div style={{ width: '100%', height: 380 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={report?.chartData || []} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} dy={10} />
-                  <YAxis 
-                    yAxisId="left"
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#6b7280' }}
-                    tickFormatter={(value) => `${value / 1000000}M`}
-                  />
-                  <YAxis 
-                    yAxisId="right" 
-                    orientation="right" 
-                    axisLine={false} 
-                    tickLine={false}
-                    tick={{ fill: '#6b7280' }}
-                    tickFormatter={(value) => `${value / 1000000}M`}
-                  />
-                  <RechartsTooltip 
-                    formatter={(value: any, name: any) => [formatCurrency(value), name]}
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Area yAxisId="left" type="monotone" dataKey="gmv" name="Tổng GMV" stroke="#185FA5" fillOpacity={1} fill="url(#colorGmv)" />
-                  <Area yAxisId="right" type="monotone" dataKey="revenue" name="Doanh thu Sàn" stroke="#10B981" fillOpacity={1} fill="url(#colorRev)" />
+                <AreaChart data={report?.chartData || []} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
                   <defs>
                     <linearGradient id="colorGmv" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#185FA5" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#185FA5" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
                     </linearGradient>
                     <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10B981" stopOpacity={0.2}/>
                       <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
+                  <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={15} />
+                  <YAxis 
+                    yAxisId="left"
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#94a3b8', fontSize: 12 }}
+                    tickFormatter={(value) => `${value / 1000000}M`}
+                    dx={-10}
+                  />
+                  <YAxis 
+                    yAxisId="right" 
+                    orientation="right" 
+                    axisLine={false} 
+                    tickLine={false}
+                    tick={{ fill: '#94a3b8', fontSize: 12 }}
+                    tickFormatter={(value) => `${value / 1000000}M`}
+                    dx={10}
+                  />
+                  <RechartsTooltip 
+                    formatter={(value: any, name: any) => [formatCurrency(value), name]}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)', padding: '12px 16px', fontWeight: 500 }}
+                  />
+                  <Area yAxisId="left" type="monotone" dataKey="gmv" name="Tổng GMV" stroke="#4F46E5" strokeWidth={4} fillOpacity={1} fill="url(#colorGmv)" activeDot={{ r: 8, strokeWidth: 0, fill: '#4F46E5' }} />
+                  <Area yAxisId="right" type="monotone" dataKey="revenue" name="Doanh thu Sàn" stroke="#10B981" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" activeDot={{ r: 8, strokeWidth: 0, fill: '#10B981' }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </Card>
         </Col>
         <Col xs={24} lg={8}>
-          <Card title="Top Gian Hàng (GMV)" className="card-shadow border-none rounded-xl h-full">
+          <Card title={<span className="text-lg font-bold text-gray-800">Top Gian Hàng (GMV)</span>} className="border-0 rounded-3xl shadow-sm h-full" styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}>
             <Table 
               columns={topShopsColumns} 
               dataSource={report?.topShops?.map((s: any, i: number) => ({ ...s, key: i })) || []}
               pagination={false}
-              size="small"
-              className="[&_.ant-table-thead_th]:!bg-gray-50"
+              size="middle"
+              className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500 [&_.ant-table-thead_th]:!font-semibold"
             />
           </Card>
         </Col>
@@ -198,10 +219,20 @@ export default function Reports() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800 m-0">Báo cáo & Cấu hình Hệ thống</h1>
-        <RangePicker size="large" />
+    <div className="space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight">
+            Báo cáo & Cấu hình Hệ thống
+          </h1>
+          <p className="text-gray-500 mt-1 font-medium">Bảng điều khiển dành cho Super Admin</p>
+        </div>
+        <div className="mt-4 md:mt-0">
+          <RangePicker 
+            size="large" 
+            className="rounded-xl border-gray-200 hover:border-indigo-400 focus:border-indigo-500 shadow-sm"
+          />
+        </div>
       </div>
 
       <Tabs

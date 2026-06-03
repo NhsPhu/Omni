@@ -21,7 +21,7 @@ public class ProductSearchService {
     private final ElasticsearchOperations elasticsearchOperations;
     private final com.omni.backend.catalog.adapter.persistence.repository.CategoryRepository categoryRepository;
 
-    public Page<ProductDocument> searchProducts(String keyword, UUID categoryId, Double minPrice, Double maxPrice, int page, int size) {
+    public Page<ProductDocument> searchProducts(String keyword, java.util.List<UUID> categoryIds, Double minPrice, Double maxPrice, int page, int size) {
         BoolQuery.Builder boolQueryBuilder = QueryBuilders.bool();
 
         // 1. Full-text search on name and description
@@ -30,22 +30,25 @@ public class ProductSearchService {
                     .fields("name^3", "description") // boost name x3
                     .query(keyword)
                     .build()._toQuery());
+        } else {
+            boolQueryBuilder.must(QueryBuilders.matchAll().build()._toQuery());
         }
 
-        // 2. Filter by Category (Include Children)
-        if (categoryId != null) {
-            java.util.List<String> categoryIds = new java.util.ArrayList<>();
-            categoryIds.add(categoryId.toString());
+        // 2. Filter by Categories (Include Children)
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            java.util.List<String> allCategoryIds = new java.util.ArrayList<>();
             
-            java.util.List<com.omni.backend.catalog.adapter.persistence.entity.CategoryJpaEntity> children = 
-                categoryRepository.findByParentIdOrderBySortOrderAsc(categoryId);
-                
-            if (children != null) {
-                children.forEach(c -> categoryIds.add(c.getId().toString()));
+            for (UUID catId : categoryIds) {
+                allCategoryIds.add(catId.toString());
+                java.util.List<com.omni.backend.catalog.adapter.persistence.entity.CategoryJpaEntity> children = 
+                    categoryRepository.findByParentIdOrderBySortOrderAsc(catId);
+                if (children != null) {
+                    children.forEach(c -> allCategoryIds.add(c.getId().toString()));
+                }
             }
 
             BoolQuery.Builder categoryBoolQuery = QueryBuilders.bool();
-            for (String id : categoryIds) {
+            for (String id : allCategoryIds) {
                 categoryBoolQuery.should(QueryBuilders.term().field("categoryId").value(id).build()._toQuery());
             }
             categoryBoolQuery.minimumShouldMatch("1");

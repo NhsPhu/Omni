@@ -51,15 +51,20 @@ export default function Analytics() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800 m-0">Phân tích sản phẩm</h1>
-        <RangePicker size="large" />
+    <div className="space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Phân tích sản phẩm</h1>
+          <p className="text-gray-500 mt-1 font-medium">Theo dõi hiệu suất và chuyển đổi bán hàng.</p>
+        </div>
+        <div className="mt-4 md:mt-0 flex gap-3">
+          <RangePicker size="large" className="rounded-xl" />
+        </div>
       </div>
 
       <Row gutter={[24, 24]}>
         <Col xs={24} lg={8}>
-          <Card className="card-shadow border-none rounded-xl h-full" title="Phễu chuyển đổi bán hàng">
+          <Card className="border-0 rounded-3xl shadow-sm h-full" title={<span className="font-bold text-gray-800 text-lg">Phễu chuyển đổi bán hàng</span>} styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}>
             <div style={{ width: '100%', height: 350, paddingTop: 16 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <FunnelChart>
@@ -81,11 +86,11 @@ export default function Analytics() {
         </Col>
         
         <Col xs={24} lg={16}>
-          <Card className="card-shadow border-none rounded-xl h-full" title="Hiệu suất theo SKU">
+          <Card className="border-0 rounded-3xl shadow-sm h-full" title={<span className="font-bold text-gray-800 text-lg">Hiệu suất theo SKU</span>} styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}>
             <Table 
               columns={columns} 
               dataSource={mockSkuPerformance}
-              className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500"
+              className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500 [&_.ant-table-thead_th]:!font-semibold"
               pagination={false}
             />
           </Card>

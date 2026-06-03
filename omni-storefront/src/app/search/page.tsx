@@ -38,10 +38,21 @@ function SearchContent() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortOpen, setSortOpen] = useState(false);
+
+  useEffect(() => {
+    if (initCategoryId) {
+      setSelectedCats([initCategoryId]);
+    } else {
+      setSelectedCats([]);
+    }
+  }, [initCategoryId]);
   
   const [realCategories, setRealCategories] = useState<any[]>([]);
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
   
   useEffect(() => {
     api.get("/categories").then(res => setRealCategories(res.data)).catch(console.error);
@@ -51,52 +62,95 @@ function SearchContent() {
   const chips: { id: string; label: string; onRemove: () => void }[] = [
     ...(priceRange !== "all" ? [{ id: "price", label: PRICE_RANGES.find(r => r.id === priceRange)!.label, onRemove: () => setPriceRange("all") }] : []),
     ...(minRating > 0 ? [{ id: "rating", label: `${minRating}★ trở lên`, onRemove: () => setMinRating(0) }] : []),
-    ...selectedCats.map(id => ({ id: `cat-${id}`, label: realCategories.find((c:any) => c.id === id)?.name || "Danh mục", onRemove: () => setSelectedCats(p => p.filter(c => c !== id)) })),
+    ...selectedCats.map(id => {
+      let catName = "Danh mục";
+      for (const c of realCategories) {
+        if (c.id === id) catName = c.name;
+        if (c.children) {
+          for (const child of c.children) {
+            if (child.id === id) catName = child.name;
+          }
+        }
+      }
+      return { id: `cat-${id}`, label: catName, onRemove: () => setSelectedCats(p => p.filter(c => c !== id)) };
+    }),
   ];
 
   const range = PRICE_RANGES.find(r => r.id === priceRange)!;
   
   useEffect(() => {
     setLoading(true);
-    let url = `/products?keyword=${encodeURIComponent(query)}`;
+    let url = `/products?keyword=${encodeURIComponent(query)}&page=${currentPage}&size=12`;
     if (range.id !== "all") {
-        url += `&minPrice=${range.min}&maxPrice=${range.max}`;
+        url += `&minPrice=${range.min}`;
+        if (range.max !== Infinity) url += `&maxPrice=${range.max}`;
     }
     if (selectedCats.length > 0) {
-        url += `&categoryId=${selectedCats[0]}`;
+        url += `&categoryId=${selectedCats.join(',')}`;
+    }
+
+    let sortParam = "";
+    if (sort === "popular") sortParam = "soldCount,desc";
+    else if (sort === "newest") sortParam = "createdAt,desc";
+    else if (sort === "price_asc") sortParam = "price,asc";
+    else if (sort === "price_desc") sortParam = "price,desc";
+    else if (sort === "rating") sortParam = "rating,desc";
+    
+    if (sortParam) {
+        url += `&sort=${sortParam}`;
     }
     
     api.get(url).then(res => {
         let list = res.data.content || [];
         if (minRating > 0) list = list.filter((p:any) => (p.rating || 5.0) >= minRating);
         
-        if (sort === "price_asc")  list = [...list].sort((a:any, b:any) => a.price - b.price);
-        if (sort === "price_desc") list = [...list].sort((a:any, b:any) => b.price - a.price);
-        if (sort === "rating")     list = [...list].sort((a:any, b:any) => (b.rating || 5.0) - (a.rating || 5.0));
-        
         setResults(list);
+        setTotalPages(res.data.totalPages || 1);
+        setTotalElements(res.data.totalElements || list.length);
         setLoading(false);
     }).catch(err => {
         console.error(err);
         setLoading(false);
     });
-  }, [query, priceRange, selectedCats, minRating, sort, range]);
+  }, [query, priceRange, selectedCats, minRating, sort, range, currentPage]);
 
   const FilterPanel = () => (
     <div className="space-y-6">
       {/* Category */}
       <div>
         <h3 className="text-sm font-bold mb-3 font-[family-name:var(--font-body)]" style={{ color: "var(--text-primary)" }}>Danh mục</h3>
-        <div className="space-y-2">
-          {realCategories.slice(0, 6).map((cat:any) => (
-            <label key={cat.id} className="flex items-center gap-3 cursor-pointer group">
-              <div onClick={() => setSelectedCats(p => p.includes(cat.id) ? p.filter(c => c !== cat.id) : [...p, cat.id])}
-                className="w-4 h-4 rounded flex items-center justify-center cursor-pointer flex-shrink-0 transition-all duration-150"
-                style={{ border: selectedCats.includes(cat.id) ? "none" : "1px solid var(--border)", background: selectedCats.includes(cat.id) ? "var(--purple)" : "transparent" }}>
-                {selectedCats.includes(cat.id) && <span className="text-white text-[10px]">✓</span>}
-              </div>
-              <span className="text-sm transition-colors duration-150 group-hover:text-gold" style={{ color: "var(--text-secondary)" }}>{cat.name}</span>
-            </label>
+        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+          {realCategories.map((cat:any) => (
+            <div key={cat.id} className="flex flex-col gap-2">
+              <label className="flex items-center gap-3 cursor-pointer group"
+                     onClick={(e) => {
+                       e.preventDefault();
+                       setSelectedCats(p => p.includes(cat.id) ? p.filter(c => c !== cat.id) : [...p, cat.id]);
+                     }}>
+                <div className="w-4 h-4 rounded flex items-center justify-center cursor-pointer flex-shrink-0 transition-all duration-150"
+                  style={{ border: selectedCats.includes(cat.id) ? "none" : "1px solid var(--border)", background: selectedCats.includes(cat.id) ? "var(--purple)" : "transparent" }}>
+                  {selectedCats.includes(cat.id) && <span className="text-white text-[10px]">✓</span>}
+                </div>
+                <span className="text-sm transition-colors duration-150 group-hover:text-gold font-medium" style={{ color: "var(--text-primary)" }}>{cat.name}</span>
+              </label>
+              {cat.children && cat.children.length > 0 && (
+                <div className="pl-6 space-y-2 border-l ml-2" style={{ borderColor: "var(--border)" }}>
+                  {cat.children.map((child:any) => (
+                    <label key={child.id} className="flex items-center gap-3 cursor-pointer group"
+                           onClick={(e) => {
+                             e.preventDefault();
+                             setSelectedCats(p => p.includes(child.id) ? p.filter(c => c !== child.id) : [...p, child.id]);
+                           }}>
+                      <div className="w-4 h-4 rounded flex items-center justify-center cursor-pointer flex-shrink-0 transition-all duration-150"
+                        style={{ border: selectedCats.includes(child.id) ? "none" : "1px solid var(--border)", background: selectedCats.includes(child.id) ? "var(--purple)" : "transparent" }}>
+                        {selectedCats.includes(child.id) && <span className="text-white text-[10px]">✓</span>}
+                      </div>
+                      <span className="text-sm transition-colors duration-150 group-hover:text-gold" style={{ color: "var(--text-secondary)" }}>{child.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </div>
@@ -134,13 +188,20 @@ function SearchContent() {
         </div>
       </div>
 
-      {chips.length > 0 && (
+      <div className="pt-2">
         <button onClick={() => { setPriceRange("all"); setMinRating(0); setSelectedCats([]); }}
-          className="w-full py-2 rounded-xl text-sm font-semibold cursor-pointer transition-colors duration-150"
-          style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-          Xóa tất cả bộ lọc
+          disabled={chips.length === 0}
+          className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+          style={{ 
+            border: "1px solid var(--border)", 
+            color: chips.length > 0 ? "var(--text-primary)" : "var(--text-muted)",
+            opacity: chips.length > 0 ? 1 : 0.4,
+            cursor: chips.length > 0 ? "pointer" : "not-allowed",
+            background: chips.length > 0 ? "var(--bg-elevated)" : "transparent"
+          }}>
+          <X className="w-4 h-4" /> Xóa tất cả bộ lọc
         </button>
-      )}
+      </div>
     </div>
   );
 
@@ -158,7 +219,7 @@ function SearchContent() {
                 Kết quả tìm kiếm cho &ldquo;<span className="text-gradient-gold">{query}</span>&rdquo;
               </h1>
             </div>
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>Tìm thấy {results.length} sản phẩm</p>
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>Tìm thấy {totalElements} sản phẩm</p>
           </div>
 
           {/* Active chips */}
@@ -250,36 +311,67 @@ function SearchContent() {
                   <Button variant="glass" onClick={() => { setPriceRange("all"); setMinRating(0); setSelectedCats([]); }}>Xóa bộ lọc</Button>
                 </div>
               ) : (
-                <motion.div key={viewMode} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  className={viewMode === "grid" ? "grid grid-cols-2 sm:grid-cols-3 gap-4" : "flex flex-col gap-3"}>
-                  {results.map((p, i) => (
-                    viewMode === "grid"
-                      ? <ProductCard key={p.id} product={p} index={i} />
-                      : (
-                        <motion.div key={p.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
-                          className="flex gap-4 p-4 rounded-2xl cursor-pointer group transition-all duration-200"
-                          style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-                          onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--border-purple)"}
-                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"}>
-                          <div className={`w-24 h-24 rounded-xl flex-shrink-0 bg-gradient-to-br ${["from-violet-600/80 to-indigo-600/80","from-amber-500/80 to-orange-600/80","from-purple-600/80 to-pink-600/80"][i % 3]} flex items-center justify-center`}>
-                            <span className="text-white/30 text-2xl">🛒</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium line-clamp-2 text-sm group-hover:text-gold transition-colors duration-200" style={{ color: "var(--text-primary)" }}>{p.name}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Star className="w-3.5 h-3.5 fill-gold text-gold" />
-                              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{p.rating}</span>
+                <>
+                  <motion.div key={viewMode} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className={viewMode === "grid" ? "grid grid-cols-2 sm:grid-cols-3 gap-4" : "flex flex-col gap-3"}>
+                    {results.map((p, i) => (
+                      viewMode === "grid"
+                        ? <ProductCard key={p.id} product={p} index={i} />
+                        : (
+                          <motion.div key={p.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
+                            className="flex gap-4 p-4 rounded-2xl cursor-pointer group transition-all duration-200"
+                            style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--border-purple)"}
+                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"}
+                            onClick={() => window.location.href = `/products/${p.id}`}>
+                            <div className={`w-24 h-24 rounded-xl flex-shrink-0 bg-gradient-to-br ${["from-violet-600/80 to-indigo-600/80","from-amber-500/80 to-orange-600/80","from-purple-600/80 to-pink-600/80"][i % 3]} flex items-center justify-center overflow-hidden`}>
+                              {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover mix-blend-overlay opacity-50" /> : <span className="text-white/30 text-2xl">🛒</span>}
                             </div>
-                            <div className="flex items-baseline gap-2 mt-2">
-                              <span className="font-bold text-gradient-gold">{formatPrice(p.price)}</span>
-                              {p.originalPrice && <span className="text-xs line-through" style={{ color: "var(--text-muted)" }}>{formatPrice(p.originalPrice)}</span>}
+                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                              <h3 className="font-medium line-clamp-2 text-sm group-hover:text-gold transition-colors duration-200" style={{ color: "var(--text-primary)" }}>{p.name}</h3>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Star className="w-3.5 h-3.5 fill-gold text-gold" />
+                                <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{p.rating || "5.0"}</span>
+                                <span className="text-xs" style={{ color: "var(--text-muted)" }}>• Đã bán {p.soldCount || 0}</span>
+                              </div>
+                              <div className="flex items-baseline gap-2 mt-2">
+                                <span className="font-bold text-gradient-gold">{formatPrice(p.discountPrice || p.price)}</span>
+                                {p.discountPrice && p.discountPrice < p.price && <span className="text-xs line-through" style={{ color: "var(--text-muted)" }}>{formatPrice(p.price)}</span>}
+                              </div>
                             </div>
-                          </div>
-                          <Button variant="gold" size="sm" className="self-center" onClick={() => window.location.href = `/products/${p.id}`}>Mua ngay</Button>
-                        </motion.div>
-                      )
-                  ))}
-                </motion.div>
+                            <div className="self-center flex-shrink-0 ml-4 hidden sm:block">
+                              <Button variant="gold" size="sm" onClick={(e) => { e.stopPropagation(); window.location.href = `/products/${p.id}`; }}>Mua ngay</Button>
+                            </div>
+                          </motion.div>
+                        )
+                    ))}
+                  </motion.div>
+                  
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-4 mt-8 pt-6" style={{ borderTop: "1px solid var(--border)" }}>
+                      <button 
+                        onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                        disabled={currentPage === 0}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${currentPage === 0 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                        style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                      >
+                        Trước
+                      </button>
+                      <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+                        Trang {currentPage + 1} / {totalPages}
+                      </span>
+                      <button 
+                        onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                        disabled={currentPage === totalPages - 1}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${currentPage === totalPages - 1 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                        style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                      >
+                        Sau
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

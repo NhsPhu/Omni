@@ -20,4 +20,5 @@ public class UserProfileDto {
     private String role;
     private String provider;
     private ZonedDateTime createdAt;
+    private boolean hasPin;
 }

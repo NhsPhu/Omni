@@ -34,15 +34,12 @@ public class OrderService {
     private final OrderStatusHistoryRepository historyRepository;
     private final ProductSkuRepository productSkuRepository;
     private final com.omni.backend.shipping.application.service.GhnShippingClient ghnShippingClient;
+    private final com.omni.backend.iam.adapter.persistence.repository.UserAddressRepository userAddressRepository;
+    private final com.omni.backend.shipping.adapter.persistence.repository.ShipmentTrackingRepository trackingRepository;
 
     @Transactional(readOnly = true)
     public List<ParentOrderJpaEntity> getUserOrders(UUID userId) {
-        // Here we could return a DTO, but returning entity for simplicity in this demo
-        // In real app, we should map to DTO to avoid lazy loading issues
-        // Let's assume we have a custom finder or just fetch all and filter
-        return parentOrderRepository.findAll().stream()
-                .filter(o -> o.getUserId().equals(userId))
-                .toList();
+        return parentOrderRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -67,6 +64,42 @@ public class OrderService {
 
         parentOrderRepository.save(parentOrder);
         log.info("User {} cancelled order {}", userId, parentOrderId);
+    }
+
+    @Transactional(readOnly = true)
+    public com.omni.backend.sales.application.dto.TrackingResponseDto getTrackingTimeline(UUID childOrderId, UUID userId) {
+        ChildOrderJpaEntity childOrder = childOrderRepository.findById(childOrderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+                
+        if (!childOrder.getParentOrder().getUserId().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+        
+        String trackingCode = childOrder.getTrackingCode();
+        if (trackingCode == null || trackingCode.isEmpty()) {
+            return com.omni.backend.sales.application.dto.TrackingResponseDto.builder()
+                    .trackingCode("")
+                    .currentStatus("Chưa giao hàng")
+                    .timeline(List.of())
+                    .build();
+        }
+        
+        var history = trackingRepository.findByTrackingCodeOrderByOccurredAtAsc(trackingCode);
+        
+        List<com.omni.backend.sales.application.dto.TrackingResponseDto.TrackingEventDto> timeline = history.stream()
+                .map(h -> com.omni.backend.sales.application.dto.TrackingResponseDto.TrackingEventDto.builder()
+                        .status(h.getGhnStatus())
+                        .statusName(h.getStatusName())
+                        .location(h.getLocation())
+                        .occurredAt(h.getOccurredAt() != null ? h.getOccurredAt().toString() : null)
+                        .build())
+                .collect(Collectors.toList());
+                
+        return com.omni.backend.sales.application.dto.TrackingResponseDto.builder()
+                .trackingCode(trackingCode)
+                .currentStatus(childOrder.getStatus())
+                .timeline(timeline)
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -142,6 +175,27 @@ public class OrderService {
         childOrderRepository.save(childOrder);
     }
 
+    @Transactional
+    public void completeUserOrder(UUID userId, UUID childOrderId) {
+        ChildOrderJpaEntity childOrder = childOrderRepository.findById(childOrderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        
+        if (!childOrder.getParentOrder().getUserId().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+        
+        if (!"SHIPPED".equals(childOrder.getStatus()) && !"DELIVERED".equals(childOrder.getStatus())) {
+            throw new IllegalStateException("Order cannot be completed from current status");
+        }
+        
+        if ("SHIPPED".equals(childOrder.getStatus())) {
+            changeChildOrderStatus(childOrder, "DELIVERED", userId, "Customer confirmed receipt");
+        }
+        changeChildOrderStatus(childOrder, "COMPLETED", userId, "Customer confirmed receipt");
+        childOrder.setDeliveredAt(ZonedDateTime.now());
+        childOrderRepository.save(childOrder);
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public ChildOrderJpaEntity shipVendorOrder(UUID shopId, UUID childOrderId, UUID vendorUserId) {
         ChildOrderJpaEntity childOrder = childOrderRepository.findById(childOrderId)
@@ -156,14 +210,17 @@ public class OrderService {
         }
 
         ParentOrderJpaEntity parent = childOrder.getParentOrder();
+        com.omni.backend.iam.adapter.persistence.entity.UserAddressJpaEntity addr = userAddressRepository
+                .findById(parent.getShippingAddressId())
+                .orElseThrow(() -> new RuntimeException("Shipping address not found"));
         
-        // Ensure values are not null
-        String address = "Unknown Address";
-        String ward = "0000";
-        int district = 0;
+        String fullAddress = addr.getDetail() + ", " + addr.getWard() + ", " + addr.getDistrict();
         
+        int toDistrictId = addr.getGhnDistrictId() != null ? addr.getGhnDistrictId() : 1442; // default 1442 (Quận 1)
+        String toWardCode = addr.getGhnWardCode() != null ? addr.getGhnWardCode() : "20107"; // default ward
+
         String trackingCode = ghnShippingClient.createOrder(
-            "Customer", "0900000000", address, ward, district,
+            addr.getReceiverName(), addr.getReceiverPhone(), fullAddress, toWardCode, toDistrictId,
             500, 20, 15, 5, childOrder.getTotalAmount().longValue()
         );
 
@@ -180,7 +237,8 @@ public class OrderService {
             case "PENDING" -> newStatus.equals("PROCESSING") || newStatus.equals("CANCELLED");
             case "PROCESSING" -> newStatus.equals("SHIPPED") || newStatus.equals("CANCELLED");
             case "SHIPPED" -> newStatus.equals("DELIVERED") || newStatus.equals("RETURNED");
-            case "DELIVERED" -> newStatus.equals("COMPLETED") || newStatus.equals("RETURNED");
+            case "DELIVERED" -> newStatus.equals("COMPLETED") || newStatus.equals("RETURNED") || newStatus.equals("RETURN_REQUESTED");
+            case "RETURN_REQUESTED" -> newStatus.equals("RETURNED") || newStatus.equals("RETURN_REJECTED") || newStatus.equals("DELIVERED");
             default -> false;
         };
 
@@ -211,6 +269,53 @@ public class OrderService {
             sku.setStockQuantity(sku.getStockQuantity() + item.getQuantity());
             productSkuRepository.save(sku);
         }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void requestReturn(UUID userId, UUID childOrderId, com.omni.backend.sales.application.dto.ReturnOrderRequest request) {
+        ChildOrderJpaEntity childOrder = childOrderRepository.findById(childOrderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if (!childOrder.getParentOrder().getUserId().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        if (!"DELIVERED".equals(childOrder.getStatus())) {
+            throw new IllegalStateException("Only DELIVERED orders can be returned");
+        }
+
+        // Must be within 7 days
+        if (childOrder.getDeliveredAt() != null && childOrder.getDeliveredAt().isBefore(ZonedDateTime.now().minusDays(7))) {
+            throw new IllegalStateException("Return period has expired (7 days)");
+        }
+
+        childOrder.setReturnReason(request.getReasonType() + ": " + request.getReasonDetails());
+        if (request.getImages() != null) {
+            childOrder.setReturnImages(request.getImages());
+        }
+
+        changeChildOrderStatus(childOrder, "RETURN_REQUESTED", userId, "User requested return");
+        childOrderRepository.save(childOrder);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void resolveDispute(UUID childOrderId, boolean approved, String resolutionNote, UUID adminId) {
+        ChildOrderJpaEntity childOrder = childOrderRepository.findById(childOrderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if (!"RETURN_REQUESTED".equals(childOrder.getStatus())) {
+            throw new IllegalStateException("Order is not in RETURN_REQUESTED status");
+        }
+
+        if (approved) {
+            changeChildOrderStatus(childOrder, "RETURNED", adminId, "Admin approved return: " + resolutionNote);
+            rollbackStock(childOrder);
+            // Here you would also trigger refund to wallet/payment gateway
+        } else {
+            changeChildOrderStatus(childOrder, "RETURN_REJECTED", adminId, "Admin rejected return: " + resolutionNote);
+        }
+
+        childOrderRepository.save(childOrder);
     }
 
     // Runs every 5 minutes

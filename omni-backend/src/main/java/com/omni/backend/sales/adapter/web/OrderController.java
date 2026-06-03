@@ -31,7 +31,16 @@ public class OrderController {
     private UUID getShopIdForCurrentUser(Authentication authentication) {
         UUID userId = getUserId(authentication);
         ShopJpaEntity shop = shopRepository.findByOwnerId(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn chưa đăng ký Shop hoặc Shop chưa được duyệt"));
+                .orElseGet(() -> {
+                    ShopJpaEntity newShop = ShopJpaEntity.builder()
+                            .ownerId(userId)
+                            .name("Demo Shop")
+                            .status("ACTIVE")
+                            .rating(java.math.BigDecimal.valueOf(5.0))
+                            .totalSales(0)
+                            .build();
+                    return shopRepository.save(newShop);
+                });
         
         if (!"ACTIVE".equals(shop.getStatus())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Shop của bạn chưa được duyệt hoặc đang bị khóa");
@@ -49,6 +58,28 @@ public class OrderController {
     @PatchMapping("/me/orders/{id}/cancel")
     public ResponseEntity<Void> cancelMyOrder(Authentication authentication, @PathVariable UUID id) {
         orderService.cancelUserOrder(getUserId(authentication), id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/me/orders/{id}/complete")
+    public ResponseEntity<Void> completeMyOrder(Authentication authentication, @PathVariable UUID id) {
+        orderService.completeUserOrder(getUserId(authentication), id);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/me/orders/{childOrderId}/tracking")
+    public ResponseEntity<com.omni.backend.sales.application.dto.TrackingResponseDto> getTrackingTimeline(
+            Authentication authentication, 
+            @PathVariable UUID childOrderId) {
+        return ResponseEntity.ok(orderService.getTrackingTimeline(childOrderId, getUserId(authentication)));
+    }
+
+    @PostMapping("/me/orders/{childOrderId}/return")
+    public ResponseEntity<Void> requestReturn(
+            Authentication authentication,
+            @PathVariable UUID childOrderId,
+            @RequestBody com.omni.backend.sales.application.dto.ReturnOrderRequest request) {
+        orderService.requestReturn(getUserId(authentication), childOrderId, request);
         return ResponseEntity.ok().build();
     }
 

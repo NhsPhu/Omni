@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Xác thực tài khoản</title></head>
+<body>
+  <h2>Xác thực tài khoản Omni</h2>
+  <p>Xin chào <strong th:text="${userName}">Người dùng</strong>,</p>
+  <p>Nhấn vào link bên dưới để xác thực tài khoản của bạn:</p>
+  <a th:href="${verificationUrl}">Xác thực tài khoản</a>
+  <p>Link có hiệu lực trong 24 giờ.</p>
+</body>
+</html>

@@ -5,8 +5,17 @@ import { ArrowRight } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import Button from "@/components/ui/Button";
 import { sellerBenefits } from "@/data/mock";
+import { useAuthStore } from "@/store/authStore";
+import { useRouter } from "next/navigation";
 
 export default function SellerCTASection() {
+  const { user, isAuthenticated } = useAuthStore();
+  const router = useRouter();
+  
+  if (isAuthenticated() && user?.role === "ROLE_VENDOR") {
+    return null; // Hide if already a seller
+  }
+
   return (
     <section className="py-16 lg:py-24 bg-surface overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 lg:px-6">
@@ -67,11 +76,11 @@ export default function SellerCTASection() {
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button variant="gold" size="lg" className="group">
+              <Button onClick={() => router.push('/seller/register')} variant="gold" size="lg" className="group">
                 Đăng ký bán hàng miễn phí
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-200" />
               </Button>
-              <Button variant="ghost" size="lg">
+              <Button onClick={() => router.push('/seller/info')} variant="ghost" size="lg">
                 Tìm hiểu thêm
               </Button>
             </div>

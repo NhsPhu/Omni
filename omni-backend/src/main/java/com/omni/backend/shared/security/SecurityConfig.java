@@ -32,6 +32,12 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
 
+    @org.springframework.beans.factory.annotation.Value("${app.storefront-url:http://localhost:3000}")
+    private String storefrontUrl;
+
+    @org.springframework.beans.factory.annotation.Value("${app.dashboard-url:http://localhost:5173}")
+    private String dashboardUrl;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -41,7 +47,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/categories/**", "/api/products/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/categories/**", "/api/products/**", "/api/shops/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**", "/error").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -58,7 +64,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*")); // Should be restricted in production
+        configuration.setAllowedOrigins(Arrays.asList(storefrontUrl, dashboardUrl, "http://127.0.0.1:3000", "http://127.0.0.1:5173"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
         configuration.setExposedHeaders(List.of("Authorization"));

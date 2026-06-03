@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { User, MapPin, Package, Heart, Ticket, Bell, LogOut, Camera, Shield, CreditCard, ChevronRight } from "lucide-react";
+import { User, MapPin, Package, Ticket, Bell, LogOut, Camera, Shield, CreditCard, ChevronRight, Plus, Trash2, Edit2 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
@@ -16,6 +16,9 @@ export default function ProfilePage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [vouchers, setVouchers] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -28,6 +31,30 @@ export default function ProfilePage() {
 
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  
+  // Address Modal State
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<any>(null);
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [addrForm, setAddrForm] = useState({
+    receiverName: "", receiverPhone: "", detail: "",
+    ghnProvinceId: 0, ghnDistrictId: 0, ghnWardCode: "",
+    province: "", district: "", ward: "",
+    isDefault: false
+  });
+
+  // Password Modal State
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ oldPassword: "", newPassword: "", confirmPassword: "" });
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  // PIN Modal State
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinForm, setPinForm] = useState({ oldPin: "", newPin: "", confirmPin: "" });
+  const [savingPin, setSavingPin] = useState(false);
 
   const fetchProfile = async () => {
     try {
@@ -57,8 +84,172 @@ export default function ProfilePage() {
       router.push("/auth");
     } else {
       fetchProfile();
+      
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get('tab')) {
+        setActiveTab(searchParams.get('tab')!);
+      }
+      if (searchParams.get('action') === 'set-password') {
+        setActiveTab('security');
+        setIsPasswordModalOpen(true);
+      }
     }
   }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    if (activeTab === "addresses") {
+      fetchAddresses();
+      if (provinces.length === 0) fetchProvinces();
+    } else if (activeTab === "vouchers") {
+      api.get("/me/vouchers").then(res => setVouchers(res.data)).catch(() => {});
+    } else if (activeTab === "notifications") {
+      api.get("/me/notifications?page=0&size=50").then(res => {
+        if (res.data && res.data.content) setNotifications(res.data.content);
+      }).catch(() => {});
+    }
+  }, [activeTab]);
+
+  const fetchAddresses = () => {
+    api.get("/me/addresses").then(res => setAddresses(res.data)).catch(() => {});
+  };
+
+  const fetchProvinces = async () => {
+    try {
+      const res = await api.get('/public/ghn/provinces');
+      setProvinces(res.data);
+    } catch (e) {}
+  };
+
+  const fetchDistricts = async (provinceId: number) => {
+    try {
+      const res = await api.get(`/public/ghn/districts?provinceId=${provinceId}`);
+      setDistricts(res.data);
+    } catch (e) {}
+  };
+
+  const fetchWards = async (districtId: number) => {
+    try {
+      const res = await api.get(`/public/ghn/wards?districtId=${districtId}`);
+      setWards(res.data);
+    } catch (e) {}
+  };
+
+  const openAddressModal = (addr: any = null) => {
+    setEditingAddress(addr);
+    if (addr) {
+      setAddrForm({
+        receiverName: addr.receiverName, receiverPhone: addr.receiverPhone, detail: addr.detail,
+        ghnProvinceId: addr.ghnProvinceId, ghnDistrictId: addr.ghnDistrictId, ghnWardCode: addr.ghnWardCode,
+        province: addr.province, district: addr.district, ward: addr.ward, isDefault: addr.isDefault
+      });
+      fetchDistricts(addr.ghnProvinceId);
+      fetchWards(addr.ghnDistrictId);
+    } else {
+      setAddrForm({ receiverName: "", receiverPhone: "", detail: "", ghnProvinceId: 0, ghnDistrictId: 0, ghnWardCode: "", province: "", district: "", ward: "", isDefault: false });
+      setDistricts([]); setWards([]);
+    }
+    setIsAddressModalOpen(true);
+  };
+
+  const handleSaveAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingAddress(true);
+    try {
+      if (editingAddress) {
+        await api.put(`/me/addresses/${editingAddress.id}`, addrForm);
+        toast.success("Cập nhật địa chỉ thành công!");
+      } else {
+        await api.post("/me/addresses", addrForm);
+        toast.success("Thêm địa chỉ thành công!");
+      }
+      setIsAddressModalOpen(false);
+      fetchAddresses();
+    } catch (err) {
+      toast.error("Lỗi khi lưu địa chỉ. Vui lòng thử lại.");
+    } finally {
+      setSavingAddress(false);
+    }
+  };
+
+  const handleDeleteAddress = async (id: string) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa địa chỉ này?")) return;
+    try {
+      await api.delete(`/me/addresses/${id}`);
+      toast.success("Xóa địa chỉ thành công!");
+      fetchAddresses();
+    } catch (e) {
+      toast.error("Xóa địa chỉ thất bại.");
+    }
+  };
+
+  const handleSetDefaultAddress = async (id: string) => {
+    try {
+      await api.patch(`/me/addresses/${id}/default`);
+      toast.success("Đã đặt làm địa chỉ mặc định!");
+      fetchAddresses();
+    } catch (e) {
+      toast.error("Thao tác thất bại.");
+    }
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error("Mật khẩu mới không khớp!");
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await api.put("/users/password", {
+        oldPassword: passwordForm.oldPassword,
+        newPassword: passwordForm.newPassword
+      });
+      toast.success("Cập nhật mật khẩu thành công!");
+      setIsPasswordModalOpen(false);
+      setPasswordForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
+      
+      // Update hasPassword state locally
+      useAuthStore.getState().updateUser({ hasPassword: true });
+      
+      // If there's a redirect parameter
+      const searchParams = new URLSearchParams(window.location.search);
+      const redirect = searchParams.get('redirect');
+      if (redirect) {
+        router.push(redirect);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Cập nhật mật khẩu thất bại.");
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const handlePinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinForm.newPin !== pinForm.confirmPin) {
+      toast.error("Mã PIN mới không khớp!");
+      return;
+    }
+    if (pinForm.newPin.length !== 6 || !/^\d+$/.test(pinForm.newPin)) {
+      toast.error("Mã PIN phải là 6 chữ số!");
+      return;
+    }
+    setSavingPin(true);
+    try {
+      await api.put("/users/pin", {
+        oldPin: pinForm.oldPin,
+        newPin: pinForm.newPin
+      });
+      toast.success("Thiết lập mã PIN thành công!");
+      setIsPinModalOpen(false);
+      setPinForm({ oldPin: "", newPin: "", confirmPin: "" });
+      useAuthStore.getState().updateUser({ hasPin: true });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Thiết lập mã PIN thất bại.");
+    } finally {
+      setSavingPin(false);
+    }
+  };
 
   if (!mounted || !user) return null;
 
@@ -134,7 +325,6 @@ export default function ProfilePage() {
     { id: "profile", label: "Hồ sơ của tôi", icon: User },
     { id: "addresses", label: "Sổ địa chỉ", icon: MapPin },
     { id: "orders", label: "Đơn hàng", icon: Package, href: "/orders" },
-    { id: "wishlist", label: "Yêu thích", icon: Heart, href: "/wishlist" },
     { id: "vouchers", label: "Kho Voucher", icon: Ticket },
     { id: "notifications", label: "Thông báo", icon: Bell },
     { id: "payment", label: "Phương thức thanh toán", icon: CreditCard },
@@ -296,7 +486,141 @@ export default function ProfilePage() {
                   </div>
                 )}
 
-                {activeTab !== "profile" && (
+                {activeTab === "addresses" && (
+                  <div>
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h2 className="text-2xl font-bold font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Sổ địa chỉ</h2>
+                        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Quản lý địa chỉ nhận hàng của bạn</p>
+                      </div>
+                      <Button variant="gold" size="sm" onClick={() => openAddressModal()}><Plus className="w-4 h-4 mr-1" /> Thêm địa chỉ mới</Button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {addresses.length > 0 ? addresses.map((addr) => (
+                        <div key={addr.id} className="p-4 rounded-xl flex justify-between" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>{addr.receiverName}</span>
+                              <span className="text-sm" style={{ color: "var(--text-secondary)" }}>| {addr.receiverPhone}</span>
+                            </div>
+                            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{addr.detail}, {addr.ward}, {addr.district}, {addr.province}</p>
+                            {addr.isDefault && <span className="inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded text-red-500 bg-red-500/10 border border-red-500/20">Mặc định</span>}
+                          </div>
+                          <div className="flex flex-col items-end justify-between">
+                            <div className="flex gap-2">
+                              <button onClick={() => openAddressModal(addr)} className="text-sm text-blue-500 hover:underline">Cập nhật</button>
+                              {!addr.isDefault && <button onClick={() => handleDeleteAddress(addr.id)} className="text-sm text-red-500 hover:underline">Xóa</button>}
+                            </div>
+                            {!addr.isDefault && <Button onClick={() => handleSetDefaultAddress(addr.id)} variant="ghost" size="sm" className="mt-2 text-xs h-7 px-2">Thiết lập mặc định</Button>}
+                          </div>
+                        </div>
+                      )) : (
+                        <p className="text-sm text-center py-10" style={{ color: "var(--text-muted)" }}>Bạn chưa có địa chỉ nào được lưu.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "vouchers" && (
+                  <div>
+                    <h2 className="text-2xl font-bold mb-1 font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Kho Voucher</h2>
+                    <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>Các mã giảm giá bạn đã lưu</p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {vouchers.length > 0 ? vouchers.map((v) => (
+                        <div key={v.id} className="flex rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
+                          <div className="w-24 flex flex-col items-center justify-center p-2" style={{ background: "var(--grad-purple)" }}>
+                            <Ticket className="w-8 h-8 text-white mb-1" />
+                            <span className="text-xs text-white font-bold text-center">{v.shopId ? "SHOP" : "OMNI"}</span>
+                          </div>
+                          <div className="flex-1 p-3 flex flex-col justify-center">
+                            <h4 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Giảm {v.discountPercent || v.discountAmount}%</h4>
+                            <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>Đơn tối thiểu {v.minOrderValue}đ</p>
+                            <p className="text-[10px] mt-2 text-red-400">HSD: {new Date(v.validUntil).toLocaleDateString("vi-VN")}</p>
+                          </div>
+                        </div>
+                      )) : (
+                        <div className="col-span-2 text-center py-10">
+                          <Ticket className="w-12 h-12 mx-auto mb-3 opacity-20" style={{ color: "var(--text-muted)" }} />
+                          <p className="text-sm" style={{ color: "var(--text-muted)" }}>Kho voucher đang trống</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "notifications" && (
+                  <div>
+                    <h2 className="text-2xl font-bold mb-1 font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Thông báo</h2>
+                    <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>Cập nhật mới nhất từ hệ thống</p>
+                    <div className="space-y-3">
+                      {notifications.length > 0 ? notifications.map((notif) => (
+                        <div key={notif.id} className="p-4 rounded-xl flex gap-4" style={{ background: notif.isRead ? "var(--bg-surface)" : "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "var(--grad-gold)" }}>
+                            <Bell className="w-5 h-5 text-black" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className={`text-sm ${notif.isRead ? "font-medium" : "font-bold"}`} style={{ color: "var(--text-primary)" }}>{notif.title}</h4>
+                            <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>{notif.message}</p>
+                            <span className="text-[10px] mt-2 block" style={{ color: "var(--text-muted)" }}>{new Date(notif.createdAt).toLocaleString("vi-VN")}</span>
+                          </div>
+                        </div>
+                      )) : (
+                        <p className="text-sm text-center py-10" style={{ color: "var(--text-muted)" }}>Không có thông báo nào.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "payment" && (
+                  <div>
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h2 className="text-2xl font-bold font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Phương thức thanh toán</h2>
+                        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Quản lý thẻ và ví điện tử</p>
+                      </div>
+                      <Button variant="gold" size="sm"><Plus className="w-4 h-4 mr-1" /> Thêm thẻ/ví mới</Button>
+                    </div>
+                    <div className="p-6 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-surface)", border: "1px dashed var(--border)" }}>
+                      <p className="text-sm" style={{ color: "var(--text-muted)" }}>Bạn chưa liên kết phương thức thanh toán nào.</p>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "security" && (
+                  <div>
+                    <h2 className="text-2xl font-bold mb-1 font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Bảo mật tài khoản</h2>
+                    <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>Cài đặt mật khẩu và các lớp bảo mật</p>
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-xl flex justify-between items-center" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
+                        <div>
+                          <p className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Mật khẩu đăng nhập</p>
+                          <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>Đổi mật khẩu định kỳ để bảo vệ tài khoản</p>
+                        </div>
+                        <Button variant="glass" size="sm" onClick={() => setIsPasswordModalOpen(true)}>
+                          {user.hasPassword ? "Cập nhật" : "Thiết lập"}
+                        </Button>
+                      </div>
+                      <div className="p-4 rounded-xl flex justify-between items-center" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
+                        <div>
+                          <p className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Thiết lập mã PIN</p>
+                          <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>Dùng để xác thực giao dịch</p>
+                        </div>
+                        <Button variant="glass" size="sm" onClick={() => setIsPinModalOpen(true)}>
+                          {user.hasPin ? "Cập nhật" : "Thiết lập"}
+                        </Button>
+                      </div>
+                      <div className="p-4 rounded-xl flex justify-between items-center" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
+                        <div>
+                          <p className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Liên kết mạng xã hội</p>
+                          <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>{provider}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab !== "profile" && activeTab !== "addresses" && activeTab !== "vouchers" && activeTab !== "notifications" && activeTab !== "payment" && activeTab !== "security" && (
                   <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center">
                     <div className="w-20 h-20 rounded-full mb-4 flex items-center justify-center" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
                       <Ticket className="w-8 h-8 text-gray-400" />
@@ -313,6 +637,150 @@ export default function ProfilePage() {
         </div>
       </main>
       <Footer />
+
+      {/* Address Modal */}
+      {isAddressModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsAddressModalOpen(false)} />
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="relative w-full max-w-xl rounded-3xl p-6 shadow-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            <h3 className="text-xl font-bold mb-6" style={{ color: "var(--text-primary)" }}>{editingAddress ? "Cập nhật địa chỉ" : "Thêm địa chỉ mới"}</h3>
+            <form onSubmit={handleSaveAddress} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Họ và tên</label>
+                  <input type="text" required value={addrForm.receiverName} onChange={e => setAddrForm({...addrForm, receiverName: e.target.value})} className="w-full px-3 py-2 rounded-xl text-sm outline-none" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }} placeholder="Tên người nhận" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Số điện thoại</label>
+                  <input type="tel" required value={addrForm.receiverPhone} onChange={e => setAddrForm({...addrForm, receiverPhone: e.target.value})} className="w-full px-3 py-2 rounded-xl text-sm outline-none" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }} placeholder="Số điện thoại" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Tỉnh/Thành phố</label>
+                  <select required value={addrForm.ghnProvinceId || ""} 
+                    onChange={e => {
+                      const id = Number(e.target.value);
+                      const name = e.target.options[e.target.selectedIndex].text;
+                      setAddrForm({...addrForm, ghnProvinceId: id, province: name, ghnDistrictId: 0, district: "", ghnWardCode: "", ward: ""});
+                      setDistricts([]); setWards([]); fetchDistricts(id);
+                    }} 
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+                    <option value="">Chọn Tỉnh/Thành</option>
+                    {provinces.map(p => <option key={p.ProvinceID} value={p.ProvinceID}>{p.ProvinceName}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Quận/Huyện</label>
+                  <select required disabled={!addrForm.ghnProvinceId} value={addrForm.ghnDistrictId || ""} 
+                    onChange={e => {
+                      const id = Number(e.target.value);
+                      const name = e.target.options[e.target.selectedIndex].text;
+                      setAddrForm({...addrForm, ghnDistrictId: id, district: name, ghnWardCode: "", ward: ""});
+                      setWards([]); fetchWards(id);
+                    }} 
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none disabled:opacity-50" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+                    <option value="">Chọn Quận/Huyện</option>
+                    {districts.map(d => <option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Phường/Xã</label>
+                <select required disabled={!addrForm.ghnDistrictId} value={addrForm.ghnWardCode || ""} 
+                  onChange={e => {
+                    const code = e.target.value;
+                    const name = e.target.options[e.target.selectedIndex].text;
+                    setAddrForm({...addrForm, ghnWardCode: code, ward: name});
+                  }} 
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none disabled:opacity-50" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+                  <option value="">Chọn Phường/Xã</option>
+                  {wards.map(w => <option key={w.WardCode} value={w.WardCode}>{w.WardName}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Địa chỉ cụ thể</label>
+                <input type="text" required value={addrForm.detail} onChange={e => setAddrForm({...addrForm, detail: e.target.value})} className="w-full px-3 py-2 rounded-xl text-sm outline-none" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }} placeholder="Số nhà, tên đường..." />
+              </div>
+
+              <div className="flex items-center gap-2 mt-4">
+                <input type="checkbox" id="isDefault" checked={addrForm.isDefault} onChange={e => setAddrForm({...addrForm, isDefault: e.target.checked})} className="w-4 h-4 rounded border-gray-500 text-gold focus:ring-gold" style={{ accentColor: "var(--gold)" }} />
+                <label htmlFor="isDefault" className="text-sm cursor-pointer" style={{ color: "var(--text-primary)" }}>Đặt làm địa chỉ mặc định</label>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6 pt-4" style={{ borderTop: "1px solid var(--border)" }}>
+                <Button type="button" variant="glass" onClick={() => setIsAddressModalOpen(false)}>Hủy</Button>
+                <Button type="submit" variant="gold" disabled={savingAddress}>{savingAddress ? "Đang lưu..." : "Lưu địa chỉ"}</Button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Password Modal */}
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsPasswordModalOpen(false)} />
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="relative w-full max-w-md rounded-3xl p-6 shadow-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            <h3 className="text-xl font-bold mb-6" style={{ color: "var(--text-primary)" }}>{user.hasPassword ? "Đổi mật khẩu" : "Thiết lập mật khẩu"}</h3>
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              {user.hasPassword && (
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Mật khẩu hiện tại</label>
+                  <input type="password" required value={passwordForm.oldPassword} onChange={e => setPasswordForm({...passwordForm, oldPassword: e.target.value})} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }} placeholder="Nhập mật khẩu hiện tại" />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Mật khẩu mới</label>
+                <input type="password" required minLength={6} value={passwordForm.newPassword} onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }} placeholder="Nhập mật khẩu mới" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Xác nhận mật khẩu mới</label>
+                <input type="password" required minLength={6} value={passwordForm.confirmPassword} onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }} placeholder="Nhập lại mật khẩu mới" />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6 pt-4" style={{ borderTop: "1px solid var(--border)" }}>
+                <Button type="button" variant="glass" onClick={() => setIsPasswordModalOpen(false)}>Hủy</Button>
+                <Button type="submit" variant="gold" disabled={savingPassword}>{savingPassword ? "Đang xử lý..." : "Xác nhận"}</Button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* PIN Modal */}
+      {isPinModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsPinModalOpen(false)} />
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="relative w-full max-w-md rounded-3xl p-6 shadow-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            <h3 className="text-xl font-bold mb-6" style={{ color: "var(--text-primary)" }}>{user.hasPin ? "Đổi mã PIN" : "Thiết lập mã PIN"}</h3>
+            <form onSubmit={handlePinSubmit} className="space-y-4">
+              {user.hasPin && (
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Mã PIN hiện tại</label>
+                  <input type="password" required maxLength={6} value={pinForm.oldPin} onChange={e => setPinForm({...pinForm, oldPin: e.target.value.replace(/\D/g, '')})} className="w-full px-4 py-3 rounded-xl text-sm outline-none tracking-[0.5em]" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }} placeholder="******" />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Mã PIN mới (6 chữ số)</label>
+                <input type="password" required minLength={6} maxLength={6} value={pinForm.newPin} onChange={e => setPinForm({...pinForm, newPin: e.target.value.replace(/\D/g, '')})} className="w-full px-4 py-3 rounded-xl text-sm outline-none tracking-[0.5em]" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }} placeholder="******" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Xác nhận mã PIN mới</label>
+                <input type="password" required minLength={6} maxLength={6} value={pinForm.confirmPin} onChange={e => setPinForm({...pinForm, confirmPin: e.target.value.replace(/\D/g, '')})} className="w-full px-4 py-3 rounded-xl text-sm outline-none tracking-[0.5em]" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }} placeholder="******" />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6 pt-4" style={{ borderTop: "1px solid var(--border)" }}>
+                <Button type="button" variant="glass" onClick={() => setIsPinModalOpen(false)}>Hủy</Button>
+                <Button type="submit" variant="gold" disabled={savingPin}>{savingPin ? "Đang xử lý..." : "Xác nhận"}</Button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </>
   );
 }

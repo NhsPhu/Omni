@@ -41,6 +41,12 @@ spring:
           starttls:
             enable: true
 
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    encoding: UTF-8
+    mode: HTML
+
 jwt:
   secret: YmFzZTY0LWVuY29kZWQtc2VjcmV0LWtleS1tdXN0LWJlLWF0LWxlYXN0LTMyeWJ0ZXMtbG9uZw== # Example base64 key
   expiration: 86400000 # 1 day in ms
@@ -48,3 +54,16 @@ jwt:
 
 server:
   port: 8080
+
+app:
+  storefront-url: ${STOREFRONT_URL:http://localhost:3000}
+
+ghn:
+  api:
+    url: https://online-gateway.ghn.vn/shiip/public-api/v2
+    token: ${GHN_TOKEN:f7e341a6-5f45-11f1-a694-7a6b2378a77f}
+    shopId: 6471542
+
+vnpay:
+  tmn-code: UD2YB7G7
+  hash-secret: DJ8X3REITF7WMJQ5HGIJKNKKTSO8YQDK

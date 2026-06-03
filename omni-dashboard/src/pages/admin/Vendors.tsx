@@ -99,40 +99,42 @@ export default function Vendors() {
   ];
 
   return (
-    <>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 m-0">Duyệt người bán (Vendors)</h1>
-        <p className="text-gray-500">Quản lý và xét duyệt các hồ sơ đăng ký trở thành nhà bán hàng trên hệ thống.</p>
+    <div className="space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Duyệt người bán (Vendors)</h1>
+          <p className="text-gray-500 mt-1 font-medium">Quản lý và xét duyệt các hồ sơ đăng ký trở thành nhà bán hàng trên hệ thống.</p>
+        </div>
       </div>
 
       <Row gutter={24} className="mb-6">
         <Col span={8}>
-          <Card className="card-shadow border-none rounded-xl">
-            <div className="text-gray-500 mb-1">Hồ sơ chờ duyệt</div>
-            <div className="text-3xl font-bold text-blue-600">{shops.filter((a: any) => a.status === 'PENDING_REVIEW').length}</div>
+          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-blue-50 to-indigo-50">
+            <div className="text-gray-600 font-medium mb-1">Hồ sơ chờ duyệt</div>
+            <div className="text-4xl font-extrabold text-blue-600 tracking-tight">{shops.filter((a: any) => a.status === 'PENDING_REVIEW').length}</div>
           </Card>
         </Col>
         <Col span={8}>
-          <Card className="card-shadow border-none rounded-xl">
-            <div className="text-gray-500 mb-1">Đã duyệt (Tổng)</div>
-            <div className="text-3xl font-bold text-green-600">{shops.filter((a: any) => a.status === 'ACTIVE').length}</div>
+          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-emerald-50 to-teal-50">
+            <div className="text-gray-600 font-medium mb-1">Đã duyệt (Tổng)</div>
+            <div className="text-4xl font-extrabold text-emerald-600 tracking-tight">{shops.filter((a: any) => a.status === 'ACTIVE').length}</div>
           </Card>
         </Col>
         <Col span={8}>
-          <Card className="card-shadow border-none rounded-xl">
-            <div className="text-gray-500 mb-1">Từ chối</div>
-            <div className="text-3xl font-bold text-red-600">{shops.filter((a: any) => a.status === 'REJECTED').length}</div>
+          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-rose-50 to-red-50">
+            <div className="text-gray-600 font-medium mb-1">Từ chối</div>
+            <div className="text-4xl font-extrabold text-rose-600 tracking-tight">{shops.filter((a: any) => a.status === 'REJECTED').length}</div>
           </Card>
         </Col>
       </Row>
 
-      <Card className="card-shadow border-none rounded-xl">
+      <Card className="border-0 rounded-3xl shadow-sm" styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}>
         <Table 
           columns={columns} 
           dataSource={shops}
           rowKey="id"
           loading={loading}
-          className="[&_.ant-table-thead_th]:!bg-gray-50"
+          className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500 [&_.ant-table-thead_th]:!font-semibold"
           pagination={{ total: total, pageSize: 20 }}
         />
       </Card>
@@ -222,6 +224,6 @@ export default function Vendors() {
           </div>
         )}
       </Drawer>
-    </>
+    </div>
   );
 }

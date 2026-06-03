@@ -6,9 +6,12 @@ import Button from "@/components/ui/Button";
 import { popularSearches, trustStats } from "@/data/mock";
 import * as LucideIcons from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/authStore";
 
 export default function HeroSection() {
   const router = useRouter();
+  const { user, isAuthenticated } = useAuthStore();
+  const showSellerBtn = !isAuthenticated() || user?.role !== "ROLE_VENDOR";
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden" style={{ background: "var(--grad-hero)" }}>
 
@@ -81,7 +84,9 @@ export default function HeroSection() {
           <Button onClick={() => router.push('/search')} variant="gold" size="lg" className="shadow-[0_8px_40px_rgba(245,158,11,0.35)]">
             Khám phá ngay <ArrowRight className="w-5 h-5" />
           </Button>
-          <Button onClick={() => window.location.href = 'http://localhost:5173'} variant="glass" size="lg">Bắt đầu bán hàng</Button>
+          {showSellerBtn && (
+            <Button onClick={() => router.push('/seller/register')} variant="glass" size="lg">Bắt đầu bán hàng</Button>
+          )}
         </motion.div>
 
         {/* Trust stats */}

@@ -7,8 +7,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -48,7 +48,7 @@ public class ParentOrderJpaEntity {
 
     @OneToMany(mappedBy = "parentOrder", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<ChildOrderJpaEntity> childOrders = new ArrayList<>();
+    private Set<ChildOrderJpaEntity> childOrders = new HashSet<>();
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

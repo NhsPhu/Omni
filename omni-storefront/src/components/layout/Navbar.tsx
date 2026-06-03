@@ -10,16 +10,18 @@ import Button from "@/components/ui/Button";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
 import { User as UserIcon, LogOut } from "lucide-react";
+import NotificationDropdown from "@/components/ui/NotificationDropdown";
 const staticNavLinks = [
   { label: "Danh mục", href: "/#categories" },
   { label: "Flash Sale", href: "/#flash-sale" },
-  { label: "Cửa hàng", href: "/#" },
+  { label: "Cửa hàng", href: "/seller/info" }, // Default to info, dynamic below
 ];
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [activeSubCategory, setActiveSubCategory] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
 
@@ -98,11 +100,17 @@ export default function Navbar() {
             <nav className="hidden lg:flex items-center gap-1">
               {staticNavLinks.map(link => {
                 const isCategories = link.label === "Danh mục";
+                const isStore = link.label === "Cửa hàng";
+                const finalHref = isStore && user?.role === "ROLE_VENDOR" ? "/seller" : link.href;
+                
                 return (
                 <div key={link.label} className="relative"
                   onMouseEnter={() => isCategories && setActiveDropdown(link.label)}
-                  onMouseLeave={() => setActiveDropdown(null)}>
-                  <Link href={link.href}
+                  onMouseLeave={() => {
+                    setActiveDropdown(null);
+                    setActiveSubCategory(null);
+                  }}>
+                  <Link href={finalHref}
                     className="flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer"
                     style={{ color: "var(--text-secondary)" }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; (e.currentTarget as HTMLElement).style.background = "var(--bg-glass)"; }}
@@ -119,23 +127,47 @@ export default function Navbar() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -8, scale: 0.97 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute top-full left-0 mt-1 w-44 rounded-2xl overflow-hidden z-50"
+                        className="absolute top-full left-0 mt-1 w-56 rounded-2xl z-50 flex"
                         style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}
                       >
-                        {categories.slice(0, 5).map((cat: any) => (
-                          <Link key={cat.id} href={`/search?categoryId=${cat.id}`}
-                            className="block px-4 py-2.5 text-sm transition-colors duration-150 cursor-pointer"
-                            style={{ color: "var(--text-secondary)" }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-glass)"; (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}>
-                            {cat.name}
+                        <div className="w-full relative py-2">
+                          {categories.slice(0, 8).map((cat: any) => (
+                            <div key={cat.id} 
+                              onMouseEnter={() => setActiveSubCategory(cat.id)}
+                              className="relative"
+                            >
+                              <Link href={`/search?categoryId=${cat.id}`}
+                                className="flex items-center justify-between px-4 py-2.5 text-sm transition-colors duration-150 cursor-pointer"
+                                style={{ color: "var(--text-secondary)", background: activeSubCategory === cat.id ? "var(--bg-glass)" : "transparent" }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
+                                onMouseLeave={e => { if (activeSubCategory !== cat.id) (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}>
+                                {cat.name}
+                                {cat.children && cat.children.length > 0 && <ChevronDown className="w-3.5 h-3.5 opacity-50 -rotate-90" />}
+                              </Link>
+                              
+                              {/* Subcategories */}
+                              {activeSubCategory === cat.id && cat.children && cat.children.length > 0 && (
+                                <div className="absolute top-0 left-[95%] w-48 rounded-2xl overflow-hidden z-50 py-2 shadow-xl" 
+                                     style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+                                  {cat.children.map((child: any) => (
+                                    <Link key={child.id} href={`/search?categoryId=${child.id}`}
+                                      className="block px-4 py-2.5 text-sm transition-colors duration-150 cursor-pointer"
+                                      style={{ color: "var(--text-secondary)" }}
+                                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-glass)"; (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
+                                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}>
+                                      {child.name}
+                                    </Link>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                          <Link href="/search"
+                            className="block px-4 py-2.5 mt-2 text-sm font-semibold text-gradient-gold"
+                            style={{ borderTop: "1px solid var(--border)" }}>
+                            Xem tất cả danh mục →
                           </Link>
-                        ))}
-                        <Link href="/search"
-                          className="block px-4 py-2.5 text-sm font-semibold text-gradient-gold"
-                          style={{ borderTop: "1px solid var(--border)" }}>
-                          Xem tất cả →
-                        </Link>
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -148,9 +180,13 @@ export default function Navbar() {
               <ThemeToggle />
 
               {/* Notification */}
-              <Link href="/wishlist" className="relative w-9 h-9 flex items-center justify-center rounded-xl glass hover:bg-glass-hover transition-all duration-200 cursor-pointer" aria-label="Thông báo">
-                <Bell className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
-              </Link>
+              {!mounted || !isAuth ? (
+                <Link href="/auth" className="relative w-9 h-9 flex items-center justify-center rounded-xl glass hover:bg-glass-hover transition-all duration-200 cursor-pointer" aria-label="Thông báo">
+                  <Bell className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
+                </Link>
+              ) : (
+                <NotificationDropdown />
+              )}
 
               {/* Cart */}
               <Link href="/cart" className="relative w-9 h-9 flex items-center justify-center rounded-xl glass hover:bg-glass-hover transition-all duration-200 cursor-pointer" aria-label="Giỏ hàng">
@@ -186,7 +222,9 @@ export default function Navbar() {
                     {/* User Dropdown */}
                     <div className="absolute top-full right-0 mt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 rounded-xl overflow-hidden z-50"
                       style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
-                      <Link href="/seller" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Kênh Người Bán</Link>
+                      {user?.role === "ROLE_VENDOR" && (
+                        <Link href="/seller" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Kênh Người Bán</Link>
+                      )}
                       <Link href="/profile" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Tài khoản của tôi</Link>
                       <Link href="/orders" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Đơn hàng của tôi</Link>
                       <button onClick={logout} className="w-full flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5 text-red-400 cursor-pointer">
@@ -256,7 +294,9 @@ export default function Navbar() {
                       <div className="text-xs" style={{ color: "var(--text-muted)" }}>{user?.email}</div>
                     </div>
                   </div>
-                  <Link href="/seller" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Kênh Người Bán</Button></Link>
+                  {user?.role === "ROLE_VENDOR" && (
+                    <Link href="/seller" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Kênh Người Bán</Button></Link>
+                  )}
                   <Link href="/orders" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Đơn hàng của tôi</Button></Link>
                   <Button variant="glass" className="w-full justify-start text-red-400" onClick={() => { logout(); setMobileOpen(false); }}>Đăng xuất</Button>
                 </>

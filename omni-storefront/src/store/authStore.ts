@@ -9,6 +9,7 @@ interface User {
   role: string;
   exp: number;
   avatarUrl?: string;
+  hasPassword?: boolean;
 }
 
 interface AuthState {
@@ -36,7 +37,8 @@ export const useAuthStore = create<AuthState>()(
             fullName: decoded.fullName || "",
             role: decoded.role || "ROLE_CUSTOMER",
             exp: decoded.exp,
-            avatarUrl: existingAvatar
+            avatarUrl: existingAvatar,
+            hasPassword: decoded.hasPassword !== undefined ? decoded.hasPassword : true
           };
           set({ token, user });
           localStorage.setItem("omni_token", token);

@@ -100,8 +100,15 @@ export default function Users() {
   ];
 
   return (
-    <>
-      <Card className="card-shadow border-none rounded-xl">
+    <div className="space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Quản lý Người dùng</h1>
+          <p className="text-gray-500 mt-1 font-medium">Danh sách và phân quyền toàn bộ thành viên hệ thống.</p>
+        </div>
+      </div>
+
+      <Card className="border-0 rounded-3xl shadow-sm" styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}>
         <div className="flex justify-between items-center mb-6">
           <div className="flex gap-2">
             <Input placeholder="Tìm theo tên, email, SĐT..." prefix={<Search size={16} className="text-gray-400" />} style={{ width: 300 }} />
@@ -124,7 +131,7 @@ export default function Users() {
           dataSource={users}
           rowKey="id"
           loading={loading}
-          className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500"
+          className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500 [&_.ant-table-thead_th]:!font-semibold"
           pagination={{ total: total, pageSize: 20 }}
         />
       </Card>
@@ -180,6 +187,6 @@ export default function Users() {
           </div>
         )}
       </Drawer>
-    </>
+    </div>
   );
 }

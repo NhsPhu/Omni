@@ -22,4 +22,8 @@ public class ShopUpdateDto {
     private String bankAccountNumber;
     
     private String bankAccountName;
+
+    private Integer warehouseProvinceId;
+    private Integer warehouseDistrictId;
+    private String warehouseWardCode;
 }

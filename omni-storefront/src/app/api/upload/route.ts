@@ -1,7 +1,4 @@
 import { NextResponse } from "next/server";
-import { writeFile } from "fs/promises";
-import path from "path";
-import fs from "fs";
 
 export async function POST(request: Request) {
   try {
@@ -12,23 +9,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "No file provided" }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const authHeader = request.headers.get("authorization");
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+    
+    const response = await fetch(`${backendUrl}/upload`, {
+      method: 'POST',
+      body: data,
+      headers: {
+        ...(authHeader ? { 'Authorization': authHeader } : {})
+      }
+    });
 
-    // Ensure public/uploads directory exists
-    const uploadDir = path.join(process.cwd(), "public/uploads");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (!response.ok) {
+      const errorText = await response.text();
+      return NextResponse.json({ success: false, message: errorText }, { status: response.status });
     }
 
-    // Save with unique name
-    const ext = file.name.split(".").pop();
-    const fileName = `avatar_${Date.now()}.${ext}`;
-    const filePath = path.join(uploadDir, fileName);
-    
-    await writeFile(filePath, buffer);
-
-    return NextResponse.json({ success: true, url: `/uploads/${fileName}` });
+    const json = await response.json();
+    return NextResponse.json({ success: true, url: json.url });
   } catch (error) {
     console.error("Upload error", error);
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });

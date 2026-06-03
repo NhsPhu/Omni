@@ -3,15 +3,26 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Zap, Star, ShoppingCart } from "lucide-react";
 import { formatPrice, formatCompact } from "@/lib/utils";
-import { flashSaleItems } from "@/data/mock";
 
-function useCountdown(ms: number) {
-  const [t, setT] = useState(ms);
+
+function useCountdown() {
+  const getMsUntilMidnight = () => {
+    const now = new Date();
+    const midnight = new Date(now);
+    midnight.setHours(24, 0, 0, 0);
+    return midnight.getTime() - now.getTime();
+  };
+
+  const [t, setT] = useState(getMsUntilMidnight());
+
   useEffect(() => {
-    if (t <= 0) return;
-    const id = setInterval(() => setT(p => Math.max(0, p - 1000)), 1000);
+    const id = setInterval(() => {
+      const ms = getMsUntilMidnight();
+      setT(ms > 0 ? ms : 0);
+    }, 1000);
     return () => clearInterval(id);
-  }, [t]);
+  }, []);
+
   return {
     h: String(Math.floor(t / 3_600_000)).padStart(2, "0"),
     m: String(Math.floor((t % 3_600_000) / 60_000)).padStart(2, "0"),
@@ -22,7 +33,33 @@ function useCountdown(ms: number) {
 const GRADS = ["from-red-600 to-orange-500","from-violet-600 to-purple-500","from-blue-600 to-cyan-500","from-emerald-600 to-teal-500","from-amber-500 to-yellow-400"];
 
 export default function FlashSaleSection() {
-  const { h, m, s } = useCountdown(4 * 3_600_000 + 23 * 60_000 + 47_000);
+  const { h, m, s } = useCountdown();
+
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/products/featured?tab=sale`)
+      .then(res => res.json())
+      .then(data => {
+        const mappedProducts = (data || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          price: p.priceMin,
+          originalPrice: p.priceMax > p.priceMin ? p.priceMax : undefined,
+          discount: p.priceMax > p.priceMin ? Math.round((1 - p.priceMin / p.priceMax) * 100) : 0,
+          rating: p.avgRating || 5.0,
+          sold: p.soldCount || 0,
+          stockPercent: (p.stockQuantity || 0) + (p.soldCount || 0) > 0 
+            ? Math.min(100, Math.round(((p.soldCount || 0) / ((p.stockQuantity || 0) + (p.soldCount || 0))) * 100)) 
+            : 0,
+        }));
+        setProducts(mappedProducts);
+      })
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <section id="flash-sale" className="py-20 lg:py-28" style={{ background: "var(--bg-base)" }}>
@@ -65,55 +102,62 @@ export default function FlashSaleSection() {
           </div>
         </motion.div>
 
-        {/* Product scroll */}
-        <div className="flex gap-4 overflow-x-auto pb-4 scroll-hide snap-x snap-mandatory">
-          {flashSaleItems.map((item, i) => (
-            <motion.div key={item.id}
-              initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: i * 0.07, ease: [0.22,1,0.36,1] }}
-              className="flex-shrink-0 w-56 lg:w-64 snap-start rounded-2xl overflow-hidden cursor-pointer group"
-              style={{ background: "var(--bg-card)", backdropFilter: "blur(20px)", border: "1px solid var(--border)" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(239,68,68,0.4)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 30px rgba(239,68,68,0.2)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}>
-              {/* Image */}
-              <div className={`relative aspect-square bg-gradient-to-br ${GRADS[i % 5]} flex items-center justify-center`}>
-                <ShoppingCart className="w-10 h-10 text-white/25" />
-                <div className="absolute top-3 left-3 px-2.5 py-1 text-xs font-bold rounded-lg bg-red-500 text-white">
-                  -{item.discount}%
+        {loading ? (
+           <div className="text-center py-10" style={{ color: "var(--text-muted)" }}>Đang tải...</div>
+        ) : error ? (
+           <div className="text-center py-10 text-red-500">Lỗi: {error}</div>
+        ) : (
+          <div className="flex gap-4 overflow-x-auto pb-4 scroll-hide snap-x snap-mandatory">
+            {products.map((item, i) => (
+              <motion.div key={item.id}
+                initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.07, ease: [0.22,1,0.36,1] }}
+                className="flex-shrink-0 w-56 lg:w-64 snap-start rounded-2xl overflow-hidden cursor-pointer group"
+                style={{ background: "var(--bg-card)", backdropFilter: "blur(20px)", border: "1px solid var(--border)" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(239,68,68,0.4)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 30px rgba(239,68,68,0.2)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}>
+                {/* Image */}
+                <div className={`relative aspect-square bg-gradient-to-br ${GRADS[i % 5]} flex items-center justify-center`}>
+                  <ShoppingCart className="w-10 h-10 text-white/25" />
+                  {item.discount > 0 && (
+                    <div className="absolute top-3 left-3 px-2.5 py-1 text-xs font-bold rounded-lg bg-red-500 text-white">
+                      -{item.discount}%
+                    </div>
+                  )}
                 </div>
-              </div>
-              {/* Info */}
-              <div className="p-4 space-y-2">
-                <h3 className="text-sm font-medium line-clamp-2 group-hover:text-red-400 transition-colors duration-200"
-                  style={{ color: "var(--text-primary)", fontFamily: "var(--font-body)" }}>{item.name}</h3>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-base font-bold text-red-400">{formatPrice(item.price)}</span>
-                  {item.originalPrice && <span className="text-xs line-through" style={{ color: "var(--text-muted)" }}>{formatPrice(item.originalPrice)}</span>}
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 fill-gold text-gold" />
-                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{item.rating}</span>
+                {/* Info */}
+                <div className="p-4 space-y-2">
+                  <h3 className="text-sm font-medium line-clamp-2 group-hover:text-red-400 transition-colors duration-200"
+                    style={{ color: "var(--text-primary)", fontFamily: "var(--font-body)" }}>{item.name}</h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-base font-bold text-red-400">{formatPrice(item.price)}</span>
+                    {item.originalPrice && <span className="text-xs line-through" style={{ color: "var(--text-muted)" }}>{formatPrice(item.originalPrice)}</span>}
                   </div>
-                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>Đã bán {formatCompact(item.sold)}</span>
-                </div>
-                {/* Stock bar */}
-                <div>
-                  <div className="flex justify-between text-xs mb-1" style={{ color: "var(--text-muted)" }}>
-                    <span>Đã bán</span>
-                    <span className={item.stockPercent > 70 ? "text-red-400 font-semibold" : ""}>{item.stockPercent}%</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 fill-gold text-gold" />
+                      <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{item.rating}</span>
+                    </div>
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>Đã bán {formatCompact(item.sold)}</span>
                   </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
-                    <motion.div initial={{ width: 0 }} whileInView={{ width: `${item.stockPercent}%` }} viewport={{ once: true }}
-                      transition={{ duration: 1, delay: i * 0.1, ease: "easeOut" }}
-                      className="h-full rounded-full"
-                      style={{ background: item.stockPercent > 70 ? "linear-gradient(90deg,#ef4444,#f97316)" : "linear-gradient(90deg,var(--gold),var(--purple))" }} />
+                  {/* Stock bar */}
+                  <div>
+                    <div className="flex justify-between text-xs mb-1" style={{ color: "var(--text-muted)" }}>
+                      <span>Đã bán</span>
+                      <span className={item.stockPercent > 70 ? "text-red-400 font-semibold" : ""}>{item.stockPercent}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
+                      <motion.div initial={{ width: 0 }} whileInView={{ width: `${item.stockPercent}%` }} viewport={{ once: true }}
+                        transition={{ duration: 1, delay: i * 0.1, ease: "easeOut" }}
+                        className="h-full rounded-full"
+                        style={{ background: item.stockPercent > 70 ? "linear-gradient(90deg,#ef4444,#f97316)" : "linear-gradient(90deg,var(--gold),var(--purple))" }} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

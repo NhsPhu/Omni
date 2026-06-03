@@ -19,4 +19,12 @@ public class ShopResponseDto {
     private BigDecimal rating;
     private Integer totalSales;
     private ZonedDateTime createdAt;
+    private Boolean requiresReLogin;
+    private String message;
+    private Integer warehouseProvinceId;
+    private Integer warehouseDistrictId;
+    private String warehouseWardCode;
+    private String bankName;
+    private String bankAccountNumber;
+    private String bankAccountName;
 }

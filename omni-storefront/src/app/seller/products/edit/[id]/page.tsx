@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Save, UploadCloud } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
+import { toast } from "sonner";
 
 export default function EditProductPage() {
   const router = useRouter();
@@ -127,11 +128,11 @@ export default function EditProductPage() {
 
       // 3. Put to API
       await api.put(`/vendor/products/${params.id}`, payload);
-      alert("Cập nhật sản phẩm thành công!");
+      toast.success("Cập nhật sản phẩm thành công!");
       router.push("/seller/products");
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.message || "Đã có lỗi xảy ra khi lưu sản phẩm.");
+      toast.error(err.response?.data?.message || "Đã có lỗi xảy ra khi lưu sản phẩm.");
     } finally {
       setLoading(false);
     }

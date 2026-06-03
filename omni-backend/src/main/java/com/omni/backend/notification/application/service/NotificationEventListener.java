@@ -11,6 +11,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -37,8 +38,12 @@ public class NotificationEventListener {
         Optional<UserJpaEntity> userOpt = userRepository.findById(event.getUserId());
         if (userOpt.isPresent()) {
             UserJpaEntity user = userOpt.get();
-            String emailText = "Xin chào " + user.getFullName() + ",\n\n" + message + "\n\nCảm ơn bạn đã mua sắm tại Omni!";
-            emailService.sendSimpleEmail(user.getEmail(), title, emailText);
+            Map<String, Object> vars = Map.of(
+                "buyerName", user.getFullName(),
+                "orderCode", event.getParentOrderId().toString().substring(0, 8).toUpperCase(),
+                "statusMessage", message
+            );
+            emailService.sendEmailWithTemplate(user.getEmail(), title, "order-status-update", vars);
         }
     }
 
@@ -48,7 +53,7 @@ public class NotificationEventListener {
         log.info("Received OrderPaidEvent for order: {}", event.getParentOrderId());
         
         String title = "Thanh toán thành công";
-        String message = "Đơn hàng " + event.getParentOrderId() + " của bạn đã được thanh toán thành công qua VNPay!";
+        String message = "Đơn hàng " + event.getParentOrderId().toString().substring(0,8).toUpperCase() + " của bạn đã được thanh toán thành công qua VNPay!";
         String payload = "{\"orderId\": \"" + event.getParentOrderId() + "\"}";
 
         // 1. Gửi In-app Notification
@@ -58,8 +63,27 @@ public class NotificationEventListener {
         Optional<UserJpaEntity> userOpt = userRepository.findById(event.getUserId());
         if (userOpt.isPresent()) {
             UserJpaEntity user = userOpt.get();
-            String emailText = "Xin chào " + user.getFullName() + ",\n\n" + message + "\n\nĐơn hàng của bạn sẽ sớm được xử lý.";
-            emailService.sendSimpleEmail(user.getEmail(), title, emailText);
+            Map<String, Object> vars = Map.of(
+                "buyerName", user.getFullName(),
+                "orderCode", event.getParentOrderId().toString().substring(0, 8).toUpperCase(),
+                "statusMessage", message
+            );
+            emailService.sendEmailWithTemplate(user.getEmail(), title, "order-status-update", vars);
+        }
+    }
+
+    @Async
+    @EventListener
+    public void handleOrderCompletedEvent(com.omni.backend.notification.application.event.OrderCompletedEvent event) {
+        log.info("Received OrderCompletedEvent for shop order: {}", event.getShopOrderId());
+        
+        // Gửi thông báo cho Customer
+        Optional<UserJpaEntity> customerOpt = userRepository.findById(event.getCustomerId());
+        if (customerOpt.isPresent()) {
+            UserJpaEntity customer = customerOpt.get();
+            String title = "Đơn hàng hoàn thành";
+            String message = "Đơn hàng " + event.getShopOrderId() + " đã giao thành công và hoàn tất!";
+            notificationService.sendSystemNotification(event.getCustomerId(), title, message, "{\"shopOrderId\": \"" + event.getShopOrderId() + "\"}");
         }
     }
 }

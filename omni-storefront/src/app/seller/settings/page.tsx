@@ -5,6 +5,7 @@ import api from "@/lib/axios";
 import { Store, MapPin, CreditCard, Save, X, Edit2 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function SellerSettingsPage() {
   const [shop, setShop] = useState<any>(null);
@@ -54,9 +55,9 @@ export default function SellerSettingsPage() {
       const res = await api.put("/shops/me", formData);
       setShop(res.data);
       setIsEditing(false);
-      alert("Cập nhật thông tin cửa hàng thành công!");
+      toast.success("Cập nhật thông tin cửa hàng thành công!");
     } catch (err: any) {
-      alert("Lỗi khi cập nhật cửa hàng: " + (err.response?.data?.message || err.message));
+      toast.error("Lỗi khi cập nhật cửa hàng: " + (err.response?.data?.message || err.message));
     } finally {
       setSaving(false);
     }

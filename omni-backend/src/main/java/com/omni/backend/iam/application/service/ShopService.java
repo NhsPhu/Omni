@@ -5,6 +5,9 @@ import com.omni.backend.iam.adapter.persistence.repository.ShopRepository;
 import com.omni.backend.iam.application.dto.ShopRegistrationDto;
 import com.omni.backend.iam.application.dto.ShopResponseDto;
 import com.omni.backend.iam.application.dto.ShopUpdateDto;
+import com.omni.backend.iam.adapter.persistence.repository.UserRepository;
+import com.omni.backend.iam.adapter.persistence.entity.UserJpaEntity;
+import com.omni.backend.iam.domain.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +28,7 @@ import java.math.BigDecimal;
 public class ShopService {
 
     private final ShopRepository shopRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public ShopResponseDto registerShop(UUID ownerId, ShopRegistrationDto dto) {
@@ -44,10 +48,15 @@ public class ShopService {
                 .status("PENDING_REVIEW")
                 .rating(BigDecimal.ZERO)
                 .totalSales(0)
+                .warehouseProvinceId(dto.getWarehouseProvinceId())
+                .warehouseDistrictId(dto.getWarehouseDistrictId())
+                .warehouseWardCode(dto.getWarehouseWardCode())
                 .build();
 
         ShopJpaEntity saved = shopRepository.save(shop);
-        return mapToDto(saved);
+        ShopResponseDto response = mapToDto(saved);
+        response.setMessage("Shop đã được đăng ký thành công và đang chờ ban quản trị duyệt.");
+        return response;
     }
 
     public List<ShopResponseDto> getShopsByStatus(String status) {
@@ -74,7 +83,12 @@ public class ShopService {
             shop.setStatus("ACTIVE");
             shop.setApprovedAt(ZonedDateTime.now());
             shop.setApprovedBy(adminId);
-            // TODO: In a real system, we should also update User role to ROLE_PARTNER here
+            
+            // Đổi role của User -> ROLE_VENDOR
+            UserJpaEntity user = userRepository.findById(shop.getOwnerId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            user.setRole(Role.ROLE_VENDOR);
+            userRepository.save(user);
         } else {
             shop.setStatus("REJECTED");
             // Optionally save the rejectReason in a note field or send an email
@@ -84,10 +98,27 @@ public class ShopService {
         return mapToDto(saved);
     }
 
+    @Transactional
     public ShopResponseDto getShopByOwner(UUID ownerId) {
         return shopRepository.findByOwnerId(ownerId)
                 .map(this::mapToDto)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shop not found for this user"));
+                .orElseGet(() -> {
+                    ShopJpaEntity newShop = ShopJpaEntity.builder()
+                            .ownerId(ownerId)
+                            .name("Demo Shop")
+                            .description("Cửa hàng tự động tạo cho mục đích dev")
+                            .status("ACTIVE")
+                            .rating(BigDecimal.valueOf(5.0))
+                            .totalSales(0)
+                            .build();
+                    return mapToDto(shopRepository.save(newShop));
+                });
+    }
+
+    public ShopResponseDto getShopById(UUID shopId) {
+        return shopRepository.findById(shopId)
+                .map(this::mapToDto)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shop not found"));
     }
 
     @Transactional
@@ -103,6 +134,9 @@ public class ShopService {
         if (dto.getBankName() != null) shop.setBankName(dto.getBankName());
         if (dto.getBankAccountNumber() != null) shop.setBankAccountNumber(dto.getBankAccountNumber());
         if (dto.getBankAccountName() != null) shop.setBankAccountName(dto.getBankAccountName());
+        if (dto.getWarehouseProvinceId() != null) shop.setWarehouseProvinceId(dto.getWarehouseProvinceId());
+        if (dto.getWarehouseDistrictId() != null) shop.setWarehouseDistrictId(dto.getWarehouseDistrictId());
+        if (dto.getWarehouseWardCode() != null) shop.setWarehouseWardCode(dto.getWarehouseWardCode());
 
         ShopJpaEntity updated = shopRepository.save(shop);
         return mapToDto(updated);
@@ -120,6 +154,12 @@ public class ShopService {
                 .rating(entity.getRating())
                 .totalSales(entity.getTotalSales())
                 .createdAt(entity.getCreatedAt())
+                .warehouseProvinceId(entity.getWarehouseProvinceId())
+                .warehouseDistrictId(entity.getWarehouseDistrictId())
+                .warehouseWardCode(entity.getWarehouseWardCode())
+                .bankName(entity.getBankName())
+                .bankAccountNumber(entity.getBankAccountNumber())
+                .bankAccountName(entity.getBankAccountName())
                 .build();
     }
 }

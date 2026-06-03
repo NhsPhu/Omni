@@ -168,15 +168,23 @@ export default function Reviews() {
   );
 
   return (
-    <Card className="card-shadow border-none rounded-xl min-h-[600px]">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 m-0">Đánh giá & Hỏi đáp</h1>
-        <Input 
-          placeholder="Tìm theo nội dung, tên KH, sản phẩm..." 
-          prefix={<Search size={16} className="text-gray-400" />}
-          style={{ width: 300 }}
-        />
+    <div className="space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Đánh giá & Hỏi đáp</h1>
+          <p className="text-gray-500 mt-1 font-medium">Phản hồi khách hàng để duy trì tương tác tốt nhất.</p>
+        </div>
       </div>
+
+      <Card className="border-0 rounded-3xl shadow-sm min-h-[600px]" styles={{ body: { padding: '24px' } }}>
+        <div className="flex justify-between items-center mb-6">
+          <div></div>
+          <Input 
+            placeholder="Tìm theo nội dung, tên KH, sản phẩm..." 
+            prefix={<Search size={16} className="text-gray-400" />}
+            style={{ width: 300 }}
+          />
+        </div>
 
       <Tabs
         activeKey={activeTab}
@@ -186,6 +194,7 @@ export default function Reviews() {
           { key: 'reviews', label: 'Đánh giá sản phẩm', children: reviewsTab },
         ]}
       />
-    </Card>
+      </Card>
+    </div>
   );
 }

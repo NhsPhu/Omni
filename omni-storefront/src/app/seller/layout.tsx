@@ -9,8 +9,8 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const { user } = useAuthStore();
 
-  // Do not show sidebar for the registration page
-  if (pathname === "/seller/register") {
+  // Do not show sidebar for the registration page and info page
+  if (pathname === "/seller/register" || pathname === "/seller/info") {
     return <>{children}</>;
   }
 
@@ -23,64 +23,65 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-surface">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-gray-200">
-          <Link href="/seller" className="flex items-center gap-2 text-blue-600 font-bold text-xl">
+      <aside className="w-64 glass border-r border-border flex flex-col z-20">
+        <div className="h-16 flex items-center px-6 border-b border-border">
+          <Link href="/seller" className="flex items-center gap-2 text-gold font-bold text-xl font-[family-name:var(--font-heading)]">
             <Store className="w-6 h-6" />
             <span>Kênh Người Bán</span>
           </Link>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href !== "/seller" && pathname.startsWith(item.href));
             const Icon = item.icon;
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    ? "bg-gold/10 text-gold border border-gold/20 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
+                    : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? "text-blue-700" : "text-gray-400"}`} />
+                <Icon className={`w-5 h-5 ${isActive ? "text-gold" : "text-text-muted"}`} />
                 {item.name}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+        <div className="p-4 border-t border-border bg-surface-hover/30">
+          <div className="flex items-center gap-3 mb-4 p-2 rounded-xl bg-surface border border-border shadow-sm">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-blue-500 flex items-center justify-center overflow-hidden flex-shrink-0">
               {user?.avatarUrl ? (
                 <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-gray-500 text-sm font-bold">{user?.fullName?.charAt(0) || 'A'}</span>
+                <span className="text-white text-sm font-bold">{user?.fullName?.charAt(0) || 'A'}</span>
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{user?.fullName}</p>
-              <p className="text-xs text-gray-500 truncate">Nhà bán hàng</p>
+              <p className="text-sm font-bold text-text-primary truncate">{user?.fullName}</p>
+              <p className="text-xs text-text-muted truncate">Nhà bán hàng</p>
             </div>
           </div>
           <Link
             href="/"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-text-secondary hover:bg-red-500/10 hover:text-red-400 transition-colors"
           >
-            <LogOut className="w-5 h-5 text-gray-400" />
+            <LogOut className="w-5 h-5 opacity-70" />
             Về trang mua sắm
           </Link>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-8">
+      <main className="flex-1 overflow-y-auto relative">
+        <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-purple-900/10 to-transparent pointer-events-none" />
+        <div className="p-8 relative z-10">
           {children}
         </div>
       </main>

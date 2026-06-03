@@ -137,8 +137,21 @@ export default function ProductList() {
   ];
 
   return (
-    <Card className="card-shadow border-none rounded-xl">
-      <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
+    <div className="space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Quản lý Sản phẩm</h1>
+          <p className="text-gray-500 mt-1 font-medium">Danh sách các sản phẩm đang bán trên cửa hàng của bạn.</p>
+        </div>
+        <div className="mt-4 md:mt-0 flex gap-3">
+          <Button type="primary" size="large" className="bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md" icon={<Plus size={18} />} onClick={() => navigate('/products/create')}>
+            Thêm sản phẩm mới
+          </Button>
+        </div>
+      </div>
+
+      <Card className="border-0 rounded-3xl shadow-sm" styles={{ body: { padding: '24px' } }}>
+        <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
         <div className="flex flex-1 gap-2">
           <Input 
             placeholder="Tìm theo tên, mã SKU..." 
@@ -163,9 +176,6 @@ export default function ProductList() {
               <Button>Thao tác ({selectedRowKeys.length})</Button>
             </Dropdown>
           )}
-          <Button type="primary" icon={<Plus size={16} />} onClick={() => navigate('/products/create')}>
-            Thêm sản phẩm
-          </Button>
         </div>
       </div>
 
@@ -177,9 +187,10 @@ export default function ProductList() {
         columns={columns} 
         dataSource={products}
         loading={loading}
-        className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500"
+        className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500 [&_.ant-table-thead_th]:!font-semibold"
         pagination={{ total: products.length, pageSize: 10, showSizeChanger: true }}
       />
-    </Card>
+      </Card>
+    </div>
   );
 }

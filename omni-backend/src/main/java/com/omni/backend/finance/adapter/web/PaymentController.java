@@ -22,6 +22,9 @@ public class PaymentController {
     private final VnpayService vnpayService;
     private final ParentOrderRepository parentOrderRepository;
 
+    @org.springframework.beans.factory.annotation.Value("${app.storefront-url:http://localhost:3000}")
+    private String storeFrontUrl;
+
     @PostMapping("/vnpay/create-url")
     public ResponseEntity<String> createVnpayUrl(@RequestParam UUID orderId, HttpServletRequest request) {
         ParentOrderJpaEntity order = parentOrderRepository.findById(orderId)
@@ -34,12 +37,23 @@ public class PaymentController {
     }
 
     @GetMapping("/vnpay/callback")
-    public ResponseEntity<String> vnpayCallback(@RequestParam Map<String, String> params) {
+    public ResponseEntity<Void> vnpayCallback(@RequestParam Map<String, String> params) {
+        vnpayService.processIpnCallback(params);
+        String vnpResponseCode = params.get("vnp_ResponseCode");
+        String vnpTxnRef = params.get("vnp_TxnRef");
+        
+        // In production, this should be VITE_STOREFRONT_URL or similar from config.
+        String redirectUrl = storeFrontUrl + "/payment/callback?vnp_ResponseCode=" + vnpResponseCode + "&vnp_TxnRef=" + vnpTxnRef;
+        return ResponseEntity.status(302).header("Location", redirectUrl).build();
+    }
+
+    @GetMapping("/vnpay/ipn")
+    public ResponseEntity<String> vnpayIpn(@RequestParam Map<String, String> params) {
         String code = vnpayService.processIpnCallback(params);
         if ("00".equals(code)) {
-            return ResponseEntity.ok("Success");
+            return ResponseEntity.ok("{\"RspCode\":\"00\",\"Message\":\"Confirm Success\"}");
         } else {
-            return ResponseEntity.badRequest().body("Payment failed with IPN return code " + code);
+            return ResponseEntity.ok("{\"RspCode\":\"" + code + "\",\"Message\":\"Error\"}");
         }
     }
 }

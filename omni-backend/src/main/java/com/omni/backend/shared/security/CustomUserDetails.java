@@ -8,13 +8,20 @@ import java.util.UUID;
 
 public class CustomUserDetails extends User {
     private final UUID id;
+    private final UUID shopId;
 
-    public CustomUserDetails(UUID id, String username, String password, Collection<? extends GrantedAuthority> authorities) {
+    public CustomUserDetails(UUID id, UUID shopId, String username, String password, Collection<? extends GrantedAuthority> authorities) {
         super(username, password, authorities);
         this.id = id;
+        this.shopId = shopId;
     }
 
     public UUID getId() {
         return id;
     }
+    
+    public UUID getShopId() {
+        return shopId;
+    }
 }
+

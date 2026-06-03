@@ -31,6 +31,9 @@ public class AddressController {
                 .ward(entity.getWard())
                 .detail(entity.getDetail())
                 .isDefault(entity.getIsDefault())
+                .ghnProvinceId(entity.getGhnProvinceId())
+                .ghnDistrictId(entity.getGhnDistrictId())
+                .ghnWardCode(entity.getGhnWardCode())
                 .build();
     }
 
@@ -60,6 +63,9 @@ public class AddressController {
                 .ward(dto.getWard())
                 .detail(dto.getDetail())
                 .isDefault(dto.getIsDefault())
+                .ghnProvinceId(dto.getGhnProvinceId())
+                .ghnDistrictId(dto.getGhnDistrictId())
+                .ghnWardCode(dto.getGhnWardCode())
                 .build();
 
         return ResponseEntity.ok(mapToDto(addressRepository.save(entity)));
@@ -81,6 +87,9 @@ public class AddressController {
         entity.setDistrict(dto.getDistrict());
         entity.setWard(dto.getWard());
         entity.setDetail(dto.getDetail());
+        entity.setGhnProvinceId(dto.getGhnProvinceId());
+        entity.setGhnDistrictId(dto.getGhnDistrictId());
+        entity.setGhnWardCode(dto.getGhnWardCode());
         
         if (dto.getIsDefault() != null) {
             entity.setIsDefault(dto.getIsDefault());

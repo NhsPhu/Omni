@@ -62,9 +62,17 @@ export default function Categories() {
   };
 
   return (
-    <div className="flex gap-6 h-full">
-      <Card className="card-shadow border-none rounded-xl flex-1 max-w-md h-fit">
-        <div className="flex justify-between items-center mb-6">
+    <div className="space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Quản lý Danh mục</h1>
+          <p className="text-gray-500 mt-1 font-medium">Cấu hình cây danh mục sản phẩm toàn sàn.</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-6 h-full">
+        <Card className="border-0 rounded-3xl shadow-sm flex-1 lg:max-w-md h-fit" styles={{ body: { padding: '24px' } }}>
+          <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-bold m-0">Cây danh mục</h2>
           <Button type="primary" icon={<Plus size={16} />} onClick={() => { setEditingNode(null); setModalOpen(true); }}>
             Thêm gốc
@@ -84,9 +92,9 @@ export default function Categories() {
           titleRender={titleRender}
           defaultExpandAll
         />
-      </Card>
+        </Card>
 
-      <Card className="card-shadow border-none rounded-xl flex-1 h-fit" title="Thống kê / Chi tiết">
+        <Card className="border-0 rounded-3xl shadow-sm flex-1 h-fit" title={<span className="text-lg font-bold text-gray-800">Thống kê / Chi tiết</span>} styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}>
         <div className="flex items-center justify-center h-64 text-gray-400 flex-col">
           <AlertCircle size={48} className="mb-4 opacity-50" />
           <p>Chọn một danh mục hoặc click chỉnh sửa để xem thông tin</p>
@@ -129,7 +137,8 @@ export default function Categories() {
             <Switch checkedChildren="Hiển thị" unCheckedChildren="Đang ẩn" />
           </Form.Item>
         </Form>
-      </Modal>
+        </Modal>
+      </div>
     </div>
   );
 }

@@ -42,4 +42,60 @@ public class AdminReportService {
                 .topShops(topShops)
                 .build();
     }
+
+    public List<java.util.Map<String, Object>> getVendorDailyRevenue(java.util.UUID shopId, int days) {
+        java.time.ZonedDateTime startDate = java.time.ZonedDateTime.now().minusDays(days);
+        List<com.omni.backend.sales.adapter.persistence.entity.ChildOrderJpaEntity> orders = childOrderRepository
+                .findByShopIdAndCreatedAtGreaterThanEqualAndStatusNotIn(shopId, startDate, java.util.Arrays.asList("CANCELLED", "PENDING"));
+
+        java.util.Map<String, java.util.Map<String, Object>> dailyData = new java.util.TreeMap<>();
+        for (int i = days - 1; i >= 0; i--) {
+            String date = java.time.ZonedDateTime.now().minusDays(i).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            java.util.Map<String, Object> dayStats = new java.util.HashMap<>();
+            dayStats.put("date", date);
+            dayStats.put("revenue", BigDecimal.ZERO);
+            dayStats.put("orders", 0);
+            dailyData.put(date, dayStats);
+        }
+
+        for (var order : orders) {
+            String date = order.getCreatedAt().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            if (dailyData.containsKey(date)) {
+                java.util.Map<String, Object> stats = dailyData.get(date);
+                stats.put("revenue", ((BigDecimal) stats.get("revenue")).add(order.getTotalAmount()));
+                stats.put("orders", ((Integer) stats.get("orders")) + 1);
+            }
+        }
+
+        return new ArrayList<>(dailyData.values());
+    }
+
+    public List<java.util.Map<String, Object>> getPlatformDailyRevenue(int days) {
+        java.time.ZonedDateTime startDate = java.time.ZonedDateTime.now().minusDays(days);
+        List<com.omni.backend.sales.adapter.persistence.entity.ChildOrderJpaEntity> orders = childOrderRepository
+                .findByCreatedAtGreaterThanEqualAndStatusNotIn(startDate, java.util.Arrays.asList("CANCELLED", "PENDING"));
+
+        java.util.Map<String, java.util.Map<String, Object>> dailyData = new java.util.TreeMap<>();
+        for (int i = days - 1; i >= 0; i--) {
+            String date = java.time.ZonedDateTime.now().minusDays(i).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            java.util.Map<String, Object> dayStats = new java.util.HashMap<>();
+            dayStats.put("date", date);
+            dayStats.put("revenue", BigDecimal.ZERO);
+            dayStats.put("commission", BigDecimal.ZERO);
+            dayStats.put("orders", 0);
+            dailyData.put(date, dayStats);
+        }
+
+        for (var order : orders) {
+            String date = order.getCreatedAt().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            if (dailyData.containsKey(date)) {
+                java.util.Map<String, Object> stats = dailyData.get(date);
+                stats.put("revenue", ((BigDecimal) stats.get("revenue")).add(order.getTotalAmount()));
+                stats.put("commission", ((BigDecimal) stats.get("commission")).add(order.getTotalAmount().multiply(new BigDecimal("0.05")))); // 5% commission
+                stats.put("orders", ((Integer) stats.get("orders")) + 1);
+            }
+        }
+
+        return new ArrayList<>(dailyData.values());
+    }
 }

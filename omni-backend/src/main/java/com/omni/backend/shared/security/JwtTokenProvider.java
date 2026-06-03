@@ -30,7 +30,7 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(String email, String role, String userId, String fullName) {
+    public String generateToken(String email, String role, String userId, String fullName, boolean hasPassword, boolean hasPin) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
 
@@ -39,6 +39,8 @@ public class JwtTokenProvider {
                 .claim("role", role)
                 .claim("id", userId)
                 .claim("fullName", fullName)
+                .claim("hasPassword", hasPassword)
+                .claim("hasPin", hasPin)
                 .issuedAt(new Date())
                 .expiration(expiryDate)
                 .signWith(getSigningKey())

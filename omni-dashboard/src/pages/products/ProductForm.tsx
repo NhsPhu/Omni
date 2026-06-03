@@ -52,7 +52,7 @@ export default function ProductForm() {
             uid: `-${idx}`,
             name: `image-${idx}.jpg`,
             status: 'done',
-            url: `http://localhost:8080${img.imageUrl}` // Storefront/Backend prefix if needed, or just img.imageUrl if it's absolute
+            url: `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080'}${img.imageUrl}` // Storefront/Backend prefix if needed, or just img.imageUrl if it's absolute
           })));
         }
       }).catch(e => console.error(e));
@@ -175,7 +175,7 @@ export default function ProductForm() {
               multiple 
               listType="picture" 
               maxCount={9} 
-              action="http://localhost:8080/api/upload"
+              action={`${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/upload`}
               headers={{ Authorization: `Bearer ${token}` }}
               fileList={fileList}
               onChange={(info) => {
@@ -288,7 +288,7 @@ export default function ProductForm() {
           attributes: {}
         }],
         images: fileList.map((file, idx) => ({
-          imageUrl: file.response?.url || file.url?.replace('http://localhost:8080', ''),
+          imageUrl: file.response?.url || file.url?.replace(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080', ''),
           isPrimary: idx === 0,
           sortOrder: idx
         })).filter(img => img.imageUrl)
@@ -315,20 +315,23 @@ export default function ProductForm() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="max-w-5xl mx-auto space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
         <div className="flex items-center gap-4">
-          <Button icon={<ArrowLeft size={18} />} type="text" onClick={() => navigate('/products')} />
-          <h1 className="text-xl font-bold text-gray-800 m-0">{id ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</h1>
+          <Button icon={<ArrowLeft size={18} />} type="text" onClick={() => navigate('/products')} className="text-gray-500 hover:bg-gray-100 hover:text-gray-800 rounded-xl w-10 h-10 flex items-center justify-center" />
+          <div>
+            <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">{id ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</h1>
+            <p className="text-gray-500 mt-1 font-medium">Hoàn thiện thông tin để đăng bán sản phẩm.</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button icon={<Save size={16} />}>Lưu nháp</Button>
-          <Button icon={<Eye size={16} />}>Xem trước</Button>
-          <Button type="primary" onClick={handlePublish} loading={loading}>Xuất bản</Button>
+        <div className="flex items-center gap-2 mt-4 md:mt-0">
+          <Button className="rounded-xl border-gray-200" icon={<Save size={16} />}>Lưu nháp</Button>
+          <Button className="rounded-xl border-gray-200" icon={<Eye size={16} />}>Xem trước</Button>
+          <Button type="primary" className="bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md" onClick={handlePublish} loading={loading}>Xuất bản</Button>
         </div>
       </div>
 
-      <Card className="card-shadow border-none rounded-xl">
+      <Card className="border-0 rounded-3xl shadow-sm" styles={{ body: { padding: '32px' } }}>
         <Steps current={current} items={steps.map(item => ({ key: item.title, title: item.title }))} className="max-w-2xl mx-auto mb-8" />
         
         <Form form={form} layout="vertical" className="min-h-[400px]">

@@ -36,6 +36,9 @@ public class UserJpaEntity {
     @Column(name = "password_hash")
     private String passwordHash;
 
+    @Column(name = "pin_hash")
+    private String pinHash;
+
     @Column(name = "full_name", nullable = false)
     private String fullName;
 

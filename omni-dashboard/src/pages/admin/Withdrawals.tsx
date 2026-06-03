@@ -106,19 +106,25 @@ export default function Withdrawals() {
   ];
 
   return (
-    <>
-      <Card className="card-shadow border-none rounded-xl">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 m-0">Duyệt lệnh rút tiền</h1>
+    <div className="space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Duyệt lệnh rút tiền</h1>
+          <p className="text-gray-500 mt-1 font-medium">Quản lý và đối soát các yêu cầu rút tiền từ ví của nhà bán hàng.</p>
+        </div>
+        <div className="mt-4 md:mt-0">
           <Space>
-            <Button icon={<Download size={16} />} onClick={() => message.info('Đang xuất file Excel chuẩn format cho Vietcombank/MBBank...')}>
-              Export file chuyển khoản lô
+            <Button icon={<Download size={16} />} className="rounded-xl" onClick={() => message.info('Đang xuất file Excel chuẩn format cho Vietcombank/MBBank...')}>
+              Export file
             </Button>
-            <Button type="primary" icon={<UploadIcon size={16} />} onClick={() => message.info('Tính năng đang phát triển')}>
-              Import kết quả giao dịch
+            <Button type="primary" className="rounded-xl shadow-md" icon={<UploadIcon size={16} />} onClick={() => message.info('Tính năng đang phát triển')}>
+              Import kết quả
             </Button>
           </Space>
         </div>
+      </div>
+
+      <Card className="border-0 rounded-3xl shadow-sm" styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}>
 
         <div className="flex gap-4 mb-4">
           <Input placeholder="Tìm theo mã GD, tên gian hàng, số TK..." prefix={<Search size={16} className="text-gray-400" />} style={{ width: 350 }} />
@@ -142,7 +148,7 @@ export default function Withdrawals() {
           dataSource={withdrawals}
           rowKey="id"
           loading={loading}
-          className="[&_.ant-table-thead_th]:!bg-gray-50"
+          className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500 [&_.ant-table-thead_th]:!font-semibold"
           pagination={{ total: total, pageSize: 20 }}
         />
       </Card>
@@ -182,6 +188,6 @@ export default function Withdrawals() {
           </div>
         )}
       </Modal>
-    </>
+    </div>
   );
 }

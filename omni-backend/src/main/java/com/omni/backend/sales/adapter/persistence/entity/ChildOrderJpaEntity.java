@@ -9,7 +9,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -79,9 +81,18 @@ public class ChildOrderJpaEntity {
     @Column(name = "auto_complete_at")
     private ZonedDateTime autoCompleteAt;
 
+    @Column(name = "return_reason", columnDefinition = "TEXT")
+    private String returnReason;
+
+    @ElementCollection
+    @CollectionTable(name = "child_order_return_images", joinColumns = @JoinColumn(name = "child_order_id"))
+    @Column(name = "image_url")
+    @Builder.Default
+    private List<String> returnImages = new ArrayList<>();
+
     @OneToMany(mappedBy = "childOrder", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<OrderItemJpaEntity> items = new ArrayList<>();
+    private Set<OrderItemJpaEntity> items = new HashSet<>();
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

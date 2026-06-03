@@ -10,7 +10,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
+import com.omni.backend.sales.adapter.persistence.repository.OrderStatusHistoryRepository;
+import com.omni.backend.sales.adapter.persistence.entity.OrderStatusHistoryJpaEntity;
+import com.omni.backend.notification.application.event.OrderCompletedEvent;
 
 @Slf4j
 @Service
@@ -20,6 +25,8 @@ public class SettlementService {
     private final ChildOrderRepository childOrderRepository;
     private final WalletService walletService;
     private final CommissionSnapshotRepository commissionSnapshotRepository;
+    private final ApplicationEventPublisher eventPublisher;
+    private final OrderStatusHistoryRepository statusHistoryRepo;
 
     public BigDecimal getCurrentCommissionRate() {
         return new BigDecimal("0.0500"); // 5% default
@@ -28,7 +35,7 @@ public class SettlementService {
     @Transactional
     public void settle(UUID shopOrderId) {
         // ChildOrderJpaEntity is equivalent to ShopOrder in the plan
-        ChildOrderJpaEntity order = childOrderRepository.findById(shopOrderId)
+        ChildOrderJpaEntity order = childOrderRepository.findByIdLocked(shopOrderId)
                 .orElseThrow(() -> new RuntimeException("ShopOrder not found"));
 
         // Guard 1: phải đúng trạng thái DELIVERED
@@ -68,7 +75,28 @@ public class SettlementService {
         order.setCompletedAt(java.time.ZonedDateTime.now());
         childOrderRepository.save(order);
         
-        // TODO: OrderStatusHistory record and Event publishing
+        // 1. Lưu lịch sử chuyển trạng thái
+        OrderStatusHistoryJpaEntity history = OrderStatusHistoryJpaEntity.builder()
+            .shopOrderId(shopOrderId)
+            .oldStatus("DELIVERED")
+            .newStatus("COMPLETED")
+            .actor("SYSTEM")
+            .changedBy(null) // null = hệ thống tự động
+            .note("Auto-completed sau thời gian chờ giao hàng thành công")
+            .createdAt(java.time.ZonedDateTime.now())
+            .build();
+        statusHistoryRepo.save(history);
+
+        // 2. Publish event để Notification module gửi thông báo
+        eventPublisher.publishEvent(
+            OrderCompletedEvent.builder()
+                .shopOrderId(shopOrderId)
+                .shopId(order.getShopId())
+                .customerId(order.getParentOrder().getUserId())
+                .vendorAmount(vendorAmount)
+                .completedAt(Instant.now())
+                .build()
+        );
 
         log.info("Settlement completed for shop_order {}", shopOrderId);
     }

@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Cập nhật đơn hàng</title></head>
+<body>
+  <h2>Đơn hàng của bạn đã được cập nhật</h2>
+  <p>Mã đơn: <strong th:text="${orderCode}">ORDER-001</strong></p>
+  <p>Trạng thái mới: <strong th:text="${newStatus}">Đang giao</strong></p>
+  <p th:if="${trackingCode}">
+    Mã vận đơn: <strong th:text="${trackingCode}">GHN-001</strong>
+  </p>
+</body>
+</html>

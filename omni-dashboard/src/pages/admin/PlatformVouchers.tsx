@@ -111,23 +111,26 @@ export default function PlatformVouchers() {
   ];
 
   return (
-    <>
-      <Card className="card-shadow border-none rounded-xl">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800 m-0">Platform Voucher</h1>
-            <p className="text-gray-500">Quản lý mã giảm giá do Sàn tài trợ (trừ trực tiếp vào doanh thu sàn)</p>
-          </div>
-          <Button type="primary" size="large" icon={<Plus size={16} />} onClick={() => setOpen(true)} className="bg-red-600 hover:bg-red-700">
+    <div className="space-y-8 animate-fade-in pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Platform Voucher</h1>
+          <p className="text-gray-500 mt-1 font-medium">Quản lý mã giảm giá do Sàn tài trợ (trừ trực tiếp vào doanh thu sàn)</p>
+        </div>
+        <div className="mt-4 md:mt-0">
+          <Button type="primary" size="large" icon={<Plus size={16} />} onClick={() => setOpen(true)} className="bg-red-600 hover:bg-red-700 rounded-xl shadow-md">
             Tạo Campaign Mới
           </Button>
         </div>
+      </div>
+
+      <Card className="border-0 rounded-3xl shadow-sm" styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}>
 
         <Table 
           columns={columns} 
           dataSource={vouchers}
           loading={loading}
-          className="[&_.ant-table-thead_th]:!bg-gray-50"
+          className="[&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!text-gray-500 [&_.ant-table-thead_th]:!font-semibold"
           pagination={false}
         />
       </Card>
@@ -172,6 +175,6 @@ export default function PlatformVouchers() {
           </Card>
         </Form>
       </Drawer>
-    </>
+    </div>
   );
 }

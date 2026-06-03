@@ -1,0 +1,25 @@
+package com.omni.backend.shared.security;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.UUID;
+
+public class SecurityUtils {
+
+    public static UUID getCurrentShopId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof CustomUserDetails userDetails) {
+            return userDetails.getShopId();
+        }
+        return null;
+    }
+
+    public static UUID getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof CustomUserDetails userDetails) {
+            return userDetails.getId();
+        }
+        return null;
+    }
+}

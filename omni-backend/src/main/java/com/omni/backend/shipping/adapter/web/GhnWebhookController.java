@@ -20,9 +20,17 @@ public class GhnWebhookController {
 
     private final GhnWebhookService ghnWebhookService;
 
+    private static final String GHN_IP_PREFIX = "103.191.145.";
+
     @PostMapping
     public ResponseEntity<Void> handleGhnWebhook(@RequestBody GhnCallbackPayload payload, HttpServletRequest request) {
-        log.info("Received GHN webhook from IP {}. Payload: {}", request.getRemoteAddr(), payload);
+        String clientIp = request.getRemoteAddr();
+        log.info("Received GHN webhook from IP {}. Payload: {}", clientIp, payload);
+
+        if (!clientIp.startsWith(GHN_IP_PREFIX) && !clientIp.equals("127.0.0.1") && !clientIp.equals("0:0:0:0:0:0:0:1")) {
+            log.warn("Blocked webhook request from unauthorized IP: {}", clientIp);
+            return ResponseEntity.status(403).build();
+        }
 
         if (payload == null || !StringUtils.hasText(payload.getOrderCode())) {
             log.warn("GHN webhook missing order_code");

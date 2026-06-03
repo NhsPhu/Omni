@@ -24,5 +24,10 @@ public class ShopRegistrationDto {
     private String bankAccountNumber;
     
     @NotBlank(message = "Bank account name is required")
+    @NotBlank(message = "Bank account name is required")
     private String bankAccountName;
+
+    private Integer warehouseProvinceId;
+    private Integer warehouseDistrictId;
+    private String warehouseWardCode;
 }

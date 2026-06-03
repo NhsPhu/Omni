@@ -43,6 +43,15 @@ public class ProductDocument {
     @Field(type = FieldType.Double)
     private BigDecimal avgRating;
 
+    @Field(type = FieldType.Integer)
+    private Integer reviewCount;
+
+    @Field(type = FieldType.Integer)
+    private Integer soldCount;
+
+    @Field(type = FieldType.Integer)
+    private Integer stockQuantity;
+
     @Field(type = FieldType.Keyword)
     private String categoryName;
 

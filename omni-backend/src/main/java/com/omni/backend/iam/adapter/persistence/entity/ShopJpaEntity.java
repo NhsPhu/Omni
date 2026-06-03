@@ -40,8 +40,14 @@ public class ShopJpaEntity {
     @Column(nullable = false, length = 50)
     private String status; // PENDING_REVIEW, ACTIVE, SUSPENDED
 
-    @Column(name = "warehouse_address_code", length = 100)
-    private String warehouseAddressCode;
+    @Column(name = "warehouse_province_id")
+    private Integer warehouseProvinceId;
+
+    @Column(name = "warehouse_district_id")
+    private Integer warehouseDistrictId;
+
+    @Column(name = "warehouse_ward_code", length = 20)
+    private String warehouseWardCode;
     
     @Column(name = "approved_at")
     private ZonedDateTime approvedAt;

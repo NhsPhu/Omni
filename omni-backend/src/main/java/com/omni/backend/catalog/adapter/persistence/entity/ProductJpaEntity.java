@@ -51,6 +51,10 @@ public class ProductJpaEntity {
     @Column(name = "review_count")
     private Integer reviewCount;
 
+    @Column(name = "sold_count", nullable = false)
+    @Builder.Default
+    private Integer soldCount = 0;
+
     @Column(nullable = false)
     private String status;
 

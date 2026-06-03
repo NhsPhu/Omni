@@ -52,4 +52,9 @@ public class ShopController {
         ShopResponseDto response = shopService.updateShop(ownerId, dto);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ShopResponseDto> getShopById(@PathVariable UUID id) {
+        return ResponseEntity.ok(shopService.getShopById(id));
+    }
 }

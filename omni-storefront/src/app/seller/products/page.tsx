@@ -6,6 +6,7 @@ import { Plus, Edit, Trash2, Search, PackageX } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function SellerProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -33,12 +34,15 @@ export default function SellerProductsPage() {
   }, [user, router]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) return;
     try {
-      await api.delete(`/vendor/products/${id}`);
-      setProducts(products.filter(p => p.id !== id));
-    } catch (err) {
-      alert("Xóa thất bại!");
+      if (confirm("Bạn có chắc muốn xóa sản phẩm này?")) {
+        await api.delete(`/vendor/products/${id}`);
+        setProducts(products.filter(p => p.id !== id));
+        toast.success("Xóa sản phẩm thành công!");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Xóa thất bại!");
     }
   };
 

@@ -26,7 +26,7 @@ public class PublicProductController {
     @GetMapping
     public ResponseEntity<Page<ProductDocument>> searchProducts(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) List<UUID> categoryId,
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
             @RequestParam(defaultValue = "0") int page,

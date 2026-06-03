@@ -17,4 +17,7 @@ public class AddressDto {
     private String ward;
     private String detail;
     private Boolean isDefault;
+    private Integer ghnProvinceId;
+    private Integer ghnDistrictId;
+    private String ghnWardCode;
 }

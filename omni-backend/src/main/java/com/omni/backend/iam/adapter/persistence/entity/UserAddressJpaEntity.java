@@ -49,6 +49,17 @@ public class UserAddressJpaEntity {
     @Builder.Default
     private Boolean isDefault = false;
 
+    @Column(name = "ghn_province_id")
+    private Integer ghnProvinceId;
+
+    @Column(name = "ghn_district_id")
+    private Integer ghnDistrictId;
+
+    @Column(name = "ghn_ward_code", length = 20)
+    private String ghnWardCode;
+
+
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private ZonedDateTime createdAt;

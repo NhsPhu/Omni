@@ -29,7 +29,7 @@ public class WalletService {
 
     @Transactional
     public void creditAdminPending(UUID orderId, long amount) {
-        AdminWalletJpaEntity adminWallet = getOrCreateAdminWallet();
+        AdminWalletJpaEntity adminWallet = getOrCreateAdminWalletLocked();
 
         long balanceBefore = adminWallet.getPendingBalance();
         long balanceAfter = balanceBefore + amount;
@@ -53,8 +53,8 @@ public class WalletService {
 
     @Transactional
     public void settleToVendor(UUID shopOrderId, UUID shopId, long vendorAmount, long commissionAmount) {
-        AdminWalletJpaEntity adminWallet = getOrCreateAdminWallet();
-        VendorWalletJpaEntity vendorWallet = getOrCreateVendorWallet(shopId);
+        AdminWalletJpaEntity adminWallet = getOrCreateAdminWalletLocked();
+        VendorWalletJpaEntity vendorWallet = getOrCreateVendorWalletLocked(shopId);
 
         long totalOrderAmount = vendorAmount + commissionAmount;
 
@@ -113,7 +113,7 @@ public class WalletService {
 
     @Transactional
     public void processRefund(UUID shopOrderId, UUID shopId, long refundAmount, boolean isSettled, long commissionAmount) {
-        AdminWalletJpaEntity adminWallet = getOrCreateAdminWallet();
+        AdminWalletJpaEntity adminWallet = getOrCreateAdminWalletLocked();
         
         if (!isSettled) {
             // Debit Admin Pending
@@ -132,7 +132,7 @@ public class WalletService {
                     .build();
             transactionRepository.save(txAdminRefund);
         } else {
-            VendorWalletJpaEntity vendorWallet = getOrCreateVendorWallet(shopId);
+            VendorWalletJpaEntity vendorWallet = getOrCreateVendorWalletLocked(shopId);
             long vendorRefundAmount = refundAmount - commissionAmount;
             
             // Debit Vendor Available
@@ -173,7 +173,7 @@ public class WalletService {
 
     @Transactional
     public WithdrawalRequestJpaEntity requestWithdrawal(UUID shopId, long amount, String bankName, String bankAccountNo, String bankAccountName) {
-        VendorWalletJpaEntity vendorWallet = getOrCreateVendorWallet(shopId);
+        VendorWalletJpaEntity vendorWallet = getOrCreateVendorWalletLocked(shopId);
         
         if (amount <= 0 || vendorWallet.getAvailableBalance() < amount) {
             throw new IllegalArgumentException("Số dư không đủ hoặc số tiền không hợp lệ");
@@ -200,7 +200,7 @@ public class WalletService {
             throw new RuntimeException("Lệnh rút tiền đã được xử lý");
         }
         
-        VendorWalletJpaEntity vendorWallet = vendorWalletRepository.findById(req.getWalletId())
+        VendorWalletJpaEntity vendorWallet = vendorWalletRepository.findByIdLocked(req.getWalletId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
                 
         if (vendorWallet.getAvailableBalance() < req.getAmount()) {
@@ -238,11 +238,22 @@ public class WalletService {
         return transactionRepository.findByWalletIdOrderByCreatedAtDesc(walletId, pageable);
     }
 
-    private AdminWalletJpaEntity getOrCreateAdminWallet() {
-        return adminWalletRepository.findAll().stream().findFirst()
+    private AdminWalletJpaEntity getOrCreateAdminWalletLocked() {
+        return adminWalletRepository.findFirstLocked()
                 .orElseGet(() -> adminWalletRepository.save(new AdminWalletJpaEntity()));
     }
 
+    private VendorWalletJpaEntity getOrCreateVendorWalletLocked(UUID shopId) {
+        return vendorWalletRepository.findByShopIdLocked(shopId)
+                .orElseGet(() -> {
+                    VendorWalletJpaEntity wallet = VendorWalletJpaEntity.builder()
+                            .shopId(shopId)
+                            .build();
+                    return vendorWalletRepository.save(wallet);
+                });
+    }
+
+    // Keep the non-locked version for read-only ops
     private VendorWalletJpaEntity getOrCreateVendorWallet(UUID shopId) {
         return vendorWalletRepository.findByShopId(shopId)
                 .orElseGet(() -> {
