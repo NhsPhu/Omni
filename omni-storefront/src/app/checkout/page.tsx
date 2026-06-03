@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Truck, CreditCard, CheckCircle, ChevronRight, ShoppingCart, Edit2 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Button from "@/components/ui/Button";
-import { shippingMethods, paymentMethods } from "@/data/mock";
 import { formatPrice } from "@/lib/utils";
 import * as LucideIcons from "lucide-react";
 import api from "@/lib/axios";
@@ -20,11 +19,18 @@ const STEPS = [
   { id: 3, label: "Thanh toán",icon: CreditCard  },
 ];
 
+// Only standard method will be dynamically injected
+
+const paymentMethods = [
+  { id: "vnpay", label: "VNPay", icon: "CreditCard", desc: "Thanh toán qua VNPay" },
+  { id: "cod", label: "Thanh toán khi nhận hàng", icon: "Truck", desc: "Trả tiền mặt khi nhận" }
+];
+
 export default function CheckoutPage() {
   const [step, setStep] = useState(1);
   const [selectedAddr, setSelectedAddr] = useState("");
   const [addresses, setAddresses] = useState<any[]>([]);
-  const [selectedShipping, setSelectedShipping] = useState(shippingMethods?.[0]?.id || "");
+  const [selectedShipping, setSelectedShipping] = useState("standard");
   const [selectedPayment, setSelectedPayment] = useState(paymentMethods?.[0]?.id || "");
   const [voucher, setVoucher] = useState("");
   const [activeVoucher, setActiveVoucher] = useState<any>(null);
@@ -32,9 +38,38 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [showNewAddr, setShowNewAddr] = useState(false);
-  const [newAddr, setNewAddr] = useState({ receiverName: "", receiverPhone: "", detail: "", ward: "", district: "", province: "" });
-  const { isAuthenticated } = useAuthStore();
+  const [newAddr, setNewAddr] = useState({ receiverName: "", receiverPhone: "", detail: "", ward: "", district: "", province: "", ghnProvinceId: 0, ghnDistrictId: 0, ghnWardCode: "" });
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  
+  const { user, isAuthenticated } = useAuthStore();
   const router = useRouter();
+
+  useEffect(() => {
+    if (showNewAddr && provinces.length === 0) {
+      api.get('/public/ghn/provinces').then(res => setProvinces(res.data)).catch(console.error);
+    }
+  }, [showNewAddr]);
+
+  useEffect(() => {
+    if (newAddr.ghnProvinceId) {
+      api.get(`/public/ghn/districts?provinceId=${newAddr.ghnProvinceId}`).then(res => setDistricts(res.data)).catch(console.error);
+    } else {
+      setDistricts([]);
+      setWards([]);
+    }
+  }, [newAddr.ghnProvinceId]);
+
+  useEffect(() => {
+    if (newAddr.ghnDistrictId) {
+      api.get(`/public/ghn/wards?districtId=${newAddr.ghnDistrictId}`).then(res => setWards(res.data)).catch(console.error);
+    } else {
+      setWards([]);
+    }
+  }, [newAddr.ghnDistrictId]);
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [ghnFee, setGhnFee] = useState<number | null>(null);
@@ -74,6 +109,7 @@ export default function CheckoutPage() {
                 quantity: it.quantity,
                 stock: 999,
                 selected: true,
+                imageUrl: it.imageUrl,
               });
             }
           });
@@ -98,15 +134,18 @@ export default function CheckoutPage() {
   const selectedItems = cartItems;
   const subtotal  = selectedItems.reduce((s, it) => s + it.price * it.quantity, 0);
   
-  const displayMethods = shippingMethods.map(m => {
-    if (m.id === "standard") return { ...m, price: ghnFee !== null ? ghnFee : m.price, label: "Giao hàng tiêu chuẩn (GHN)" };
-    if (m.id === "express") return { ...m, price: ghnFee !== null ? ghnFee + 20000 : m.price, label: "Giao hàng hỏa tốc (GHN)" };
-    if (m.id === "same_day") return { ...m, price: ghnFee !== null ? ghnFee + 55000 : m.price, label: "Giao trong ngày (AhaMove)" };
-    return m;
-  });
+  const displayMethods = [
+    {
+      id: "standard",
+      label: "Giao hàng tiêu chuẩn (GHN)",
+      price: ghnFee !== null ? ghnFee : 30000,
+      desc: "Vận chuyển toàn quốc"
+    }
+  ];
 
-  const shipFee   = displayMethods.find(s => s.id === selectedShipping)?.price || 0;
-  const total     = subtotal + shipFee;
+  const shipFee   = ghnFee !== null ? ghnFee : 30000;
+  const actualShipFee = step >= 2 ? shipFee : 0;
+  const total     = subtotal + actualShipFee;
   const addr      = addresses.find(a => a.id === selectedAddr);
 
   if (placed) return (
@@ -194,10 +233,36 @@ export default function CheckoutPage() {
                             <input placeholder="Số điện thoại" value={newAddr.receiverPhone} onChange={e => setNewAddr({...newAddr, receiverPhone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
                           </div>
                           <input placeholder="Số nhà, Tên đường" value={newAddr.detail} onChange={e => setNewAddr({...newAddr, detail: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
-                          <div className="grid grid-cols-3 gap-3">
-                            <input placeholder="Phường/Xã" value={newAddr.ward} onChange={e => setNewAddr({...newAddr, ward: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
-                            <input placeholder="Quận/Huyện" value={newAddr.district} onChange={e => setNewAddr({...newAddr, district: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
-                            <input placeholder="Tỉnh/Thành phố" value={newAddr.province} onChange={e => setNewAddr({...newAddr, province: e.target.value})} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <select value={newAddr.ghnProvinceId || ""} onChange={e => {
+                                const val = parseInt(e.target.value);
+                                const item = provinces.find(p => p.ProvinceID === val);
+                                setNewAddr({...newAddr, ghnProvinceId: val, province: item?.ProvinceName || "", ghnDistrictId: 0, district: "", ghnWardCode: "", ward: ""});
+                              }} 
+                              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+                              <option value="" style={{color: "black"}}>Chọn Tỉnh/Thành phố</option>
+                              {provinces.map(p => <option key={p.ProvinceID} value={p.ProvinceID} style={{color: "black"}}>{p.ProvinceName}</option>)}
+                            </select>
+                            
+                            <select value={newAddr.ghnDistrictId || ""} onChange={e => {
+                                const val = parseInt(e.target.value);
+                                const item = districts.find(d => d.DistrictID === val);
+                                setNewAddr({...newAddr, ghnDistrictId: val, district: item?.DistrictName || "", ghnWardCode: "", ward: ""});
+                              }} 
+                              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} disabled={!newAddr.ghnProvinceId}>
+                              <option value="" style={{color: "black"}}>Chọn Quận/Huyện</option>
+                              {districts.map(d => <option key={d.DistrictID} value={d.DistrictID} style={{color: "black"}}>{d.DistrictName}</option>)}
+                            </select>
+
+                            <select value={newAddr.ghnWardCode || ""} onChange={e => {
+                                const val = e.target.value;
+                                const item = wards.find(w => w.WardCode === val);
+                                setNewAddr({...newAddr, ghnWardCode: val, ward: item?.WardName || ""});
+                              }} 
+                              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-transparent" style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} disabled={!newAddr.ghnDistrictId}>
+                              <option value="" style={{color: "black"}}>Chọn Phường/Xã</option>
+                              {wards.map(w => <option key={w.WardCode} value={w.WardCode} style={{color: "black"}}>{w.WardName}</option>)}
+                            </select>
                           </div>
                           <Button variant="gold" className="w-full" onClick={async () => {
                             if (!newAddr.receiverName || !newAddr.receiverPhone || !newAddr.detail) return toast.error("Vui lòng điền đủ thông tin bắt buộc");
@@ -206,7 +271,7 @@ export default function CheckoutPage() {
                               setAddresses([res.data, ...addresses]);
                               setSelectedAddr(res.data.id);
                               setShowNewAddr(false);
-                              setNewAddr({ receiverName: "", receiverPhone: "", detail: "", ward: "", district: "", province: "" });
+                              setNewAddr({ receiverName: "", receiverPhone: "", detail: "", ward: "", district: "", province: "", ghnProvinceId: 0, ghnDistrictId: 0, ghnWardCode: "" });
                               toast.success("Đã thêm địa chỉ");
                             } catch(e) {
                               toast.error("Lỗi khi thêm địa chỉ");
@@ -278,7 +343,7 @@ export default function CheckoutPage() {
                           }
                         }}>{activeVoucher ? "Hủy" : "Áp dụng"}</Button>
                       </div>
-                      {activeVoucher && <p className="text-xs mt-2" style={{ color: "#10B981" }}>✓ Đã áp dụng giảm {activeVoucher.discountPercent}%</p>}
+                      {activeVoucher && <p className="text-xs mt-2" style={{ color: "#10B981" }}>✓ Đã áp dụng giảm {activeVoucher.discountType === "PERCENTAGE" ? `${activeVoucher.discountValue}%` : formatPrice(activeVoucher.discountValue)}</p>}
                     </div>
 
                     <div className="flex gap-3">
@@ -337,28 +402,11 @@ export default function CheckoutPage() {
                     <div className="flex gap-3">
                       <Button variant="glass" onClick={() => setStep(2)} disabled={loading}>Quay lại</Button>
                       <Button variant="gold" className="flex-1" loading={loading} onClick={async () => {
-                        setLoading(true);
-                        try {
-                          const payload = {
-                            shippingAddressId: selectedAddr, // Valid seeded address UUID
-                            skuIds: selectedItems.map(it => it.id),
-                            platformVoucherId: activeVoucher?.id || null
-                          };
-                          const res = await api.post("/checkout", payload);
-                          const parentOrderId = res.data.parentOrderId;
-                          setOrderId(parentOrderId);
-
-                          if (selectedPayment === "vnpay") {
-                            const vnRes = await api.post(`/payment/vnpay/create-url?orderId=${parentOrderId}`);
-                            window.location.href = vnRes.data; // redirect to VNPay
-                          } else {
-                            // COD
-                            setPlaced(true);
-                          }
-                        } catch (e: any) {
-                          toast.error(e.response?.data?.message || "Lỗi khi đặt hàng");
-                        } finally {
-                          setLoading(false);
+                        if (!selectedAddr) return toast.error("Vui lòng chọn địa chỉ giao hàng");
+                        if (user?.hasPin) {
+                          setIsPinModalOpen(true);
+                        } else {
+                          await submitOrder();
                         }
                       }}>
                         Đặt hàng — {formatPrice(total)}
@@ -376,8 +424,12 @@ export default function CheckoutPage() {
                 <div className="space-y-3 max-h-52 overflow-y-auto scroll-hide">
                   {selectedItems.map(it => (
                     <div key={it.id} className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "var(--bg-elevated)" }}>
-                        <ShoppingCart className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
+                        {it.imageUrl ? (
+                          <img src={it.imageUrl.startsWith('http') ? it.imageUrl : `http://localhost:8080${it.imageUrl}`} className="w-full h-full object-cover" alt={it.name} />
+                        ) : (
+                          <ShoppingCart className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs line-clamp-1" style={{ color: "var(--text-secondary)" }}>{it.name}</p>
@@ -391,9 +443,11 @@ export default function CheckoutPage() {
                   {[
                     ["Tạm tính", formatPrice(subtotal)], 
                     ...(activeVoucher ? [["Giảm giá", `-${formatPrice(
-                      Math.min((subtotal * activeVoucher.discountPercent) / 100, activeVoucher.maxDiscountAmount || 999999999)
+                      activeVoucher.discountType === "PERCENTAGE" 
+                        ? Math.min((subtotal * activeVoucher.discountValue) / 100, activeVoucher.maxDiscountAmount || 999999999)
+                        : Math.min(activeVoucher.discountValue, subtotal)
                     )}`]] : []),
-                    ["Vận chuyển", formatPrice(shipFee)]
+                    ["Vận chuyển", step >= 2 ? formatPrice(actualShipFee) : "—"]
                   ].map(([l, v]) => (
                     <div key={l} className="flex justify-between text-sm">
                       <span style={{ color: "var(--text-secondary)" }}>{l}</span>
@@ -403,7 +457,11 @@ export default function CheckoutPage() {
                   <div className="flex justify-between font-bold pt-2" style={{ borderTop: "1px solid var(--border)" }}>
                     <span style={{ color: "var(--text-primary)" }}>Tổng</span>
                     <span className="text-gradient-gold font-[family-name:var(--font-heading)]">{formatPrice(
-                      subtotal + shipFee - (activeVoucher ? Math.min((subtotal * activeVoucher.discountPercent) / 100, activeVoucher.maxDiscountAmount || 999999999) : 0)
+                      subtotal + actualShipFee - (activeVoucher 
+                        ? (activeVoucher.discountType === "PERCENTAGE" 
+                            ? Math.min((subtotal * activeVoucher.discountValue) / 100, activeVoucher.maxDiscountAmount || 999999999) 
+                            : Math.min(activeVoucher.discountValue, subtotal))
+                        : 0)
                     )}</span>
                   </div>
                 </div>
@@ -412,6 +470,67 @@ export default function CheckoutPage() {
           </div>
         </div>
       </main>
+
+      {/* PIN Verification Modal */}
+      {isPinModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsPinModalOpen(false)} />
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="relative w-full max-w-sm rounded-3xl p-6 shadow-xl text-center" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            <h3 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Xác thực bảo mật</h3>
+            <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>Vui lòng nhập mã PIN 6 số để tiếp tục</p>
+            
+            <input 
+              type="password" 
+              maxLength={6} 
+              autoFocus
+              value={pinInput} 
+              onChange={e => setPinInput(e.target.value.replace(/\D/g, ''))} 
+              className="w-full px-4 py-4 rounded-xl text-2xl text-center outline-none tracking-[0.7em] font-mono mb-6" 
+              style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }} 
+              placeholder="******" 
+            />
+
+            <div className="flex justify-end gap-3 pt-4" style={{ borderTop: "1px solid var(--border)" }}>
+              <Button type="button" variant="glass" onClick={() => setIsPinModalOpen(false)}>Hủy</Button>
+              <Button type="button" variant="gold" loading={loading} onClick={() => submitOrder(pinInput)}>Xác nhận</Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </>
   );
+
+  async function submitOrder(pin?: string) {
+    setLoading(true);
+    try {
+      const payload: any = {
+        shippingAddressId: selectedAddr,
+        skuIds: selectedItems.map(it => it.id),
+        platformVoucherId: activeVoucher?.id || null
+      };
+      if (pin) payload.pin = pin;
+
+      const res = await api.post("/checkout", payload);
+      const parentOrderId = res.data.parentOrderId;
+      setOrderId(parentOrderId);
+
+      setIsPinModalOpen(false);
+      setPinInput("");
+      setPlaced(true);
+
+      if (selectedPayment === "vnpay") {
+        const vnRes = await api.post(`/payment/vnpay/create-url?orderId=${parentOrderId}`);
+        window.location.href = vnRes.data;
+      }
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Lỗi khi đặt hàng");
+      if (e.response?.data?.message?.toLowerCase().includes("pin")) {
+        setPinInput("");
+      } else {
+        setIsPinModalOpen(false);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 }

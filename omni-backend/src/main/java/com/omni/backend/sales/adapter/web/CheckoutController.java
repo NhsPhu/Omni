@@ -36,9 +36,10 @@ public class CheckoutController {
 
     @GetMapping("/shipping-fee")
     public ResponseEntity<Long> calculateShippingFee(
+            Authentication authentication,
             @RequestParam(required = false) UUID addressId) {
-        // Mock distance calculation based on address, calling GHN
-        long fee = checkoutService.calculateShippingFee(addressId);
+        UUID userId = getUserId(authentication);
+        long fee = checkoutService.calculateShippingFee(addressId, userId);
         return ResponseEntity.ok(fee);
     }
 }

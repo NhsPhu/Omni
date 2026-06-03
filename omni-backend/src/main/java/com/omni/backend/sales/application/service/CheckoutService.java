@@ -18,6 +18,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.omni.backend.iam.adapter.persistence.repository.UserRepository;
+import com.omni.backend.iam.adapter.persistence.entity.UserJpaEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -37,10 +40,22 @@ public class CheckoutService {
     private final ApplicationEventPublisher eventPublisher;
     private final com.omni.backend.shipping.application.service.GhnShippingClient ghnShippingClient;
     private final com.omni.backend.iam.adapter.persistence.repository.UserAddressRepository userAddressRepository;
+    private final com.omni.backend.iam.adapter.persistence.repository.ShopRepository shopRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(rollbackFor = Exception.class)
     public CheckoutResponse checkout(UUID userId, CheckoutRequest request) {
         log.info("Starting checkout process for user {}", userId);
+
+        UserJpaEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getPinHash() != null && !user.getPinHash().isEmpty()) {
+            if (request.getPin() == null || !passwordEncoder.matches(request.getPin(), user.getPinHash())) {
+                throw new RuntimeException("Mã PIN không chính xác hoặc chưa được cung cấp.");
+            }
+        }
 
         // 1. Lấy thông tin giỏ hàng
         CartDto cart = cartService.getCart(userId);
@@ -79,7 +94,25 @@ public class CheckoutService {
 
             BigDecimal shopSubtotal = BigDecimal.ZERO;
             String shopName = shopItems.isEmpty() ? "Unknown Shop" : shopItems.get(0).getShopName();
-            long shippingFee = ghnShippingClient.calculateFee(0, "0000", 500, 20, 15, 5);
+            int toDistrictId = 1442;
+            String toWardCode = "20109";
+            if (request.getShippingAddressId() != null) {
+                var addressOpt = userAddressRepository.findById(request.getShippingAddressId());
+                if (addressOpt.isPresent()) {
+                    var address = addressOpt.get();
+                    if (address.getGhnDistrictId() != null) toDistrictId = address.getGhnDistrictId();
+                    if (address.getGhnWardCode() != null) toWardCode = address.getGhnWardCode();
+                }
+            }
+            int fromDistrictId = 1442; // Fallback shop district
+            String fromWardCode = "20109"; // Fallback shop ward
+            var shopOpt = shopRepository.findById(shopId);
+            if (shopOpt.isPresent()) {
+                var shop = shopOpt.get();
+                if (shop.getWarehouseDistrictId() != null) fromDistrictId = shop.getWarehouseDistrictId();
+                if (shop.getWarehouseWardCode() != null) fromWardCode = shop.getWarehouseWardCode();
+            }
+            long shippingFee = ghnShippingClient.calculateFee(fromDistrictId, fromWardCode, toDistrictId, toWardCode, 500, 20, 15, 5);
             ChildOrderJpaEntity childOrder = ChildOrderJpaEntity.builder()
                     .parentOrder(parentOrder)
                     .shopId(shopId)
@@ -168,8 +201,7 @@ public class CheckoutService {
                 .build();
     }
 
-    public long calculateShippingFee(UUID addressId) {
-        // Default fallback values
+    public long calculateShippingFee(UUID addressId, UUID userId) {
         int toDistrictId = 1442;
         String toWardCode = "20109";
         
@@ -177,17 +209,42 @@ public class CheckoutService {
             var addressOpt = userAddressRepository.findById(addressId);
             if (addressOpt.isPresent()) {
                 var address = addressOpt.get();
-                // Use a simple hash of the district name to generate a "district ID".
-                // In production, you would maintain a mapping table of
-                // province/district/ward names to GHN IDs.
-                toDistrictId = Math.abs(address.getDistrict().hashCode()) % 3000 + 1;
-                toWardCode = String.valueOf(Math.abs(address.getWard().hashCode()) % 90000 + 10000);
-                log.info("Calculating shipping fee for address: {}, {}, {} → districtId={}, wardCode={}",
-                        address.getDetail(), address.getDistrict(), address.getProvince(),
-                        toDistrictId, toWardCode);
+                if (address.getGhnDistrictId() != null) toDistrictId = address.getGhnDistrictId();
+                if (address.getGhnWardCode() != null) toWardCode = address.getGhnWardCode();
             }
         }
         
-        return ghnShippingClient.calculateFee(toDistrictId, toWardCode, 500, 20, 15, 5);
+        long totalFee = 0;
+        int fromDistrictId = 1442;
+        String fromWardCode = "20109";
+        
+        try {
+            if (userId != null) {
+                CartDto cart = cartService.getCart(userId);
+                if (!cart.getItemsByShop().isEmpty()) {
+                    for (Map.Entry<UUID, List<CartItemDto>> entry : cart.getItemsByShop().entrySet()) {
+                        UUID shopId = entry.getKey();
+                        int currentFromDistrict = 1442;
+                        String currentFromWard = "20109";
+                        var shopOpt = shopRepository.findById(shopId);
+                        if (shopOpt.isPresent()) {
+                            var shop = shopOpt.get();
+                            if (shop.getWarehouseDistrictId() != null) currentFromDistrict = shop.getWarehouseDistrictId();
+                            if (shop.getWarehouseWardCode() != null) currentFromWard = shop.getWarehouseWardCode();
+                        }
+                        long feePerShop = ghnShippingClient.calculateFee(currentFromDistrict, currentFromWard, toDistrictId, toWardCode, 500, 20, 15, 5);
+                        totalFee += feePerShop;
+                    }
+                } else {
+                    totalFee = ghnShippingClient.calculateFee(fromDistrictId, fromWardCode, toDistrictId, toWardCode, 500, 20, 15, 5);
+                }
+            } else {
+                totalFee = ghnShippingClient.calculateFee(fromDistrictId, fromWardCode, toDistrictId, toWardCode, 500, 20, 15, 5);
+            }
+        } catch (Exception e) {
+            log.warn("Could not calculate actual shipping fee from cart, returning default fee", e);
+            totalFee = ghnShippingClient.calculateFee(fromDistrictId, fromWardCode, toDistrictId, toWardCode, 500, 20, 15, 5);
+        }
+        return totalFee;
     }
 }

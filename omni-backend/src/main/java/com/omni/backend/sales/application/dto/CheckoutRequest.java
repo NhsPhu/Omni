@@ -16,4 +16,7 @@ public class CheckoutRequest {
 
     // Optional shop vouchers applied
     private List<UUID> shopVoucherIds;
+
+    // PIN code verification if user has one
+    private String pin;
 }
