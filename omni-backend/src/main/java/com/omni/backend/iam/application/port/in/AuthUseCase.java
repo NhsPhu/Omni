@@ -7,4 +7,6 @@ import com.omni.backend.iam.application.dto.RegisterRequest;
 public interface AuthUseCase {
     void registerUser(RegisterRequest request);
     AuthResponse login(LoginRequest request);
+    void verifyEmail(String token);
+    AuthResponse refreshToken(String refreshToken);
 }

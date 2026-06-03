@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -44,5 +46,19 @@ public class AuthController {
         AuthResponse response = socialAuthService.loginWithSocial(request);
         return ResponseEntity.ok(response);
     }
-}
 
+    @GetMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestParam String token) {
+        authUseCase.verifyEmail(token);
+        return ResponseEntity.ok(java.util.Map.of("message", "Xác thực thành công"));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refreshToken(@RequestBody java.util.Map<String, String> request) {
+        String token = request.get("refreshToken");
+        if (token == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(authUseCase.refreshToken(token));
+    }
+}

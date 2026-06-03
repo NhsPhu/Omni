@@ -44,7 +44,9 @@ public class SocialAuthService {
 
         UserJpaEntity user = findOrCreateUser(info, req.getProvider().toUpperCase());
 
-        String accessToken = jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name(), user.getId().toString(), user.getFullName());
+        boolean hasPassword = user.getPasswordHash() != null && !user.getPasswordHash().isEmpty();
+        boolean hasPin = user.getPinHash() != null && !user.getPinHash().isEmpty();
+        String accessToken = jwtTokenProvider.generateToken(user.getEmail(), user.getRole().name(), user.getId().toString(), user.getFullName(), hasPassword, hasPin);
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
