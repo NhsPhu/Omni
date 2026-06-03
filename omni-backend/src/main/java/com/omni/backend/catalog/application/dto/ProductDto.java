@@ -24,6 +24,8 @@ public class ProductDto {
     private BigDecimal avgRating;
     private Integer reviewCount;
     private String status;
+    private String shopName;
+    private String shopLocation;
     private List<ProductSkuDto> skus;
     private List<ProductImageDto> images;
 }

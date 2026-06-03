@@ -5,7 +5,7 @@ import { Star, Heart, ShoppingCart, Zap, Shield, Truck, RefreshCw, Share2, Chevr
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
-import { productDetail } from "@/data/mock";
+
 import { formatPrice, calcDiscount } from "@/lib/utils";
 import api from "@/lib/axios";
 import { useEffect } from "react";
@@ -21,19 +21,19 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
-  const [p, setP] = useState<any>(productDetail); // Fallback to mock temporarily if api fails
+  const [p, setP] = useState<any>(null); // State for product details
   const [activeImg, setActiveImg] = useState(0);
 
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [wishlisted, setWishlisted] = useState(false);
 
   useEffect(() => {
-    if (p && typeof window !== "undefined" && localStorage.getItem("token")) {
+    if (p && isAuthenticated()) {
       api.get(`/wishlists/${p.id}/check`)
         .then(res => setWishlisted(res.data))
         .catch(console.error);
     }
-  }, [p]);
+  }, [p, isAuthenticated]);
 
   const [qty, setQty] = useState(1);
   const [activeTab, setActiveTab] = useState(0);
@@ -41,7 +41,14 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (params?.id) {
-      api.get("/products/" + params.id).then(res => setP(res.data)).catch((e: any) => {
+      Promise.all([
+        api.get("/products/" + params.id),
+        api.get("/products/" + params.id + "/reviews")
+      ]).then(([resP, resR]) => {
+         const productData = resP.data;
+         productData.reviews = resR.data.content;
+         setP(productData);
+      }).catch((e: any) => {
         if (e.response?.status !== 401 && e.response?.status !== 403) console.error(e);
       });
     }
@@ -135,7 +142,7 @@ export default function ProductDetailPage() {
   };
 
   const handleWishlist = () => {
-    if (typeof window !== "undefined" && !localStorage.getItem("token")) {
+    if (!isAuthenticated()) {
       toast.error("Vui lòng đăng nhập để thêm vào yêu thích");
       return;
     }
@@ -185,32 +192,50 @@ export default function ProductDetailPage() {
                 transition={{ duration: 0.3 }}
                 className={`relative aspect-square rounded-3xl overflow-hidden bg-gradient-to-br ${GRADS[activeImg % 4]}`}
                 style={{ border: "1px solid var(--border)" }}>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <ShoppingCart className="w-20 h-20 text-white/20" />
-                </div>
+                {p.images && p.images.length > 0 && p.images[activeImg] ? (
+                  <img 
+                    src={p.images[activeImg]?.imageUrl?.startsWith('http') ? p.images[activeImg].imageUrl : `http://localhost:8080${p.images[activeImg].imageUrl}`} 
+                    alt={p.name} 
+                    className="absolute inset-0 w-full h-full object-cover" 
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <ShoppingCart className="w-20 h-20 text-white/20" />
+                  </div>
+                )}
                 {p.discount && (
                   <div className="absolute top-4 left-4 px-3 py-1.5 text-sm font-bold rounded-xl bg-red-500 text-white">
                     -{p.discount}%
                   </div>
                 )}
                 <button onClick={handleWishlist}
-                  className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-xl glass cursor-pointer">
+                  className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-xl glass cursor-pointer z-10">
                   <Heart className={`w-5 h-5 transition-all ${wishlisted ? "fill-red-400 text-red-400" : "text-white/70"}`} />
                 </button>
               </motion.div>
 
               {/* Thumbnails */}
-              <div className="grid grid-cols-4 gap-2">
-                {(p.images ?? [p.image ?? '', p.image ?? '', p.image ?? '', p.image ?? '']).map((_: any, i: number) => (
-                  <button key={i} onClick={() => setActiveImg(i)}
-                    className={`aspect-square rounded-xl overflow-hidden bg-gradient-to-br ${GRADS[i % 4]} cursor-pointer transition-all duration-200`}
-                    style={{ border: activeImg === i ? "2px solid var(--gold)" : "1px solid var(--border)", opacity: activeImg === i ? 1 : 0.6 }}>
-                    <div className="w-full h-full flex items-center justify-center">
-                      <ShoppingCart className="w-5 h-5 text-white/30" />
-                    </div>
-                  </button>
-                ))}
-              </div>
+              {p.images && p.images.length > 0 && (
+                <div className="grid grid-cols-4 gap-2">
+                  {p.images.map((img: any, i: number) => (
+                    <button key={i} onClick={() => setActiveImg(i)}
+                      className={`aspect-square rounded-xl overflow-hidden bg-gradient-to-br ${GRADS[i % 4]} cursor-pointer transition-all duration-200 relative`}
+                      style={{ border: activeImg === i ? "2px solid var(--gold)" : "1px solid var(--border)", opacity: activeImg === i ? 1 : 0.6 }}>
+                      {img.imageUrl ? (
+                        <img 
+                          src={img.imageUrl.startsWith('http') ? img.imageUrl : `http://localhost:8080${img.imageUrl}`} 
+                          alt="thumbnail" 
+                          className="w-full h-full object-cover" 
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ShoppingCart className="w-5 h-5 text-white/30" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Trust badges */}
               <div className="grid grid-cols-2 gap-2">
@@ -347,8 +372,8 @@ export default function ProductDetailPage() {
                     <Store className="w-5 h-5" style={{ color: "var(--gold)" }} />
                   </div>
                   <div>
-                    <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{p.shopName}</p>
-                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>Xem cửa hàng →</p>
+                    <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{p.shopName || "Unknown Shop"}</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>Kho hàng tại: {p.shopLocation || "Đang cập nhật"}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -444,7 +469,7 @@ export default function ProductDetailPage() {
                       </div>
                       <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{review.comment}</p>
                       <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
-                        <span className="text-xs" style={{ color: "var(--text-muted)" }}>{review.date}</span>
+                        <span className="text-xs" style={{ color: "var(--text-muted)" }}>{new Date(review.date).toLocaleDateString("vi-VN")}</span>
                         <button className="text-xs cursor-pointer" style={{ color: "var(--text-muted)" }}>👍 Hữu ích ({review.helpful})</button>
                       </div>
                     </div>

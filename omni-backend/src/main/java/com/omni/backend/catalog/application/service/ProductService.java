@@ -10,14 +10,18 @@ import com.omni.backend.catalog.adapter.persistence.repository.CategoryRepositor
 import com.omni.backend.catalog.adapter.persistence.repository.ProductImageRepository;
 import com.omni.backend.catalog.adapter.persistence.repository.ProductRepository;
 import com.omni.backend.catalog.adapter.persistence.repository.ProductSkuRepository;
+import com.omni.backend.iam.adapter.persistence.entity.ShopJpaEntity;
+import com.omni.backend.iam.adapter.persistence.repository.ShopRepository;
 import com.omni.backend.catalog.application.dto.ProductDto;
 import com.omni.backend.catalog.application.dto.ProductImageDto;
 import com.omni.backend.catalog.application.dto.ProductSkuDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.omni.backend.shared.security.SecurityUtils;
 
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
@@ -26,6 +30,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductService {
@@ -35,14 +42,20 @@ public class ProductService {
     private final ProductImageRepository productImageRepository;
     private final CategoryRepository categoryRepository;
     private final ProductSearchRepository productSearchRepository;
+    private final ShopRepository shopRepository;
 
     @Transactional
     public ProductDto createProduct(ProductDto dto) {
+        String slug = dto.getSlug();
+        if (slug == null || slug.trim().isEmpty()) {
+            slug = dto.getName().toLowerCase().replaceAll("[^a-z0-9\\s]", "").replaceAll("\\s+", "-") + "-" + System.currentTimeMillis();
+        }
+
         ProductJpaEntity product = ProductJpaEntity.builder()
                 .shopId(dto.getShopId())
                 .categoryId(dto.getCategoryId())
                 .name(dto.getName())
-                .slug(dto.getSlug())
+                .slug(slug)
                 .description(dto.getDescription())
                 .status(dto.getStatus() != null ? dto.getStatus() : "ACTIVE")
                 .avgRating(BigDecimal.ZERO)
@@ -62,11 +75,31 @@ public class ProductService {
         ProductJpaEntity product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
+        UUID currentShopId = SecurityUtils.getCurrentShopId();
+        if (currentShopId == null || !product.getShopId().equals(currentShopId)) {
+            throw new AccessDeniedException("You do not own this product");
+        }
+
         product.setCategoryId(dto.getCategoryId());
         product.setName(dto.getName());
         product.setSlug(dto.getSlug());
         product.setDescription(dto.getDescription());
         product = productRepository.save(product);
+
+        // Delete physical images before updating
+        List<ProductImageJpaEntity> oldImages = productImageRepository.findByProductIdOrderBySortOrderAsc(id);
+        for (ProductImageJpaEntity img : oldImages) {
+            try {
+                String url = img.getImageUrl();
+                if (url != null && url.startsWith("/uploads/")) {
+                    String fileName = url.substring("/uploads/".length());
+                    java.nio.file.Path filePath = java.nio.file.Paths.get("uploads", fileName);
+                    java.nio.file.Files.deleteIfExists(filePath);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to delete image from storage: {}", img.getImageUrl(), e);
+            }
+        }
 
         // Replace SKUs and Images (Simple approach for now)
         productSkuRepository.deleteAll(productSkuRepository.findByProductId(id));
@@ -83,6 +116,12 @@ public class ProductService {
     public void updateProductStatus(UUID id, String status) {
         ProductJpaEntity product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
+                
+        UUID currentShopId = SecurityUtils.getCurrentShopId();
+        if (currentShopId == null || !product.getShopId().equals(currentShopId)) {
+            throw new AccessDeniedException("You do not own this product");
+        }
+        
         product.setStatus(status);
         productRepository.save(product);
         // Note: You could also sync status to ES if it's used for filtering
@@ -92,6 +131,26 @@ public class ProductService {
     public void deleteProduct(UUID id) {
         ProductJpaEntity product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
+                
+        UUID currentShopId = SecurityUtils.getCurrentShopId();
+        if (currentShopId == null || !product.getShopId().equals(currentShopId)) {
+            throw new AccessDeniedException("You do not own this product");
+        }
+        // Delete physical images
+        List<ProductImageJpaEntity> images = productImageRepository.findByProductIdOrderBySortOrderAsc(id);
+        for (ProductImageJpaEntity img : images) {
+            try {
+                String url = img.getImageUrl();
+                if (url != null && url.startsWith("/uploads/")) {
+                    String fileName = url.substring("/uploads/".length());
+                    java.nio.file.Path filePath = java.nio.file.Paths.get("uploads", fileName);
+                    java.nio.file.Files.deleteIfExists(filePath);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to delete image from storage: {}", img.getImageUrl(), e);
+            }
+        }
+        
         product.setDeletedAt(ZonedDateTime.now());
         productRepository.save(product);
         productSearchRepository.deleteById(id); // Remove from ES on soft delete
@@ -121,6 +180,11 @@ public class ProductService {
                         .build())
                 .collect(Collectors.toList());
 
+        ShopJpaEntity shop = shopRepository.findById(product.getShopId()).orElse(null);
+        String shopName = shop != null ? shop.getName() : "Unknown Shop";
+        String shopLocation = shop != null && shop.getAddress() != null && !shop.getAddress().isEmpty() 
+            ? shop.getAddress() : "TP. Hồ Chí Minh";
+
         return ProductDto.builder()
                 .id(product.getId())
                 .shopId(product.getShopId())
@@ -129,6 +193,8 @@ public class ProductService {
                 .slug(product.getSlug())
                 .description(product.getDescription())
                 .status(product.getStatus())
+                .shopName(shopName)
+                .shopLocation(shopLocation)
                 .avgRating(product.getAvgRating())
                 .reviewCount(product.getReviewCount())
                 .skus(skus)
@@ -172,6 +238,11 @@ public class ProductService {
         BigDecimal minPrice = skus.stream().map(ProductSkuJpaEntity::getPrice).min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
         BigDecimal maxPrice = skus.stream().map(ProductSkuJpaEntity::getPrice).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
 
+        String shopName = shopRepository.findById(product.getShopId())
+                .map(ShopJpaEntity::getName).orElse("Unknown Shop");
+
+        int totalStock = skus.stream().mapToInt(ProductSkuJpaEntity::getStockQuantity).sum();
+
         return ProductDocument.builder()
                 .id(product.getId())
                 .shopId(product.getShopId())
@@ -181,8 +252,11 @@ public class ProductService {
                 .priceMin(minPrice)
                 .priceMax(maxPrice)
                 .avgRating(product.getAvgRating())
+                .reviewCount(product.getReviewCount() != null ? product.getReviewCount() : 0)
+                .soldCount(product.getSoldCount() != null ? product.getSoldCount() : 0)
+                .stockQuantity(totalStock)
                 .categoryName(categoryName)
-                .shopName("Omni Shop") // Hardcoded or fetch shop
+                .shopName(shopName)
                 .build();
     }
 
@@ -222,6 +296,11 @@ public class ProductService {
         BigDecimal minPrice = skus.stream().map(ProductSkuJpaEntity::getPrice).min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
         BigDecimal maxPrice = skus.stream().map(ProductSkuJpaEntity::getPrice).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
 
+        String shopName = shopRepository.findById(product.getShopId())
+                .map(ShopJpaEntity::getName).orElse("Unknown Shop");
+
+        int totalStock = skus.stream().mapToInt(ProductSkuJpaEntity::getStockQuantity).sum();
+
         ProductDocument doc = ProductDocument.builder()
                 .id(product.getId())
                 .shopId(product.getShopId())
@@ -231,8 +310,11 @@ public class ProductService {
                 .priceMin(minPrice)
                 .priceMax(maxPrice)
                 .avgRating(product.getAvgRating())
+                .reviewCount(product.getReviewCount() != null ? product.getReviewCount() : 0)
+                .soldCount(product.getSoldCount() != null ? product.getSoldCount() : 0)
+                .stockQuantity(totalStock)
                 .categoryName(categoryName)
-                .shopName("Shop Name") // Should fetch from Shop if available
+                .shopName(shopName)
                 .build();
 
         productSearchRepository.save(doc);
