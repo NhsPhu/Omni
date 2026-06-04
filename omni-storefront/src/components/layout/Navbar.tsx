@@ -9,6 +9,7 @@ import ThemeToggle from "@/components/ui/ThemeToggle";
 import Button from "@/components/ui/Button";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
+import { useFlashSaleStore } from "@/store/flashSaleStore";
 import { User as UserIcon, LogOut } from "lucide-react";
 import NotificationDropdown from "@/components/ui/NotificationDropdown";
 const staticNavLinks = [
@@ -39,6 +40,8 @@ export default function Navbar() {
     api.get("/categories")
        .then(res => setCategories(res.data))
        .catch(console.error);
+       
+    useFlashSaleStore.getState().fetchActiveEvent();
        
     if (isAuthenticated()) {
       fetchCart();

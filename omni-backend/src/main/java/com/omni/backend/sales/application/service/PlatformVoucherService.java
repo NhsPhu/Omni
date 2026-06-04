@@ -7,7 +7,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import java.time.ZonedDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -51,5 +53,12 @@ public class PlatformVoucherService {
                 .validTo(entity.getValidTo())
                 .createdAt(entity.getCreatedAt())
                 .build();
+    }
+
+    public void stopVoucher(UUID id) {
+        PlatformVoucherJpaEntity entity = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Voucher not found"));
+        entity.setValidTo(ZonedDateTime.now().minusSeconds(1));
+        repository.save(entity);
     }
 }

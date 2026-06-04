@@ -7,6 +7,7 @@ import Link from "next/link";
 import type { Product } from "@/data/mock";
 import api from "@/lib/axios";
 import { toast } from "sonner";
+import { useFlashSaleStore } from "@/store/flashSaleStore";
 
 interface ProductCardProps { product: Product; index?: number; }
 
@@ -23,12 +24,16 @@ const GRADIENTS = [
 
 export default function ProductCard({ product, index = 0 }: ProductCardProps) {
   const [wishlisted, setWishlisted] = useState(false);
+  
+  // GLOBAL PRICING: Check if product is in an active flash sale
+  const activeEvent = useFlashSaleStore(state => state.activeEvent);
+  const flashItem = activeEvent?.items?.find((item: any) => item.productId === product.id && item.flashStock > item.soldCount);
 
   useEffect(() => {
     if (typeof window !== "undefined" && localStorage.getItem("token")) {
       api.get(`/wishlists/${product.id}/check`)
         .then(res => setWishlisted(res.data))
-        .catch(console.error);
+        .catch(() => {}); // silently ignore 403 or other errors to avoid polluting console
     }
   }, [product.id]);
 
@@ -53,9 +58,13 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       });
   };
 
-  const price = product.price ?? (product as any).priceMin ?? 0;
-  const originalPrice = product.originalPrice ?? (product as any).priceMax;
+  const basePrice = product.price ?? (product as any).priceMin ?? 0;
+  const baseOriginalPrice = product.originalPrice ?? (product as any).priceMax;
+  
+  const price = flashItem ? flashItem.flashPrice : basePrice;
+  const originalPrice = flashItem ? basePrice : baseOriginalPrice;
   const discount = originalPrice && originalPrice > price ? calcDiscount(originalPrice, price) : 0;
+  
   const grad = GRADIENTS[index % GRADIENTS.length];
 
   return (
@@ -105,11 +114,17 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
 
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
-          {product.badge === "bestseller" && (
+          {flashItem && (
+            <span className="px-2.5 py-1 text-[11px] font-bold rounded-lg flex items-center gap-1"
+              style={{ background: "#ef4444", color: "white", boxShadow: "0 2px 10px rgba(239,68,68,0.3)" }}>
+              <span className="animate-pulse">⚡</span> Flash Sale
+            </span>
+          )}
+          {!flashItem && product.badge === "bestseller" && (
             <span className="px-2.5 py-1 text-[11px] font-semibold rounded-lg"
               style={{ background: "var(--gold)", color: "#050509" }}>Bán chạy</span>
           )}
-          {product.badge === "new" && (
+          {!flashItem && product.badge === "new" && (
             <span className="px-2.5 py-1 text-[11px] font-semibold rounded-lg"
               style={{ background: "var(--purple)", color: "white" }}>Mới</span>
           )}

@@ -10,6 +10,7 @@ import Wallet from './pages/finance/Wallet';
 import Reviews from './pages/reviews/Reviews';
 import Analytics from './pages/analytics/Analytics';
 import ShopSettings from './pages/settings/ShopSettings';
+import FlashSaleRegister from './pages/flashsale/FlashSaleRegister';
 import Login from './pages/Login';
 
 import SuperAdminLayout from './components/layout/SuperAdminLayout';
@@ -20,6 +21,7 @@ import Disputes from './pages/admin/Disputes';
 import PlatformVouchers from './pages/admin/PlatformVouchers';
 import Withdrawals from './pages/admin/Withdrawals';
 import Reports from './pages/admin/Reports';
+import FlashSales from './pages/admin/FlashSales';
 
 export default function App() {
   return (
@@ -36,6 +38,7 @@ export default function App() {
           <Route path="finance" element={<Wallet />} />
           <Route path="reviews" element={<Reviews />} />
           <Route path="analytics" element={<Analytics />} />
+          <Route path="flash-sale" element={<FlashSaleRegister />} />
           <Route path="settings" element={<ShopSettings />} />
         </Route>
         
@@ -47,6 +50,7 @@ export default function App() {
           <Route path="categories" element={<Categories />} />
           <Route path="disputes" element={<Disputes />} />
           <Route path="vouchers" element={<PlatformVouchers />} />
+          <Route path="flash-sale" element={<FlashSales />} />
           <Route path="withdrawals" element={<Withdrawals />} />
         </Route>
       </Routes>

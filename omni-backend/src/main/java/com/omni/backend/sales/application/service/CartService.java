@@ -33,6 +33,7 @@ public class CartService {
     private final ProductSkuRepository productSkuRepository;
     private final ProductImageRepository productImageRepository;
     private final ShopRepository shopRepository;
+    private final org.springframework.context.annotation.Lazy @org.springframework.beans.factory.annotation.Autowired FlashSaleService flashSaleService;
 
     private static final String CART_PREFIX = "cart:";
     private static final Duration CART_TTL = Duration.ofDays(7);
@@ -47,6 +48,22 @@ public class CartService {
 
         try {
             List<CartItemDto> items = objectMapper.readValue(cartJson, new TypeReference<List<CartItemDto>>() {});
+            
+            // Re-validate prices globally
+            List<UUID> skuIds = items.stream().map(CartItemDto::getSkuId).toList();
+            Map<UUID, BigDecimal> flashSalePrices = flashSaleService.getActiveFlashSalePrices(skuIds);
+            
+            for (CartItemDto item : items) {
+                // By default, it could be stale in Redis, but we don't query DB every time to save performance
+                // However, we MUST apply flash sale price if active
+                if (flashSalePrices.containsKey(item.getSkuId())) {
+                    item.setPrice(flashSalePrices.get(item.getSkuId()));
+                } else {
+                    // Refresh from DB (optional, but good for accuracy)
+                    productSkuRepository.findById(item.getSkuId()).ifPresent(sku -> item.setPrice(sku.getPrice()));
+                }
+            }
+            
             Map<UUID, List<CartItemDto>> grouped = items.stream().collect(Collectors.groupingBy(CartItemDto::getShopId));
             return CartDto.builder().userId(userId).itemsByShop(grouped).build();
         } catch (JsonProcessingException e) {

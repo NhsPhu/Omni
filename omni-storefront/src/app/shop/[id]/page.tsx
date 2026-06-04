@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Store, Star, MapPin, Package, Calendar } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import ProductCard from "@/components/product/ProductCard";
+import ProductCard from "@/components/ui/ProductCard";
 import api from "@/lib/axios";
 
 export default function ShopPage() {

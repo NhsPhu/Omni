@@ -13,7 +13,8 @@ import {
   Bell,
   Menu as MenuIcon,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Zap
 } from 'lucide-react';
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
@@ -44,6 +45,7 @@ export default function SuperAdminLayout() {
     { key: '/admin/categories', icon: <Network size={18} />, label: 'Cây danh mục' },
     { key: '/admin/disputes', icon: <Scale size={18} />, label: 'Giải quyết tranh chấp' },
     { key: '/admin/vouchers', icon: <Ticket size={18} />, label: 'Platform Voucher' },
+    { key: '/admin/flash-sale', icon: <Zap size={18} />, label: 'Flash Sale' },
     { key: '/admin/withdrawals', icon: <Coins size={18} />, label: 'Duyệt lệnh rút tiền' },
   ];
 

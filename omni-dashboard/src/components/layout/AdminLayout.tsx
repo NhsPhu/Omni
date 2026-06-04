@@ -13,7 +13,8 @@ import {
   Store,
   LogOut,
   User,
-  Settings
+  Settings,
+  Zap
 } from 'lucide-react';
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -50,6 +51,7 @@ export default function AdminLayout() {
     { key: '/finance', icon: <Wallet size={18} />, label: 'Tài chính' },
     { key: '/reviews', icon: <MessageCircle size={18} />, label: 'Đánh giá & Hỏi đáp' },
     { key: '/analytics', icon: <LineChart size={18} />, label: 'Phân tích' },
+    { key: '/flash-sale', icon: <Zap size={18} />, label: 'Flash Sale' },
     { key: '/settings', icon: <Settings size={18} />, label: 'Cài đặt Shop' },
   ];
 

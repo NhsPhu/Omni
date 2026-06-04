@@ -59,8 +59,7 @@ export default function CartPage() {
             quantity: it.quantity,
             stock: 999, // default
             selected: true,
-            imageUrl: it.imageUrl,
-          });
+          } as any);
         });
       });
       setItems(newItems);

@@ -4,6 +4,8 @@ import com.omni.backend.finance.application.dto.SystemReportDto;
 
 import com.omni.backend.sales.adapter.persistence.repository.ChildOrderRepository;
 import com.omni.backend.iam.adapter.persistence.repository.UserRepository;
+import com.omni.backend.iam.adapter.persistence.repository.ShopRepository;
+import com.omni.backend.iam.adapter.persistence.entity.ShopJpaEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,23 +22,52 @@ public class AdminReportService {
     
     private final ChildOrderRepository childOrderRepository;
     private final UserRepository userRepository;
+    private final ShopRepository shopRepository;
 
     public SystemReportDto getSystemReport() {
-        // Mocking the complex aggregations for the purpose of this prototype
-        List<SystemReportDto.GmvData> chartData = new ArrayList<>();
-        chartData.add(new SystemReportDto.GmvData("20/05", new BigDecimal("25000000"), new BigDecimal("1250000")));
-        chartData.add(new SystemReportDto.GmvData("21/05", new BigDecimal("32000000"), new BigDecimal("1600000")));
-        chartData.add(new SystemReportDto.GmvData("22/05", new BigDecimal("45000000"), new BigDecimal("2250000")));
-        chartData.add(new SystemReportDto.GmvData("23/05", new BigDecimal("51000000"), new BigDecimal("2550000")));
+        List<com.omni.backend.sales.adapter.persistence.entity.ChildOrderJpaEntity> orders = childOrderRepository
+                .findByCreatedAtGreaterThanEqualAndStatusNotIn(
+                        java.time.ZonedDateTime.now().minusYears(10),
+                        java.util.Arrays.asList("CANCELLED", "PENDING"));
 
-        List<SystemReportDto.TopShop> topShops = new ArrayList<>();
-        topShops.add(new SystemReportDto.TopShop("Apple Store VN", new BigDecimal("125000000"), 1200L));
-        topShops.add(new SystemReportDto.TopShop("Samsung Official", new BigDecimal("98000000"), 950L));
+        BigDecimal totalGmv = BigDecimal.ZERO;
+        for (var order : orders) {
+            totalGmv = totalGmv.add(order.getTotalAmount());
+        }
+        BigDecimal totalRevenue = totalGmv.multiply(new BigDecimal("0.05"));
+
+        java.util.Map<java.util.UUID, BigDecimal> shopGmv = new java.util.HashMap<>();
+        java.util.Map<java.util.UUID, Long> shopOrders = new java.util.HashMap<>();
+        for (var order : orders) {
+            shopGmv.put(order.getShopId(), shopGmv.getOrDefault(order.getShopId(), BigDecimal.ZERO).add(order.getTotalAmount()));
+            shopOrders.put(order.getShopId(), shopOrders.getOrDefault(order.getShopId(), 0L) + 1);
+        }
+
+        List<SystemReportDto.TopShop> topShops = shopGmv.entrySet().stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .limit(5)
+                .map(e -> {
+                    String shopName = shopRepository.findById(e.getKey())
+                            .map(ShopJpaEntity::getName)
+                            .orElse("Unknown Shop");
+                    return new SystemReportDto.TopShop(shopName, e.getValue(), shopOrders.get(e.getKey()));
+                })
+                .toList();
+
+        List<SystemReportDto.GmvData> chartData = new ArrayList<>();
+        List<java.util.Map<String, Object>> daily = getPlatformDailyRevenue(7);
+        for (var day : daily) {
+            chartData.add(new SystemReportDto.GmvData(
+                    (String) day.get("date"),
+                    (BigDecimal) day.get("revenue"),
+                    (BigDecimal) day.get("commission")
+            ));
+        }
 
         return SystemReportDto.builder()
-                .totalGmv(new BigDecimal("2910000000"))
-                .totalRevenue(new BigDecimal("145500000"))
-                .activeShops(1482L)
+                .totalGmv(totalGmv)
+                .totalRevenue(totalRevenue)
+                .activeShops(shopRepository.count())
                 .totalOrders(childOrderRepository.count())
                 .chartData(chartData)
                 .topShops(topShops)

@@ -62,6 +62,16 @@ export default function PlatformVouchers() {
     }
   };
 
+  const handleStop = async (id: string) => {
+    try {
+      await api.patch(`/admin/vouchers/${id}/stop`);
+      message.success('Đã ngừng voucher thành công!');
+      fetchVouchers();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Lỗi ngừng voucher');
+    }
+  };
+
   const columns = [
     { 
       title: 'Mã Voucher Sàn', 
@@ -98,6 +108,7 @@ export default function PlatformVouchers() {
       title: 'Trạng thái',
       key: 'status',
       render: (_: any, record: any) => {
+        if (dayjs(record.validTo).isBefore(dayjs())) return <Tag color="default">Đã kết thúc</Tag>;
         if (record.status === 'exhausted') return <Tag color="error">Hết ngân sách</Tag>;
         if (record.status === 'warning') return <Tag color="warning">Cảnh báo budget</Tag>;
         return <Tag color="success">Đang chạy</Tag>;
@@ -106,7 +117,17 @@ export default function PlatformVouchers() {
     {
       title: '',
       key: 'action',
-      render: () => <Button type="text" danger size="small">Ngừng</Button>
+      render: (_: any, record: any) => (
+        <Button 
+          type="text" 
+          danger 
+          size="small" 
+          onClick={() => handleStop(record.id)}
+          disabled={dayjs(record.validTo).isBefore(dayjs()) || record.status === 'exhausted'}
+        >
+          Ngừng
+        </Button>
+      )
     }
   ];
 

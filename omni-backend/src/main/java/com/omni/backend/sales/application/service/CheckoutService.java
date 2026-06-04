@@ -43,6 +43,7 @@ public class CheckoutService {
     private final com.omni.backend.iam.adapter.persistence.repository.ShopRepository shopRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final org.springframework.context.annotation.Lazy @org.springframework.beans.factory.annotation.Autowired FlashSaleService flashSaleService;
 
     @Transactional(rollbackFor = Exception.class)
     public CheckoutResponse checkout(UUID userId, CheckoutRequest request) {
@@ -88,6 +89,10 @@ public class CheckoutService {
         BigDecimal grandTotal = BigDecimal.ZERO;
         
         // 3. Xử lý từng Shop (Child Order)
+        
+        List<UUID> allSkuIds = selectedItems.stream().map(CartItemDto::getSkuId).toList();
+        Map<UUID, BigDecimal> flashSalePrices = flashSaleService.getActiveFlashSalePrices(allSkuIds);
+
         for (Map.Entry<UUID, List<CartItemDto>> entry : itemsByShop.entrySet()) {
             UUID shopId = entry.getKey();
             List<CartItemDto> shopItems = entry.getValue();
@@ -136,7 +141,15 @@ public class CheckoutService {
                 sku.setStockQuantity(sku.getStockQuantity() - item.getQuantity());
                 productSkuRepository.save(sku);
 
-                BigDecimal itemTotal = sku.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                // GLOBAL PRICING: If Flash Sale is active, use flashPrice, deduct flashStock
+                BigDecimal finalPrice = sku.getPrice();
+                if (flashSalePrices.containsKey(sku.getId())) {
+                    finalPrice = flashSalePrices.get(sku.getId());
+                    // Deduct flash sale stock asynchronously or synchronously via FlashSaleService
+                    flashSaleService.recordFlashSalePurchase(sku.getId(), item.getQuantity());
+                }
+
+                BigDecimal itemTotal = finalPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
                 shopSubtotal = shopSubtotal.add(itemTotal);
 
                 OrderItemJpaEntity orderItem = OrderItemJpaEntity.builder()
@@ -146,7 +159,7 @@ public class CheckoutService {
                         .productName(item.getProductName())
                         .imageUrl(item.getImageUrl())
                         .quantity(item.getQuantity())
-                        .priceAtPurchase(sku.getPrice())
+                        .priceAtPurchase(finalPrice)
                         .build();
 
                 childOrder.getItems().add(orderItem);

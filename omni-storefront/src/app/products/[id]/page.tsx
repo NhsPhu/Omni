@@ -12,6 +12,7 @@ import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
+import { useFlashSaleStore } from "@/store/flashSaleStore";
 import { toast } from "sonner";
 
 const GRADS = ["from-violet-600/80 to-indigo-600/80","from-amber-500/80 to-orange-600/80","from-purple-600/80 to-pink-600/80","from-blue-600/80 to-cyan-500/80"];
@@ -21,6 +22,10 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
+  
+  // GLOBAL PRICING: Check if product is in an active flash sale
+  const activeEvent = useFlashSaleStore(state => state.activeEvent);
+  
   const [p, setP] = useState<any>(null); // State for product details
   const [activeImg, setActiveImg] = useState(0);
 
@@ -56,7 +61,6 @@ export default function ProductDetailPage() {
 
   if (!p) return null;
 
-
   // Extract all attribute keys and unique values from SKUs
   const attributeKeys = new Set<string>();
   const attributeOptions: Record<string, string[]> = {};
@@ -84,8 +88,13 @@ export default function ProductDetailPage() {
     return availableKeys.every(k => !selectedAttributes[k] || attrs[k] === selectedAttributes[k]);
   });
   
-  const currentPrice = activeSku?.price ?? p.price;
-  const stockLeft    = activeSku?.stockQuantity ?? activeSku?.stock ?? (p.stock ?? 0);
+  // GLOBAL PRICING: Check if product is in an active flash sale
+  const flashItem = activeEvent?.items?.find((item: any) => item.productId === p.id && item.flashStock > item.soldCount);
+  
+  const basePrice = activeSku?.price ?? p.price;
+  const currentPrice = flashItem ? flashItem.flashPrice : basePrice;
+  const originalPriceForDiscount = flashItem ? basePrice : p.originalPrice;
+  const stockLeft = flashItem ? (flashItem.flashStock - flashItem.soldCount) : (activeSku?.stockQuantity ?? activeSku?.stock ?? (p.stock ?? 0));
   
   const canAdd = availableKeys.every(k => !!selectedAttributes[k]) && stockLeft > 0;
 
@@ -277,15 +286,21 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Price */}
-              <div className="p-5 rounded-2xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-                <div className="flex items-baseline gap-3">
-                  <span className="text-3xl font-bold text-gradient-gold font-[family-name:var(--font-heading)]">{formatPrice(currentPrice)}</span>
-                  {p.originalPrice && <span className="text-lg line-through" style={{ color: "var(--text-muted)" }}>{formatPrice(p.originalPrice)}</span>}
-                  {p.originalPrice && <span className="px-2 py-0.5 text-sm font-bold rounded-lg bg-red-500 text-white">-{calcDiscount(p.originalPrice, currentPrice)}%</span>}
+              <div className="p-5 rounded-2xl relative overflow-hidden" style={{ background: flashItem ? "var(--red-dim, rgba(239, 68, 68, 0.05))" : "var(--bg-card)", border: flashItem ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid var(--border)" }}>
+                {flashItem && (
+                  <div className="absolute top-0 right-0 px-3 py-1 text-xs font-bold text-white flex items-center gap-1"
+                       style={{ background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)", borderBottomLeftRadius: "1rem" }}>
+                    <span className="animate-pulse">⚡</span> Đang trong Flash Sale
+                  </div>
+                )}
+                <div className="flex items-baseline gap-3 mt-1">
+                  <span className="text-3xl font-bold font-[family-name:var(--font-heading)]" style={{ color: flashItem ? "#ef4444" : "var(--gold)" }}>{formatPrice(currentPrice)}</span>
+                  {originalPriceForDiscount && <span className="text-lg line-through" style={{ color: "var(--text-muted)" }}>{formatPrice(originalPriceForDiscount)}</span>}
+                  {originalPriceForDiscount && <span className="px-2 py-0.5 text-sm font-bold rounded-lg bg-red-500 text-white">-{calcDiscount(originalPriceForDiscount, currentPrice)}%</span>}
                 </div>
-                {p.originalPrice && (
+                {originalPriceForDiscount && (
                   <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
-                    Tiết kiệm {formatPrice(p.originalPrice - currentPrice)}
+                    Tiết kiệm {formatPrice(originalPriceForDiscount - currentPrice)}
                   </p>
                 )}
               </div>
