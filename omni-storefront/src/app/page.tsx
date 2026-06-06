@@ -4,6 +4,7 @@ import HeroSection from "@/components/sections/HeroSection";
 import CategoriesSection from "@/components/sections/CategoriesSection";
 import FeaturedProducts from "@/components/sections/FeaturedProducts";
 import FlashSaleSection from "@/components/sections/FlashSaleSection";
+import TopDealsSection from "@/components/sections/TopDealsSection";
 import SellerCTASection from "@/components/sections/SellerCTASection";
 import TrustSection from "@/components/sections/TrustSection";
 
@@ -16,6 +17,7 @@ export default function Home() {
         <CategoriesSection />
         <FeaturedProducts />
         <FlashSaleSection />
+        <TopDealsSection />
         <SellerCTASection />
         <TrustSection />
       </main>

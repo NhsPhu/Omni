@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -33,7 +34,9 @@ public class CartService {
     private final ProductSkuRepository productSkuRepository;
     private final ProductImageRepository productImageRepository;
     private final ShopRepository shopRepository;
-    private final org.springframework.context.annotation.Lazy @org.springframework.beans.factory.annotation.Autowired FlashSaleService flashSaleService;
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private FlashSaleService flashSaleService;
 
     private static final String CART_PREFIX = "cart:";
     private static final Duration CART_TTL = Duration.ofDays(7);
@@ -59,8 +62,10 @@ public class CartService {
                 if (flashSalePrices.containsKey(item.getSkuId())) {
                     item.setPrice(flashSalePrices.get(item.getSkuId()));
                 } else {
-                    // Refresh from DB (optional, but good for accuracy)
-                    productSkuRepository.findById(item.getSkuId()).ifPresent(sku -> item.setPrice(sku.getPrice()));
+                    productSkuRepository.findById(item.getSkuId()).ifPresent(sku -> {
+                        item.setPrice(sku.getPrice());
+                        item.setOriginalPrice(sku.getOriginalPrice());
+                    });
                 }
             }
             
@@ -73,6 +78,10 @@ public class CartService {
     }
 
     public void addToCart(UUID userId, UUID skuId, int quantity) {
+        addToCart(userId, skuId, quantity, false);
+    }
+
+    public void addToCart(UUID userId, UUID skuId, int quantity, boolean overwrite) {
         // Fetch fresh product info
         ProductSkuJpaEntity sku = productSkuRepository.findById(skuId)
                 .orElseThrow(() -> new RuntimeException("SKU not found"));
@@ -93,9 +102,10 @@ public class CartService {
 
         if (existingItem.isPresent()) {
             CartItemDto item = existingItem.get();
-            item.setQuantity(item.getQuantity() + quantity);
+            item.setQuantity(overwrite ? quantity : item.getQuantity() + quantity);
             // Refresh price in case it changed
             item.setPrice(sku.getPrice());
+            item.setOriginalPrice(sku.getOriginalPrice());
         } else {
             String shopName = shopRepository.findById(product.getShopId())
                     .map(ShopJpaEntity::getName)
@@ -116,6 +126,7 @@ public class CartService {
                     .productName(product.getName())
                     .skuCode(sku.getSkuCode())
                     .price(sku.getPrice())
+                    .originalPrice(sku.getOriginalPrice())
                     .quantity(quantity)
                     .imageUrl(primaryImage)
                     .build());

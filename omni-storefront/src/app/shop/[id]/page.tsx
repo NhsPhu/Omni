@@ -1,10 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Store, Star, MapPin, Package, Calendar } from "lucide-react";
+import { Store, Star, MapPin, Package, Calendar, CheckCircle, Heart } from "lucide-react";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import ProductCard from "@/components/ui/ProductCard";
+import Button from "@/components/ui/Button";
 import api from "@/lib/axios";
 
 export default function ShopPage() {
@@ -13,6 +16,24 @@ export default function ShopPage() {
   const [shop, setShop] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  const handleFollow = () => {
+    setIsFollowing(!isFollowing);
+    if (!isFollowing) {
+      toast.success(`Bạn đã theo dõi ${shop?.name}!`, { icon: "🎉" });
+    } else {
+      toast.info(`Đã bỏ theo dõi ${shop?.name}`);
+    }
+  };
+
+  const handleLocation = () => {
+    if (shop?.address || shop?.name) {
+      window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.address || shop.name)}`, '_blank');
+    } else {
+      toast.error("Shop chưa cập nhật địa chỉ cụ thể");
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -37,8 +58,8 @@ export default function ShopPage() {
     return (
       <>
         <Navbar />
-        <div className="min-h-screen flex items-center justify-center bg-[#f8f9fa] dark:bg-[#121212]">
-          <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
+          <div className="w-8 h-8 rounded-full animate-spin" style={{ border: "4px solid var(--border)", borderTopColor: "var(--purple)" }}></div>
         </div>
         <Footer />
       </>
@@ -49,10 +70,10 @@ export default function ShopPage() {
     return (
       <>
         <Navbar />
-        <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8f9fa] dark:bg-[#121212]">
-          <Store className="w-16 h-16 text-gray-400 mb-4" />
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Không tìm thấy Shop</h1>
-          <button onClick={() => router.push("/")} className="mt-4 px-6 py-2 bg-violet-600 text-white rounded-lg">Về trang chủ</button>
+        <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: "var(--bg-base)" }}>
+          <Store className="w-16 h-16 mb-4" style={{ color: "var(--text-muted)" }} />
+          <h1 className="text-2xl font-bold font-[family-name:var(--font-heading)] mb-4" style={{ color: "var(--text-primary)" }}>Không tìm thấy Shop</h1>
+          <Button variant="gold" onClick={() => router.push("/")}>Về trang chủ</Button>
         </div>
         <Footer />
       </>
@@ -62,91 +83,125 @@ export default function ShopPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-[#f8f9fa] dark:bg-[#121212] py-8">
-        <div className="max-w-6xl mx-auto px-4">
+      <main className="min-h-screen py-8" style={{ background: "var(--bg-base)" }}>
+        <div className="max-w-7xl mx-auto px-4 lg:px-6">
           
           {/* Shop Header */}
-          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 mb-8">
-            <div className="h-32 md:h-48 bg-gradient-to-r from-violet-600 to-indigo-600 w-full relative">
-              <div className="absolute inset-0 bg-black/10"></div>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="rounded-[2rem] overflow-hidden mb-12 relative" 
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
+            
+            {/* Banner Cover */}
+            <div className="h-48 md:h-64 w-full relative overflow-hidden">
+               {shop.bannerUrl ? (
+                 <img src={shop.bannerUrl.startsWith('http') ? shop.bannerUrl : `http://localhost:8080${shop.bannerUrl}`} alt="Banner" className="absolute inset-0 w-full h-full object-cover" />
+               ) : (
+                 <div className="absolute inset-0" style={{ background: "var(--grad-purple)" }}></div>
+               )}
+               {/* Optional Abstract Pattern overlay */}
+               <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             </div>
             
-            <div className="px-6 pb-6 relative">
-              <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-12 md:-mt-16 mb-4">
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl border-4 border-white dark:border-[#1e1e1e] bg-white dark:bg-[#1e1e1e] overflow-hidden flex items-center justify-center flex-shrink-0 relative z-10 shadow-md">
-                  {shop.logoUrl ? (
-                    <img src={shop.logoUrl} alt={shop.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <Store className="w-12 h-12 text-violet-500" />
-                  )}
-                </div>
+            <div className="px-6 md:px-10 pb-8 relative">
+              <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-16 md:-mt-20 mb-6">
                 
-                <div className="flex-1 pb-2">
-                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">{shop.name}</h1>
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                      <span className="font-medium text-gray-900 dark:text-gray-200">4.9</span>
-                      <span>(1.2k đánh giá)</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Package className="w-4 h-4" />
-                      <span>{products.length} Sản phẩm</span>
-                    </div>
+                {/* Avatar */}
+                <motion.div 
+                  initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                  className="w-32 h-32 md:w-40 md:h-40 rounded-3xl overflow-hidden flex items-center justify-center flex-shrink-0 relative z-10"
+                  style={{ background: "var(--bg-elevated)", border: "4px solid var(--bg-card)", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
+                  {shop.logoUrl ? (
+                    <img src={shop.logoUrl.startsWith('http') ? shop.logoUrl : `http://localhost:8080${shop.logoUrl}`} alt={shop.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Store className="w-16 h-16" style={{ color: "var(--purple-light)" }} />
+                  )}
+                </motion.div>
+                
+                {/* Info */}
+                <div className="flex-1 pb-2 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-3xl md:text-4xl font-bold font-[family-name:var(--font-heading)] text-gradient-gold">{shop.name}</h1>
                     {shop.taxCode && (
-                      <div className="flex items-center gap-1 text-emerald-600">
-                        <CheckCircle className="w-4 h-4" />
-                        <span>Đã xác thực</span>
+                      <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <CheckCircle className="w-3 h-3" />
+                        Xác thực
                       </div>
                     )}
                   </div>
+
+                  <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: "var(--text-secondary)" }}>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+                      <Star className="w-4 h-4 fill-gold text-gold" />
+                      <span className="font-bold" style={{ color: "var(--text-primary)" }}>{shop.rating?.toFixed(1) || "5.0"}</span>
+                      <span style={{ color: "var(--text-muted)" }}>({shop.reviewCount || 0})</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+                      <Package className="w-4 h-4" style={{ color: "var(--purple-light)" }} />
+                      <span className="font-medium" style={{ color: "var(--text-primary)" }}>{products.length}</span>
+                      <span style={{ color: "var(--text-muted)" }}>Sản phẩm</span>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="pb-2">
-                  <button className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium transition-colors w-full md:w-auto">
-                    Theo dõi
-                  </button>
+                {/* Actions */}
+                <div className="pb-2 w-full md:w-auto flex gap-3">
+                  <Button variant="glass" className="flex-1 md:flex-none" onClick={handleLocation}>
+                    <MapPin className="w-4 h-4 mr-2" /> {shop.city || shop.province || "Vị trí"}
+                  </Button>
+                  <Button variant={isFollowing ? "glass" : "purple"} className="flex-1 md:flex-none transition-all duration-300" onClick={handleFollow}>
+                    {isFollowing ? (
+                      <><CheckCircle className="w-4 h-4 mr-2" /> Đang theo dõi</>
+                    ) : (
+                      <><Heart className="w-4 h-4 mr-2" /> Theo dõi</>
+                    )}
+                  </Button>
                 </div>
               </div>
               
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
-                <p className="text-gray-700 dark:text-gray-300 text-sm md:text-base max-w-3xl">
-                  {shop.description || "Chào mừng bạn đến với shop của chúng tôi. Chúng tôi cam kết mang lại những sản phẩm chất lượng nhất!"}
+              <div className="pt-6" style={{ borderTop: "1px solid var(--border)" }}>
+                <p className="text-sm md:text-base leading-relaxed max-w-4xl" style={{ color: "var(--text-secondary)" }}>
+                  {shop.description || "Chào mừng bạn đến với shop của chúng tôi. Chúng tôi cam kết mang lại những sản phẩm chất lượng, chuẩn phong cách Biệt phủ Omni!"}
                 </p>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Shop Products */}
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Sản phẩm của Shop</h2>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-bold font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Khám phá Sản Phẩm</h2>
+              <div className="flex items-center gap-2">
+                {/* Phễu lọc tùy chọn nếu muốn thêm sau */}
+              </div>
+            </div>
             
             {products.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {products.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
+                {products.map((product, i) => (
+                  <motion.div key={product.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 * (i % 10) }}>
+                    <ProductCard product={product} />
+                  </motion.div>
                 ))}
               </div>
             ) : (
-              <div className="py-20 text-center text-gray-500 bg-white dark:bg-[#1e1e1e] rounded-2xl border border-gray-100 dark:border-gray-800">
-                <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>Shop chưa đăng sản phẩm nào</p>
+              <div className="py-24 text-center rounded-3xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                <Package className="w-16 h-16 mx-auto mb-4" style={{ color: "var(--text-muted)" }} />
+                <h3 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Shop chưa có sản phẩm</h3>
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>Hãy quay lại sau nhé!</p>
               </div>
             )}
-          </div>
+          </motion.div>
           
         </div>
       </main>
       <Footer />
     </>
-  );
-}
-
-function CheckCircle(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-      <polyline points="22 4 12 14.01 9 11.01"></polyline>
-    </svg>
   );
 }

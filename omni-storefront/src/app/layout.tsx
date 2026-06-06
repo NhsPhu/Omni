@@ -4,6 +4,8 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import Script from "next/script";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import SmoothScroll from "@/components/layout/SmoothScroll";
+import ChatWidget from "@/components/chat/ChatWidget";
 
 const bodoniModa = Bodoni_Moda({
   variable: "--font-heading",
@@ -48,10 +50,13 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body className="antialiased">
-        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-          {children}
-        </GoogleOAuthProvider>
+        <SmoothScroll>
+          <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+            {children}
+          </GoogleOAuthProvider>
+        </SmoothScroll>
         <Toaster richColors position="top-right" />
+        <ChatWidget />
 
         {/* Facebook JS SDK — khởi tạo async sau khi trang load */}
         <Script id="fb-sdk-init" strategy="afterInteractive">{`

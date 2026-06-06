@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Button, Card, message, Spin, Row, Col, Typography, Divider, Select } from 'antd';
-import { Store, MapPin, Building, CreditCard, Save } from 'lucide-react';
+import { Form, Input, Button, Card, message, Spin, Row, Col, Typography, Divider, Select, Upload } from 'antd';
+import { Store, MapPin, Building, CreditCard, Save, UploadCloud } from 'lucide-react';
 import api from '../../lib/axios';
 
 const { Title, Text } = Typography;
@@ -16,7 +16,12 @@ interface ShopSettingsFormData {
   bankAccountNumber: string;
   warehouseProvinceId: number;
   warehouseDistrictId: number;
+  warehouseProvinceId: number;
+  warehouseDistrictId: number;
   warehouseWardCode: string;
+  ghnShopId: string;
+  logoUrl: string;
+  bannerUrl: string;
 }
 
 export default function ShopSettings() {
@@ -91,6 +96,23 @@ export default function ShopSettings() {
     }
   };
 
+  const handleUpload = async (options: any, fieldName: 'logoUrl' | 'bannerUrl') => {
+    const { onSuccess, onError, file } = options;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await api.post("/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      form.setFieldValue(fieldName, res.data.url);
+      message.success("Tải ảnh lên thành công!");
+      onSuccess("ok");
+    } catch (err) {
+      onError(err);
+      message.error("Tải ảnh lên thất bại");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -103,7 +125,7 @@ export default function ShopSettings() {
     <div className="space-y-8 animate-fade-in pb-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
         <div>
-          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Cài đặt Cửa hàng</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight m-0">Cài đặt Cửa hàng</h1>
           <p className="text-gray-500 mt-1 font-medium">Quản lý thông tin hồ sơ và địa chỉ của cửa hàng.</p>
         </div>
       </div>
@@ -131,6 +153,41 @@ export default function ShopSettings() {
               >
                 <Input.TextArea rows={4} placeholder="Giới thiệu ngắn gọn về cửa hàng và sản phẩm..." />
               </Form.Item>
+
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="logoUrl"
+                    label="Ảnh Đại diện (Logo)"
+                  >
+                    <Input 
+                      size="large" 
+                      placeholder="Nhập đường dẫn ảnh logo..." 
+                      addonAfter={
+                        <Upload customRequest={(options) => handleUpload(options, 'logoUrl')} showUploadList={false}>
+                          <div className="cursor-pointer text-indigo-600 font-medium px-2 flex items-center"><UploadCloud className="w-4 h-4 mr-1" /> Tải lên</div>
+                        </Upload>
+                      }
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="bannerUrl"
+                    label="Ảnh Bìa (Banner)"
+                  >
+                    <Input 
+                      size="large" 
+                      placeholder="Nhập đường dẫn ảnh bìa..." 
+                      addonAfter={
+                        <Upload customRequest={(options) => handleUpload(options, 'bannerUrl')} showUploadList={false}>
+                          <div className="cursor-pointer text-indigo-600 font-medium px-2 flex items-center"><UploadCloud className="w-4 h-4 mr-1" /> Tải lên</div>
+                        </Upload>
+                      }
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
             </Card>
 
             <Card className="border-0 rounded-3xl shadow-sm mt-6" title={<span className="font-bold text-gray-800 text-lg"><MapPin className="inline-block w-5 h-5 mr-2 -mt-1 text-indigo-500" /> Địa chỉ</span>} styles={{ header: { borderBottom: 'none', padding: '24px 24px 0' }, body: { padding: '24px' } }}>
@@ -196,6 +253,9 @@ export default function ShopSettings() {
                   </Form.Item>
                 </Col>
               </Row>
+              <Form.Item name="ghnShopId" label="Mã Cửa hàng GHN (GHN Shop ID)" className="mt-4" extra="Cần thiết lập mã này để đẩy đơn hàng tự động sang Giao Hàng Nhanh. Truy cập khachhang.ghn.vn để lấy.">
+                <Input size="large" placeholder="VD: 1234567" />
+              </Form.Item>
               <Text type="warning" className="block mt-2">
                 * Thiết lập địa chỉ kho để tính toán phí giao hàng chính xác qua GHN.
               </Text>

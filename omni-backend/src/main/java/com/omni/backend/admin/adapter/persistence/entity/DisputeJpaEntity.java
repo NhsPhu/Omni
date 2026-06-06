@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
@@ -31,6 +33,7 @@ public class DisputeJpaEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String reason;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "evidence_urls", columnDefinition = "JSONB")
     private String evidenceUrls;
 

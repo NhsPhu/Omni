@@ -19,6 +19,7 @@ public class CartItemDto {
     private String productName;
     private String skuCode;
     private BigDecimal price;
+    private BigDecimal originalPrice;
     private Integer quantity;
     private String imageUrl;
     private String shopName;

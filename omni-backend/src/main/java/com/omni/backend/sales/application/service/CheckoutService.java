@@ -43,7 +43,9 @@ public class CheckoutService {
     private final com.omni.backend.iam.adapter.persistence.repository.ShopRepository shopRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final org.springframework.context.annotation.Lazy @org.springframework.beans.factory.annotation.Autowired FlashSaleService flashSaleService;
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private FlashSaleService flashSaleService;
 
     @Transactional(rollbackFor = Exception.class)
     public CheckoutResponse checkout(UUID userId, CheckoutRequest request) {
@@ -78,12 +80,14 @@ public class CheckoutService {
         Map<UUID, List<CartItemDto>> itemsByShop = selectedItems.stream()
                 .collect(Collectors.groupingBy(CartItemDto::getShopId));
 
+        String initialStatus = "cod".equalsIgnoreCase(request.getPaymentMethod()) ? "PROCESSING" : "PENDING";
+
         // 2. Validate và tạo Parent Order
         ParentOrderJpaEntity parentOrder = ParentOrderJpaEntity.builder()
                 .userId(userId)
                 .shippingAddressId(request.getShippingAddressId())
                 .platformVoucherId(request.getPlatformVoucherId())
-                .status("PENDING")
+                .status(initialStatus)
                 .build();
 
         BigDecimal grandTotal = BigDecimal.ZERO;
@@ -122,7 +126,7 @@ public class CheckoutService {
                     .parentOrder(parentOrder)
                     .shopId(shopId)
                     .shopName(shopName)
-                    .status("PENDING")
+                    .status(initialStatus)
                     // Note: Cần thêm logic tìm shopVoucherId nếu req gửi lên list
                     // và apply shipping_fee 
                     .shippingFee(BigDecimal.valueOf(shippingFee)) // Gọi GHN tính phí
@@ -144,9 +148,11 @@ public class CheckoutService {
                 // GLOBAL PRICING: If Flash Sale is active, use flashPrice, deduct flashStock
                 BigDecimal finalPrice = sku.getPrice();
                 if (flashSalePrices.containsKey(sku.getId())) {
-                    finalPrice = flashSalePrices.get(sku.getId());
-                    // Deduct flash sale stock asynchronously or synchronously via FlashSaleService
-                    flashSaleService.recordFlashSalePurchase(sku.getId(), item.getQuantity());
+                    // Deduct flash sale stock and validate max per user limits
+                    boolean flashSuccess = flashSaleService.recordFlashSalePurchase(userId, sku.getId(), item.getQuantity());
+                    if (flashSuccess) {
+                        finalPrice = flashSalePrices.get(sku.getId());
+                    }
                 }
 
                 BigDecimal itemTotal = finalPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
@@ -201,8 +207,10 @@ public class CheckoutService {
             cartService.removeFromCart(userId, skuId);
         }
 
-        // 5. Publish Event cho các hệ thống khác (Payment)
-        eventPublisher.publishEvent(new OrderPlacedEvent(parentOrder.getId(), userId, parentOrder.getFinalAmount()));
+        // 5. Publish Event cho các hệ thống khác
+        if ("cod".equalsIgnoreCase(request.getPaymentMethod())) {
+            eventPublisher.publishEvent(new OrderPlacedEvent(parentOrder.getId(), userId, parentOrder.getFinalAmount()));
+        }
 
         log.info("Checkout successful for user {}, ParentOrder ID: {}", userId, parentOrder.getId());
         

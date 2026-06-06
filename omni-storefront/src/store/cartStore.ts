@@ -10,8 +10,8 @@ export const useCartStore = create<CartState>((set) => ({
   itemCount: 0,
   fetchCart: async () => {
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (!token) {
+      const storeToken = typeof window !== "undefined" ? localStorage.getItem("omni_token") : null;
+      if (!storeToken) {
         set({ itemCount: 0 });
         return;
       }

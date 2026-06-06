@@ -26,4 +26,8 @@ public class ShopUpdateDto {
     private Integer warehouseProvinceId;
     private Integer warehouseDistrictId;
     private String warehouseWardCode;
+    private String ghnShopId;
+
+    private String logoUrl;
+    private String bannerUrl;
 }

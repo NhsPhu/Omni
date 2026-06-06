@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { jwtDecode } from "jwt-decode";
+import { useChatStore } from "./chatStore";
 
 interface User {
   id: string;
@@ -54,6 +55,8 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         set({ token: null, user: null });
         localStorage.removeItem("omni_token");
+        // Reset chat state so new account starts fresh
+        useChatStore.getState().reset();
       },
       isAuthenticated: () => {
         const { token, user } = get();

@@ -31,26 +31,7 @@ export default function Disputes() {
     loadDisputes();
   }, []);
 
-  const mockDisputes = [
-    {
-      id: 'DSP-8821',
-      orderId: 'OMN-202401',
-      customer: 'Nguyễn Quang Hải',
-      shop: 'Apple Store VN',
-      reason: 'Hàng không đúng mô tả / Lỗi ngoại quan',
-      status: 'pending',
-      date: '23/05/2026',
-    },
-    {
-      id: 'DSP-8822',
-      orderId: 'OMN-202402',
-      customer: 'Trần Minh Đức',
-      shop: 'Keychron Official',
-      reason: 'Chưa nhận được hàng nhưng đã báo giao thành công',
-      status: 'escalated',
-      date: '22/05/2026',
-    }
-  ];
+  const mockDisputes: any[] = [];
 
   const handleResolve = () => {
     if (!decision || !decisionNote) {
@@ -88,7 +69,7 @@ export default function Disputes() {
     <div className="space-y-8 animate-fade-in pb-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
         <div>
-          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Giải quyết tranh chấp</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight m-0">Giải quyết tranh chấp</h1>
           <p className="text-gray-500 mt-1 font-medium">Trung tâm xử lý khiếu nại giữa Người mua và Người bán.</p>
         </div>
       </div>
@@ -141,7 +122,7 @@ export default function Disputes() {
               <Col span={12} className="border-r border-gray-100">
                 <div className="flex items-center gap-2 mb-4 bg-blue-50 p-2 rounded text-blue-800">
                   <Avatar className="bg-blue-600">KH</Avatar>
-                  <span className="font-bold">{selectedDispute.userId} (Người mua)</span>
+                  <span className="font-bold">{selectedDispute.raisedByUserId} (Người mua)</span>
                 </div>
                 <div className="space-y-4">
                   <div>

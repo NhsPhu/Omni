@@ -30,7 +30,8 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
   const flashItem = activeEvent?.items?.find((item: any) => item.productId === product.id && item.flashStock > item.soldCount);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && localStorage.getItem("token")) {
+    const hasToken = typeof window !== "undefined" && (localStorage.getItem("omni_token") || localStorage.getItem("token"));
+    if (hasToken) {
       api.get(`/wishlists/${product.id}/check`)
         .then(res => setWishlisted(res.data))
         .catch(() => {}); // silently ignore 403 or other errors to avoid polluting console
@@ -40,7 +41,8 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (typeof window !== "undefined" && !localStorage.getItem("token")) {
+    const hasToken = typeof window !== "undefined" && (localStorage.getItem("omni_token") || localStorage.getItem("token"));
+    if (!hasToken) {
       toast.error("Vui lòng đăng nhập để thêm vào yêu thích");
       return;
     }
@@ -67,6 +69,9 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
   
   const grad = GRADIENTS[index % GRADIENTS.length];
 
+  const rawImage = product.image || (product as any).imageUrl;
+  const imageSrc = rawImage ? (rawImage.startsWith('http') ? rawImage : `http://localhost:8080${rawImage}`) : null;
+
   return (
     <Link href={`/products/${product.id}`} className="block group">
       <motion.article
@@ -87,11 +92,11 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         style={{ boxShadow: "var(--shadow-card-hover)", border: "1px solid var(--border-purple)" }} />
 
       {/* Image */}
-      <div className={`relative aspect-[4/3] overflow-hidden ${!(product.image || (product as any).imageUrl) ? `bg-gradient-to-br ${grad}` : ''}`}>
+      <div className={`relative aspect-[4/3] overflow-hidden ${!imageSrc ? `bg-gradient-to-br ${grad}` : ''}`}>
         {/* Product image or gradient fallback */}
-        {(product.image || (product as any).imageUrl) ? (
+        {imageSrc ? (
           <img
-            src={product.image || (product as any).imageUrl}
+            src={imageSrc}
             alt={product.name}
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             onError={(e) => {
@@ -174,9 +179,9 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
             <Star className="w-3.5 h-3.5 fill-gold text-gold" />
-            <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>{product.rating ?? (product as any).avgRating ?? 5.0}</span>
+            <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>{product.rating ?? (product as any).avgRating ?? 0.0}</span>
           </div>
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>Đã bán {formatCompact(product.sold ?? Math.floor(Math.random() * 500) + 50)}</span>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>Đã bán {formatCompact(product.sold ?? (product as any).soldCount ?? 0)}</span>
         </div>
 
         {/* Shop */}

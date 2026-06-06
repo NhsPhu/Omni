@@ -36,6 +36,12 @@ public class ProductReviewJpaEntity {
     @Column(columnDefinition = "TEXT")
     private String comment;
 
+    @Column(name = "reply_content", columnDefinition = "TEXT")
+    private String replyContent;
+
+    @Column(name = "shop_id")
+    private UUID shopId;
+
     @Column(length = 50)
     @Builder.Default
     private String status = "APPROVED"; // APPROVED, HIDDEN, REPORTED

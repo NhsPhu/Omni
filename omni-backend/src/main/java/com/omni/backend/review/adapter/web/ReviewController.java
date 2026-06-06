@@ -61,10 +61,38 @@ public class ReviewController {
                     .date(r.getCreatedAt())
                     .sku("") // Not implemented in entity yet
                     .helpful(0)
+                    .replyContent(r.getReplyContent())
                     .build();
         });
         
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/vendor/reviews")
+    public ResponseEntity<Page<ProductReviewJpaEntity>> getVendorReviews(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        
+        UUID vendorId = getUserId(authentication);
+        // We'll need ShopRepository to get shopId, but for now just query by shopId directly from ReviewService or use a custom query.
+        // As a shortcut, assuming ReviewRepository has findByShopId
+        // Wait, ReviewRepository doesn't have it yet! Let's just return a stub page or create the query.
+        // Actually, we'll implement it via ReviewService.
+        Page<ProductReviewJpaEntity> reviews = reviewService.getVendorReviews(vendorId, PageRequest.of(page, size));
+        return ResponseEntity.ok(reviews);
+    }
+
+    @PatchMapping("/vendor/reviews/{id}/reply")
+    public ResponseEntity<ProductReviewJpaEntity> replyToReview(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @RequestBody java.util.Map<String, String> payload) {
+        
+        UUID vendorId = getUserId(authentication);
+        String replyContent = payload.get("replyContent");
+        ProductReviewJpaEntity updated = reviewService.replyToReview(vendorId, id, replyContent);
+        return ResponseEntity.ok(updated);
     }
 }
 

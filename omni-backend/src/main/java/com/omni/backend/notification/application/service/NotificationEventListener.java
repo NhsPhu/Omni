@@ -38,12 +38,13 @@ public class NotificationEventListener {
         Optional<UserJpaEntity> userOpt = userRepository.findById(event.getUserId());
         if (userOpt.isPresent()) {
             UserJpaEntity user = userOpt.get();
+            String buyerName = user.getFullName() != null ? user.getFullName() : "Khách hàng";
             Map<String, Object> vars = Map.of(
-                "buyerName", user.getFullName(),
+                "buyerName", buyerName,
                 "orderCode", event.getParentOrderId().toString().substring(0, 8).toUpperCase(),
                 "statusMessage", message
             );
-            emailService.sendEmailWithTemplate(user.getEmail(), title, "order-status-update", vars);
+            emailService.sendEmailWithTemplate(user.getEmail(), title, "email/order-status-update", vars);
         }
     }
 
@@ -63,12 +64,13 @@ public class NotificationEventListener {
         Optional<UserJpaEntity> userOpt = userRepository.findById(event.getUserId());
         if (userOpt.isPresent()) {
             UserJpaEntity user = userOpt.get();
+            String buyerName = user.getFullName() != null ? user.getFullName() : "Khách hàng";
             Map<String, Object> vars = Map.of(
-                "buyerName", user.getFullName(),
+                "buyerName", buyerName,
                 "orderCode", event.getParentOrderId().toString().substring(0, 8).toUpperCase(),
                 "statusMessage", message
             );
-            emailService.sendEmailWithTemplate(user.getEmail(), title, "order-status-update", vars);
+            emailService.sendEmailWithTemplate(user.getEmail(), title, "email/order-status-update", vars);
         }
     }
 
@@ -82,8 +84,16 @@ public class NotificationEventListener {
         if (customerOpt.isPresent()) {
             UserJpaEntity customer = customerOpt.get();
             String title = "Đơn hàng hoàn thành";
-            String message = "Đơn hàng " + event.getShopOrderId() + " đã giao thành công và hoàn tất!";
+            String message = "Đơn hàng " + event.getShopOrderId().toString().substring(0,8).toUpperCase() + " đã giao thành công và hoàn tất!";
             notificationService.sendSystemNotification(event.getCustomerId(), title, message, "{\"shopOrderId\": \"" + event.getShopOrderId() + "\"}");
+
+            String buyerName = customer.getFullName() != null ? customer.getFullName() : "Khách hàng";
+            Map<String, Object> vars = Map.of(
+                "buyerName", buyerName,
+                "orderCode", event.getShopOrderId().toString().substring(0, 8).toUpperCase(),
+                "statusMessage", message
+            );
+            emailService.sendEmailWithTemplate(customer.getEmail(), title, "email/order-status-update", vars);
         }
     }
 }

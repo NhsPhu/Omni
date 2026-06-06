@@ -14,7 +14,8 @@ import {
   LogOut,
   User,
   Settings,
-  Zap
+  Zap,
+  MessageSquare
 } from 'lucide-react';
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -50,6 +51,7 @@ export default function AdminLayout() {
     { key: '/vouchers', icon: <Tag size={18} />, label: 'Voucher Shop' },
     { key: '/finance', icon: <Wallet size={18} />, label: 'Tài chính' },
     { key: '/reviews', icon: <MessageCircle size={18} />, label: 'Đánh giá & Hỏi đáp' },
+    { key: '/chat', icon: <MessageSquare size={18} />, label: 'Tin nhắn' },
     { key: '/analytics', icon: <LineChart size={18} />, label: 'Phân tích' },
     { key: '/flash-sale', icon: <Zap size={18} />, label: 'Flash Sale' },
     { key: '/settings', icon: <Settings size={18} />, label: 'Cài đặt Shop' },
@@ -57,11 +59,12 @@ export default function AdminLayout() {
 
   const sidebarContent = (
     <>
-      <div className="h-16 flex items-center justify-center gap-2 border-b border-gray-100 px-4">
-        <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white shrink-0">
-          <Store size={18} />
+      <div className="h-16 flex items-center justify-center gap-3 border-b border-gray-100 px-4">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+             style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', boxShadow: '0 4px 14px rgba(139, 92, 246, 0.4)' }}>
+          <Store size={18} strokeWidth={2.5} />
         </div>
-        {!collapsed && <span className="font-bold text-lg text-gray-800 truncate">Omni Vendor</span>}
+        {!collapsed && <span className="font-bold text-lg text-gray-800 truncate" style={{ fontFamily: "'Bodoni Moda', serif", letterSpacing: '-0.5px' }}>Omni Vendor</span>}
       </div>
       <div className="py-4">
         <Menu
@@ -97,7 +100,7 @@ export default function AdminLayout() {
           closable={false}
           onClose={() => setDrawerVisible(false)}
           open={drawerVisible}
-          bodyStyle={{ padding: 0 }}
+          styles={{ body: { padding: 0 } }}
           width={250}
         >
           {sidebarContent}

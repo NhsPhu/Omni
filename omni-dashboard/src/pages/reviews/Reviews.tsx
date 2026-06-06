@@ -1,58 +1,44 @@
-import React, { useState } from 'react';
-import { Card, Tabs, List, Avatar, Rate, Button, Input, Tag, Space } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Tabs, List, Avatar, Rate, Button, Input, Tag, Space, message } from 'antd';
 import { MessageSquare, Star, Search, Clock, AlertCircle } from 'lucide-react';
+import api from '../../lib/axios';
 
 const { TextArea } = Input;
 
-const mockReviews = [
-  { 
-    id: 1, 
-    user: 'Nguyễn Quang Hải', 
-    product: 'Tai nghe Bluetooth Không Dây Sony WH-1000XM5',
-    rating: 5, 
-    content: 'Chất âm tuyệt vời, chống ồn tốt nhất hiện nay. Đóng gói rất cẩn thận và giao hàng siêu tốc.', 
-    time: '2 giờ trước',
-    replied: false 
-  },
-  { 
-    id: 2, 
-    user: 'Trần Minh Đức', 
-    product: 'Bàn phím cơ Keychron K2 Pro',
-    rating: 4, 
-    content: 'Bàn phím gõ êm, layout Mac chuẩn. Tuy nhiên hộp hơi xước một chút xíu.', 
-    time: '1 ngày trước',
-    replied: true,
-    replyContent: 'Chào bạn, Omni Store xin lỗi vì trải nghiệm chưa hoàn hảo về vỏ hộp do quá trình vận chuyển. Shop đã ghi nhận và sẽ bọc xốp kỹ hơn trong các đơn sau. Cảm ơn bạn đã tin tưởng!'
-  }
-];
-
-const mockQA = [
-  {
-    id: 1,
-    user: 'Lê Thanh Bình',
-    product: 'Tai nghe Bluetooth Không Dây Sony WH-1000XM5',
-    content: 'Cho mình hỏi sản phẩm này bảo hành bao lâu và có được đổi trả nếu lỗi từ nhà sản xuất không shop?',
-    time: '49 giờ trước',
-    isOverdue: true,
-  },
-  {
-    id: 2,
-    user: 'Phạm Hương Trang',
-    product: 'Bàn phím cơ Keychron K2 Pro',
-    content: 'Bản này là nhựa hay nhôm vậy shop? Switch Red hay Brown?',
-    time: '5 giờ trước',
-    isOverdue: false,
-  }
-];
+const mockQA: any[] = [];
 
 export default function Reviews() {
-  const [activeTab, setActiveTab] = useState('qa');
-  const [replyText, setReplyText] = useState<Record<number, string>>({});
-  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState('reviews');
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleReply = (id: number) => {
-    // Send reply
-    setReplyingTo(null);
+  useEffect(() => {
+    fetchReviews();
+  }, []);
+
+  const fetchReviews = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/vendor/reviews');
+      setReviews(res.data.content || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReply = async (id: string) => {
+    try {
+      await api.patch(`/vendor/reviews/${id}/reply`, { replyContent: replyText[id] });
+      message.success('Đã gửi phản hồi');
+      setReplyingTo(null);
+      fetchReviews();
+    } catch (e) {
+      message.error('Lỗi khi gửi phản hồi');
+    }
   };
 
   const qaTab = (
@@ -117,27 +103,28 @@ export default function Reviews() {
 
   const reviewsTab = (
     <List
+      loading={loading}
       itemLayout="vertical"
-      dataSource={mockReviews}
+      dataSource={reviews}
       renderItem={item => (
         <List.Item className="bg-white border border-gray-200 rounded-lg mb-4 p-5">
           <div className="flex gap-4">
-            <Avatar src={`https://api.dicebear.com/7.x/notionists/svg?seed=${item.user}`} size={40} />
+            <Avatar src={`https://api.dicebear.com/7.x/notionists/svg?seed=${item.userName || item.userId}`} size={40} />
             <div className="flex-1">
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <div className="font-semibold">{item.user}</div>
-                  <div className="text-xs text-blue-600 font-medium mb-1">Sản phẩm: {item.product}</div>
+                  <div className="font-semibold">{item.userName || item.userId}</div>
+                  <div className="text-xs text-blue-600 font-medium mb-1">Sản phẩm ID: {item.productId}</div>
                   <Rate disabled defaultValue={item.rating} className="text-sm" />
                 </div>
-                <span className="text-gray-400 text-xs">{item.time}</span>
+                <span className="text-gray-400 text-xs">{new Date(item.createdAt || item.date).toLocaleString('vi-VN')}</span>
               </div>
               
               <div className="text-gray-800 mb-4 mt-2">
-                {item.content}
+                {item.comment}
               </div>
 
-              {item.replied ? (
+              {item.replyContent ? (
                 <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 ml-4 relative">
                   <div className="absolute w-3 h-3 bg-blue-50 border-t border-l border-blue-100 transform rotate-45 -top-1.5 left-4"></div>
                   <div className="text-xs font-bold text-blue-800 mb-1">Phản hồi của Shop:</div>
@@ -171,7 +158,7 @@ export default function Reviews() {
     <div className="space-y-8 animate-fade-in pb-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
         <div>
-          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Đánh giá & Hỏi đáp</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight m-0">Đánh giá & Hỏi đáp</h1>
           <p className="text-gray-500 mt-1 font-medium">Phản hồi khách hàng để duy trì tương tác tốt nhất.</p>
         </div>
       </div>

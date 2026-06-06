@@ -4,6 +4,8 @@ import com.omni.backend.sales.adapter.persistence.repository.ParentOrderReposito
 import com.omni.backend.sales.adapter.persistence.repository.ChildOrderRepository;
 import com.omni.backend.sales.adapter.persistence.entity.ParentOrderJpaEntity;
 import com.omni.backend.sales.adapter.persistence.entity.ChildOrderJpaEntity;
+import com.omni.backend.finance.domain.event.OrderPaidEvent;
+import org.springframework.context.ApplicationEventPublisher;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +29,7 @@ public class VnpayService {
     private final ParentOrderRepository parentOrderRepository;
     private final ChildOrderRepository childOrderRepository;
     private final WalletService walletService; 
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final String VNP_PAY_URL = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
     @org.springframework.beans.factory.annotation.Value("${vnpay.return-url:http://localhost:3000/payment/callback}")
@@ -155,6 +158,9 @@ public class VnpayService {
 
         // Credit admin wallet with pending amount
         walletService.creditAdminPending(orderId, amountInVnd);
+
+        // Publish OrderPaidEvent
+        eventPublisher.publishEvent(new OrderPaidEvent(orderId, order.getUserId()));
 
         log.info("VNPAY IPN: Successfully processed payment for order {}. Amount: {} VND, Bank: {}", 
                 orderId, amountInVnd, vnpBankCode);

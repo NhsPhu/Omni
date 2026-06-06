@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Heart, ShoppingCart, Zap, Shield, Truck, RefreshCw, Share2, ChevronRight, Minus, Plus, Store, MessageCircle } from "lucide-react";
+import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
@@ -13,6 +14,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
 import { useFlashSaleStore } from "@/store/flashSaleStore";
+import { useChatStore } from "@/store/chatStore";
 import { toast } from "sonner";
 
 const GRADS = ["from-violet-600/80 to-indigo-600/80","from-amber-500/80 to-orange-600/80","from-purple-600/80 to-pink-600/80","from-blue-600/80 to-cyan-500/80"];
@@ -48,7 +50,8 @@ export default function ProductDetailPage() {
     if (params?.id) {
       Promise.all([
         api.get("/products/" + params.id),
-        api.get("/products/" + params.id + "/reviews")
+        api.get("/products/" + params.id + "/reviews"),
+        api.post("/products/" + params.id + "/view").catch(() => {}) // Track view
       ]).then(([resP, resR]) => {
          const productData = resP.data;
          productData.reviews = resR.data.content;
@@ -91,10 +94,10 @@ export default function ProductDetailPage() {
   // GLOBAL PRICING: Check if product is in an active flash sale
   const flashItem = activeEvent?.items?.find((item: any) => item.productId === p.id && item.flashStock > item.soldCount);
   
-  const basePrice = activeSku?.price ?? p.price;
+  const basePrice = activeSku?.price ?? p?.skus?.[0]?.price ?? 0;
   const currentPrice = flashItem ? flashItem.flashPrice : basePrice;
-  const originalPriceForDiscount = flashItem ? basePrice : p.originalPrice;
-  const stockLeft = flashItem ? (flashItem.flashStock - flashItem.soldCount) : (activeSku?.stockQuantity ?? activeSku?.stock ?? (p.stock ?? 0));
+  const originalPriceForDiscount = flashItem ? basePrice : (activeSku?.originalPrice ?? p?.skus?.[0]?.originalPrice);
+  const stockLeft = flashItem ? (flashItem.flashStock - flashItem.soldCount) : (activeSku?.stockQuantity ?? activeSku?.stock ?? p?.skus?.[0]?.stockQuantity ?? 0);
   
   const canAdd = availableKeys.every(k => !!selectedAttributes[k]) && stockLeft > 0;
 
@@ -115,6 +118,9 @@ export default function ProductDetailPage() {
       skuId: activeSku?.id,
       quantity: qty
     }).then(() => {
+      // Track cart addition
+      api.post(`/products/${p.id}/track-cart`).catch(() => {});
+      
       setAddedToCart(true);
       useCartStore.getState().fetchCart();
       toast.success("Đã thêm vào giỏ hàng!");
@@ -136,11 +142,14 @@ export default function ProductDetailPage() {
       return;
     }
     
-    api.post("/cart/items", {
+    api.post("/cart/items?overwrite=true", {
       productId: p.id,
       skuId: activeSku?.id,
       quantity: qty
     }).then(() => {
+      // Track cart addition
+      api.post(`/products/${p.id}/track-cart`).catch(() => {});
+      
       useCartStore.getState().fetchCart();
       // Save selected SKU for checkout and redirect
       localStorage.setItem("checkout_skus", JSON.stringify([activeSku?.id]));
@@ -169,7 +178,50 @@ export default function ProductDetailPage() {
     });
   };
 
+  const handleChat = async () => {
+    if (!isAuthenticated()) {
+      toast.error("Vui lòng đăng nhập để chat với Shop", {
+        action: { label: "Đăng nhập", onClick: () => router.push("/auth") }
+      });
+      return;
+    }
+    try {
+      const res = await api.post(`/chat/rooms/shop/${p.shopId}`);
+      const roomId = res.data.id;
+      const contextMsg = `Tôi đang quan tâm đến sản phẩm này: ${p.name}`;
+      useChatStore.getState().startChatWithShop(roomId, contextMsg);
+    } catch (e) {
+      toast.error("Không thể kết nối với Shop. Vui lòng thử lại sau.");
+    }
+  };
 
+  const mediaList: any[] = [];
+  if (p.videoUrl) {
+    let vidType = 'video';
+    let vidUrl = p.videoUrl;
+    const ytMatch = p.videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})/);
+    if (ytMatch && ytMatch[1]) {
+      vidType = 'iframe';
+      vidUrl = `https://www.youtube.com/embed/${ytMatch[1]}?rel=0`;
+    } else if (p.videoUrl.includes('tiktok.com')) {
+      const match = p.videoUrl.match(/video\/(\d+)/);
+      if (match && match[1]) {
+        vidType = 'iframe';
+        vidUrl = `https://www.tiktok.com/embed/v2/${match[1]}`;
+      } else {
+        vidType = 'link'; // Fallback if we can't parse tiktok id
+      }
+    } else if (!p.videoUrl.startsWith('http')) {
+      vidUrl = `http://localhost:8080${p.videoUrl}`;
+    }
+
+    mediaList.push({ type: vidType, url: vidUrl, originalUrl: p.videoUrl });
+  }
+  if (p.images && p.images.length > 0) {
+    p.images.forEach((img: any) => {
+      mediaList.push({ type: 'image', url: img.imageUrl });
+    });
+  }
 
   return (
     <>
@@ -191,8 +243,9 @@ export default function ProductDetailPage() {
           </nav>
 
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-14">
-            {/* ── Left: Gallery ───────────────────────────────── */}
-            <div className="space-y-3">
+            {/* ── Left Column: Gallery & Tabs ────────────────── */}
+            <div className="flex flex-col">
+              <div className="space-y-3">
               {/* Main image */}
               <motion.div
                 key={activeImg}
@@ -201,12 +254,39 @@ export default function ProductDetailPage() {
                 transition={{ duration: 0.3 }}
                 className={`relative aspect-square rounded-3xl overflow-hidden bg-gradient-to-br ${GRADS[activeImg % 4]}`}
                 style={{ border: "1px solid var(--border)" }}>
-                {p.images && p.images.length > 0 && p.images[activeImg] ? (
-                  <img 
-                    src={p.images[activeImg]?.imageUrl?.startsWith('http') ? p.images[activeImg].imageUrl : `http://localhost:8080${p.images[activeImg].imageUrl}`} 
-                    alt={p.name} 
-                    className="absolute inset-0 w-full h-full object-cover" 
-                  />
+                {mediaList.length > 0 && mediaList[activeImg] ? (
+                  mediaList[activeImg].type === 'iframe' ? (
+                    <div className="absolute inset-0 w-full h-full bg-black">
+                      <iframe 
+                        className="w-full h-full"
+                        src={mediaList[activeImg].url} 
+                        title="Video" 
+                        frameBorder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowFullScreen>
+                      </iframe>
+                    </div>
+                  ) : mediaList[activeImg].type === 'video' ? (
+                    <div className="absolute inset-0 w-full h-full bg-black">
+                      <video 
+                        controls 
+                        className="w-full h-full object-contain"
+                        src={mediaList[activeImg].url}
+                      />
+                    </div>
+                  ) : mediaList[activeImg].type === 'link' ? (
+                    <div className="absolute inset-0 w-full h-full bg-gray-900 flex items-center justify-center">
+                      <a href={mediaList[activeImg].originalUrl} target="_blank" rel="noreferrer" className="text-white hover:text-indigo-400 underline flex items-center gap-2">
+                        Xem Video <ChevronRight className="w-4 h-4" />
+                      </a>
+                    </div>
+                  ) : (
+                    <img 
+                      src={mediaList[activeImg].url?.startsWith('http') ? mediaList[activeImg].url : `http://localhost:8080${mediaList[activeImg].url}`} 
+                      alt={p.name} 
+                      className="absolute inset-0 w-full h-full object-cover" 
+                    />
+                  )
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <ShoppingCart className="w-20 h-20 text-white/20" />
@@ -224,22 +304,23 @@ export default function ProductDetailPage() {
               </motion.div>
 
               {/* Thumbnails */}
-              {p.images && p.images.length > 0 && (
-                <div className="grid grid-cols-4 gap-2">
-                  {p.images.map((img: any, i: number) => (
+              {mediaList.length > 0 && (
+                <div className="grid grid-cols-5 gap-2 mt-4">
+                  {mediaList.map((mediaItem: any, i: number) => (
                     <button key={i} onClick={() => setActiveImg(i)}
-                      className={`aspect-square rounded-xl overflow-hidden bg-gradient-to-br ${GRADS[i % 4]} cursor-pointer transition-all duration-200 relative`}
+                      className={`aspect-square rounded-xl overflow-hidden bg-gradient-to-br ${GRADS[i % 4]} cursor-pointer transition-all duration-200 relative flex items-center justify-center`}
                       style={{ border: activeImg === i ? "2px solid var(--gold)" : "1px solid var(--border)", opacity: activeImg === i ? 1 : 0.6 }}>
-                      {img.imageUrl ? (
+                      {mediaItem.type === 'video' || mediaItem.type === 'iframe' || mediaItem.type === 'link' ? (
+                        <div className="w-full h-full bg-gray-900 flex flex-col items-center justify-center text-white/70 hover:text-white">
+                          <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                          <span className="text-[10px] mt-1 font-medium">Video</span>
+                        </div>
+                      ) : (
                         <img 
-                          src={img.imageUrl.startsWith('http') ? img.imageUrl : `http://localhost:8080${img.imageUrl}`} 
+                          src={mediaItem.url?.startsWith('http') ? mediaItem.url : `http://localhost:8080${mediaItem.url}`} 
                           alt="thumbnail" 
                           className="w-full h-full object-cover" 
                         />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <ShoppingCart className="w-5 h-5 text-white/30" />
-                        </div>
                       )}
                     </button>
                   ))}
@@ -258,10 +339,112 @@ export default function ProductDetailPage() {
                   );
                 })}
               </div>
+              </div>
+
+              <div className="mt-12">
+                <div className="flex gap-1 p-1 rounded-2xl mb-8 flex-wrap w-fit" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                  {TABS.map((tab, i) => (
+                    <button key={tab} onClick={() => setActiveTab(i)}
+                      className="px-5 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-300"
+                      style={activeTab === i
+                        ? { background: "var(--grad-purple)", color: "white", boxShadow: "var(--shadow-glow-purple)" }
+                        : { color: "var(--text-secondary)" }}>
+                      {tab} {tab === "Đánh giá" && `(${p.reviews?.length ?? 0})`}
+                    </button>
+                  ))}
+                </div>
+
+                <AnimatePresence mode="wait">
+                  {/* Description */}
+                  {activeTab === 0 && (
+                    <motion.div key="desc" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                      className="p-6 rounded-2xl prose-sm max-w-none" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)", lineHeight: 1.8 }}>
+                      {p.description?.split("\n").map((line: any, i: number) => <p key={i} className="mb-3">{line}</p>)}
+                    </motion.div>
+                  )}
+
+                  {/* Specs */}
+                  {activeTab === 1 && (
+                    <motion.div key="specs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                      className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                      {Object.entries(p.specs ?? {}).map(([key, val]: any, i: number) => (
+                        <div key={key} className="flex items-start" style={{ background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-elevated)", borderBottom: "1px solid var(--border)" }}>
+                          <span className="w-44 flex-shrink-0 px-5 py-3 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>{key}</span>
+                          <span className="flex-1 px-5 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{val}</span>
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
+
+                  {/* Reviews */}
+                  {activeTab === 2 && (
+                    <motion.div key="reviews" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+                      {/* Rating summary */}
+                      <div className="flex items-center gap-6 p-6 rounded-2xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                        <div className="text-center">
+                          <div className="text-5xl font-bold text-gradient-gold font-[family-name:var(--font-heading)]">{p.rating ?? 5.0}</div>
+                          <div className="flex justify-center gap-0.5 mt-1">
+                            {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`w-4 h-4 ${i < Math.floor(p.rating ?? 5.0) ? "fill-gold text-gold" : "text-border"}`} />)}
+                          </div>
+                          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{p.reviews?.length} đánh giá</p>
+                        </div>
+                        <div className="flex-1 space-y-1.5">
+                          {[5,4,3,2,1].map(star => {
+                            const count = p.reviews?.filter((r:any) => Math.floor(r.rating) === star).length ?? 0;
+                            const pct = p.reviews?.length ? (count / p.reviews.length) * 100 : 0;
+                            return (
+                              <div key={star} className="flex items-center gap-3">
+                                <span className="text-xs w-4" style={{ color: "var(--text-muted)" }}>{star}</span>
+                                <Star className="w-3.5 h-3.5 fill-gold text-gold" />
+                                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
+                                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--grad-gold)" }} />
+                                </div>
+                                <span className="text-xs w-6 text-right" style={{ color: "var(--text-muted)" }}>{count}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Review cards */}
+                      {p.reviews?.map((review:any) => (
+                        <div key={review.id} className="p-5 rounded-2xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "var(--purple-dim)", color: "var(--purple-light)" }}>
+                                {review.userName[0]}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{review.userName}</p>
+                                {review.sku && <p className="text-xs" style={{ color: "var(--text-muted)" }}>Phân loại: {review.sku}</p>}
+                              </div>
+                            </div>
+                            <div className="flex gap-0.5">
+                              {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`w-3.5 h-3.5 ${i < review.rating ? "fill-gold text-gold" : "text-border"}`} />)}
+                            </div>
+                          </div>
+                          <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{review.comment}</p>
+                          {review.replyContent && (
+                            <div className="mt-3 p-3 rounded-xl" style={{ background: "var(--bg-elevated)", borderLeft: "2px solid var(--gold)" }}>
+                              <p className="text-xs font-semibold mb-1" style={{ color: "var(--gold)" }}>Phản hồi từ Người bán:</p>
+                              <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{review.replyContent}</p>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+                            <span className="text-xs" style={{ color: "var(--text-muted)" }}>{new Date(review.date).toLocaleDateString("vi-VN")}</span>
+                            <button className="text-xs cursor-pointer" style={{ color: "var(--text-muted)" }}>👍 Hữu ích ({review.helpful})</button>
+                          </div>
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             {/* ── Right: Product Info ──────────────────────────── */}
-            <div className="space-y-6">
+            <div className="lg:w-full">
+              <div className="space-y-6 sticky top-24">
               {/* Title */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -392,106 +575,16 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="glass" size="sm">Chat</Button>
-                  <Button variant="glass" size="sm">Xem shop</Button>
+                  <Button variant="glass" size="sm" onClick={handleChat}>Chat</Button>
+                  {p.shopId && (
+                    <Link href={`/shop/${p.shopId}`}>
+                      <Button variant="glass" size="sm">Xem shop</Button>
+                    </Link>
+                  )}
                 </div>
               </div>
+              </div>
             </div>
-          </div>
-
-          {/* ── Tabs Section ─────────────────────────────────────── */}
-          <div className="mt-12">
-            <div className="flex gap-1 p-1 rounded-2xl mb-8 w-fit" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-              {TABS.map((tab, i) => (
-                <button key={tab} onClick={() => setActiveTab(i)}
-                  className="px-5 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-300"
-                  style={activeTab === i
-                    ? { background: "var(--grad-purple)", color: "white", boxShadow: "var(--shadow-glow-purple)" }
-                    : { color: "var(--text-secondary)" }}>
-                  {tab} {tab === "Đánh giá" && `(${p.reviews?.length ?? 0})`}
-                </button>
-              ))}
-            </div>
-
-            <AnimatePresence mode="wait">
-              {/* Description */}
-              {activeTab === 0 && (
-                <motion.div key="desc" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="p-6 rounded-2xl prose-sm max-w-none" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)", lineHeight: 1.8 }}>
-                  {p.description?.split("\n").map((line: any, i: number) => <p key={i} className="mb-3">{line}</p>)}
-                </motion.div>
-              )}
-
-              {/* Specs */}
-              {activeTab === 1 && (
-                <motion.div key="specs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-                  {Object.entries(p.specs ?? {}).map(([key, val]: any, i: number) => (
-                    <div key={key} className="flex items-start" style={{ background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-elevated)", borderBottom: "1px solid var(--border)" }}>
-                      <span className="w-44 flex-shrink-0 px-5 py-3 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>{key}</span>
-                      <span className="flex-1 px-5 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{val}</span>
-                    </div>
-                  ))}
-                </motion.div>
-              )}
-
-              {/* Reviews */}
-              {activeTab === 2 && (
-                <motion.div key="reviews" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
-                  {/* Rating summary */}
-                  <div className="flex items-center gap-6 p-6 rounded-2xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-                    <div className="text-center">
-                      <div className="text-5xl font-bold text-gradient-gold font-[family-name:var(--font-heading)]">{p.rating ?? 5.0}</div>
-                      <div className="flex justify-center gap-0.5 mt-1">
-                        {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`w-4 h-4 ${i < Math.floor(p.rating ?? 5.0) ? "fill-gold text-gold" : "text-border"}`} />)}
-                      </div>
-                      <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{p.reviews?.length} đánh giá</p>
-                    </div>
-                    <div className="flex-1 space-y-1.5">
-                      {[5,4,3,2,1].map(star => {
-                        const count = p.reviews?.filter((r:any) => Math.floor(r.rating) === star).length ?? 0;
-                        const pct = p.reviews?.length ? (count / p.reviews.length) * 100 : 0;
-                        return (
-                          <div key={star} className="flex items-center gap-3">
-                            <span className="text-xs w-4" style={{ color: "var(--text-muted)" }}>{star}</span>
-                            <Star className="w-3.5 h-3.5 fill-gold text-gold" />
-                            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
-                              <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--grad-gold)" }} />
-                            </div>
-                            <span className="text-xs w-6 text-right" style={{ color: "var(--text-muted)" }}>{count}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Review cards */}
-                  {p.reviews?.map((review:any) => (
-                    <div key={review.id} className="p-5 rounded-2xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "var(--purple-dim)", color: "var(--purple-light)" }}>
-                            {review.userName[0]}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{review.userName}</p>
-                            {review.sku && <p className="text-xs" style={{ color: "var(--text-muted)" }}>Phân loại: {review.sku}</p>}
-                          </div>
-                        </div>
-                        <div className="flex gap-0.5">
-                          {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`w-3.5 h-3.5 ${i < review.rating ? "fill-gold text-gold" : "text-border"}`} />)}
-                        </div>
-                      </div>
-                      <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{review.comment}</p>
-                      <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
-                        <span className="text-xs" style={{ color: "var(--text-muted)" }}>{new Date(review.date).toLocaleDateString("vi-VN")}</span>
-                        <button className="text-xs cursor-pointer" style={{ color: "var(--text-muted)" }}>👍 Hữu ích ({review.helpful})</button>
-                      </div>
-                    </div>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </div>
 

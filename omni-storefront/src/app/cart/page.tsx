@@ -12,9 +12,11 @@ import { useCartStore } from "@/store/cartStore";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
+import { useFlashSaleStore } from "@/store/flashSaleStore";
 
 export interface CartItem {
   id: string; // mapping from skuId
+  productId?: string;
   shopId: string;
   shopName: string;
   name: string;
@@ -33,7 +35,9 @@ export default function CartPage() {
   const [voucher, setVoucher] = useState("");
   const [activeVoucher, setActiveVoucher] = useState<any>(null);
   const { isAuthenticated } = useAuthStore();
+  const activeEvent = useFlashSaleStore(state => state.activeEvent);
   const [loading, setLoading] = useState(true);
+  const [usage, setUsage] = useState<Record<string, number>>({});
 
   const fetchCart = async () => {
     if (!isAuthenticated()) {
@@ -41,6 +45,9 @@ export default function CartPage() {
       return;
     }
     try {
+      // Fetch flash sale usage
+      api.get("/me/flash-sale/usage").then(res => setUsage(res.data)).catch(() => {});
+
       const res = await api.get("/cart");
       const data = res.data;
       if (!data || !data.itemsByShop) return;
@@ -51,11 +58,13 @@ export default function CartPage() {
         shopItems.forEach((it: any) => {
           newItems.push({
             id: it.skuId, // using skuId as unique cart item ID
+            productId: it.productId,
             shopId: it.shopId,
             shopName: it.shopName || ("Shop " + it.shopId.substring(0, 8)),
             name: it.productName,
             sku: it.skuCode,
             price: it.price,
+            originalPrice: it.originalPrice,
             quantity: it.quantity,
             stock: 999, // default
             selected: true,
@@ -105,7 +114,30 @@ export default function CartPage() {
 
   const allChecked = items.filter(it => it.stock > 0).every(it => it.selected);
   const selectedItems = items.filter(it => it.selected);
-  const subtotal = selectedItems.reduce((s, it) => s + it.price * it.quantity, 0);
+  
+  const getItemPrice = (item: CartItem) => {
+    const flashItem = activeEvent?.items?.find((f: any) => f.productId === item.productId && f.flashStock > f.soldCount);
+    if (!flashItem) return item.price;
+    const max = flashItem.maxQuantityPerUser;
+    const bought = usage[item.id] || 0; // item.id is skuId
+    if (max > 0 && (bought >= max || bought + item.quantity > max)) {
+        return item.price;
+    }
+    return flashItem.flashPrice;
+  };
+  
+  const getItemOriginalPrice = (item: CartItem) => {
+    const flashItem = activeEvent?.items?.find((f: any) => f.productId === item.productId && f.flashStock > f.soldCount);
+    if (!flashItem) return item.originalPrice;
+    const max = flashItem.maxQuantityPerUser;
+    const bought = usage[item.id] || 0;
+    if (max > 0 && (bought >= max || bought + item.quantity > max)) {
+        return item.originalPrice;
+    }
+    return item.price;
+  };
+
+  const subtotal = selectedItems.reduce((s, it) => s + getItemPrice(it) * it.quantity, 0);
   
   const discount = activeVoucher 
     ? (activeVoucher.discountType === "PERCENTAGE" 
@@ -172,7 +204,7 @@ export default function CartPage() {
                     <div className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
                       <Checkbox checked={shopAllChecked(shop.shopId)} onChange={(c) => toggleShop(shop.shopId, c)} />
                       <Store className="w-4 h-4" style={{ color: "var(--gold)" }} />
-                      <span className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{shop.shopName}</span>
+                      <Link href={`/shop/${shop.shopId}`} className="font-semibold text-sm hover:underline" style={{ color: "var(--text-primary)" }}>{shop.shopName}</Link>
                     </div>
 
                     {/* Items */}
@@ -196,11 +228,21 @@ export default function CartPage() {
                             <p className="text-sm font-medium line-clamp-2 leading-snug" style={{ color: "var(--text-primary)" }}>{item.name}</p>
                             {item.sku && <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Phân loại: {item.sku}</p>}
                             {item.stock === 0 && <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-red-500/15 text-red-400">Hết hàng</span>}
+                            {(() => {
+                                const fItem = activeEvent?.items?.find((f: any) => f.productId === item.productId && f.flashStock > f.soldCount);
+                                if (fItem && fItem.maxQuantityPerUser > 0) {
+                                    const bought = usage[item.id] || 0;
+                                    if (bought + item.quantity > fItem.maxQuantityPerUser) {
+                                        return <p className="text-[10px] text-orange-500 mt-1">Giới hạn {fItem.maxQuantityPerUser} sản phẩm giá Sale. Giá đã thay đổi về giá gốc.</p>;
+                                    }
+                                }
+                                return null;
+                            })()}
 
                             <div className="flex items-center justify-between mt-3">
                               <div className="flex items-baseline gap-2">
-                                <span className="font-bold text-sm text-gradient-gold">{formatPrice(item.price)}</span>
-                                {item.originalPrice && <span className="text-xs line-through" style={{ color: "var(--text-muted)" }}>{formatPrice(item.originalPrice)}</span>}
+                                <span className="font-bold text-sm text-gradient-gold">{formatPrice(getItemPrice(item))}</span>
+                                {getItemOriginalPrice(item) && <span className="text-xs line-through" style={{ color: "var(--text-muted)" }}>{formatPrice(getItemOriginalPrice(item) as number)}</span>}
                               </div>
 
                               <div className="flex items-center gap-3">
@@ -231,10 +273,11 @@ export default function CartPage() {
                 ))}
               </div>
 
-              {/* Right — Order summary */}
-              <div className="lg:w-80 space-y-4">
-                {/* Voucher */}
-                <div className="p-5 rounded-2xl space-y-3" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+              {/* Right — Order Summary ──────────────────────────── */}
+              <div className="lg:w-80">
+                <div className="space-y-4 sticky top-24">
+                  {/* Voucher */}
+                  <div className="p-5 rounded-2xl space-y-3" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
                   <div className="flex items-center gap-2">
                     <Tag className="w-4 h-4" style={{ color: "var(--gold)" }} />
                     <span className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>Mã giảm giá</span>
@@ -299,6 +342,7 @@ export default function CartPage() {
                   <p className="text-xs text-center" style={{ color: "var(--text-muted)" }}>Bằng cách đặt hàng, bạn đồng ý với điều khoản của Omni</p>
                 </div>
               </div>
+            </div>
             </div>
           )}
         </div>

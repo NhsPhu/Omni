@@ -8,15 +8,7 @@ import { useAuthStore } from '../store/authStore';
 
 const { Option } = Select;
 
-const revenueData = [
-  { date: '17/05', revenue: 12000000, orders: 45 },
-  { date: '18/05', revenue: 15500000, orders: 58 },
-  { date: '19/05', revenue: 11200000, orders: 42 },
-  { date: '20/05', revenue: 18900000, orders: 65 },
-  { date: '21/05', revenue: 22400000, orders: 82 },
-  { date: '22/05', revenue: 19800000, orders: 74 },
-  { date: '23/05', revenue: 24500000, orders: 95 },
-];
+// Removed mock revenueData
 
 export default function Dashboard() {
   const [timeRange, setTimeRange] = useState('7days');
@@ -27,13 +19,9 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const days = timeRange === 'today' ? 1 : timeRange === '30days' ? 30 : 7;
-      const [statsRes, revenueRes] = await Promise.all([
-        api.get('/vendor/statistics'),
-        api.get(`/vendor/revenue/daily?days=${days}`)
-      ]);
+      const statsRes = await api.get('/vendor/statistics');
       setStats(statsRes.data);
-      setChartData(revenueRes.data);
+      setChartData(statsRes.data.revenueChart || []);
     } catch(e) {
       console.error('Lỗi khi lấy thống kê:', e);
     }
@@ -46,7 +34,7 @@ export default function Dashboard() {
       setOrders(res.data.map((o: any) => ({
         key: o.id,
         id: o.id.split('-')[0].toUpperCase(),
-        customer: 'Khách hàng',
+        customer: o.customerName || 'Khách hàng',
         total: o.totalAmount,
         status: o.status,
         time: new Date(o.createdAt).toLocaleString('vi-VN'),
@@ -100,7 +88,7 @@ export default function Dashboard() {
     <div className="space-y-8 animate-fade-in pb-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100">
         <div>
-          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight">
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
             Tổng quan cửa hàng
           </h1>
           <p className="text-gray-500 mt-1 font-medium">Báo cáo hiệu suất kinh doanh thời gian thực</p>
@@ -221,7 +209,7 @@ export default function Dashboard() {
           >
             <div style={{ width: '100%', height: 380 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData.length > 0 ? chartData : revenueData} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
+                <LineChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1}/>

@@ -99,7 +99,7 @@ export default function NotificationBell() {
         setOpen(val);
         if (val) fetchNotifications(); // fetch on open
       }}
-      overlayStyle={{ padding: 0, overflow: 'hidden', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+      styles={{ root: { padding: 0, overflow: 'hidden', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' } }}
     >
       <Badge count={unreadCount} size="small" className="cursor-pointer">
         <Bell size={20} className="text-gray-500 hover:text-blue-600 transition-colors" />

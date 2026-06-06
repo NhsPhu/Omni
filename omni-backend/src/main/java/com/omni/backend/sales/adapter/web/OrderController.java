@@ -86,7 +86,7 @@ public class OrderController {
     // --- Vendor Endpoints ---
 
     @GetMapping("/vendor/orders")
-    public ResponseEntity<List<ChildOrderJpaEntity>> getVendorOrders(Authentication authentication) {
+    public ResponseEntity<List<com.omni.backend.sales.application.dto.VendorOrderDto>> getVendorOrders(Authentication authentication) {
         UUID shopId = getShopIdForCurrentUser(authentication);
         return ResponseEntity.ok(orderService.getVendorOrders(shopId));
     }

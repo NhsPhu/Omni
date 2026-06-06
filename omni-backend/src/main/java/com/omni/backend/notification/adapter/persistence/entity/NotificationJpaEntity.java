@@ -3,6 +3,8 @@ package com.omni.backend.notification.adapter.persistence.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.ZonedDateTime;
 import java.util.UUID;
@@ -32,6 +34,7 @@ public class NotificationJpaEntity {
     @Column(nullable = false, length = 50)
     private String type; // SYSTEM, PROMOTION, ORDER_UPDATE, ALERT
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
     private String payload;
 

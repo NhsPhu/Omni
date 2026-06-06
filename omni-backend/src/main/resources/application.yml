@@ -2,6 +2,11 @@ spring:
   application:
     name: omni-backend
 
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:5432/omni_db
     username: omni_user
@@ -30,10 +35,10 @@ spring:
       port: 6379
 
   mail:
-    host: smtp.mailtrap.io # Replace with real SMTP later
-    port: 2525
-    username: test_user
-    password: test_password
+    host: smtp.gmail.com
+    port: 587
+    username: omnistorenf@gmail.com
+    password: ihen atrx stzr urob
     properties:
       mail:
         smtp:

@@ -3,6 +3,8 @@ package com.omni.backend.shipping.adapter.persistence.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.ZonedDateTime;
 import java.util.UUID;
@@ -23,6 +25,7 @@ public class DelayedJobJpaEntity {
     @Column(name = "job_type", nullable = false, length = 50)
     private String jobType;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB", nullable = false)
     private String payload; // Will hold {"shopOrderId": "uuid"}
 

@@ -48,13 +48,9 @@ export default function FlashSaleSection() {
 
   // Don't render if no active event or loading
   if (loading) return null;
-  if (!event || !event.items || event.items.length === 0) {
-    // Fallback to featured products if no flash sale event
-    return <FallbackFlashSale />;
-  }
-  if (event.status !== 'ACTIVE') {
-    return <FallbackFlashSale />;
-  }
+  if (!event || !event.items || event.items.length === 0) return null;
+  if (event.status !== 'ACTIVE') return null;
+  if (expired) return null;
 
   const products = event.items.map((item: any) => ({
     id: item.productId,

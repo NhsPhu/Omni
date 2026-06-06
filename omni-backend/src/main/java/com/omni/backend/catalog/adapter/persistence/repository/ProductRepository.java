@@ -14,6 +14,8 @@ import java.util.List;
 @Repository
 public interface ProductRepository extends JpaRepository<ProductJpaEntity, UUID> {
     Page<ProductJpaEntity> findByShopId(UUID shopId, Pageable pageable);
+    
+    List<ProductJpaEntity> findAllByShopId(UUID shopId);
 
     @Query("SELECT p FROM ProductJpaEntity p WHERE p.deletedAt IS NULL AND p.status = 'ACTIVE' ORDER BY p.createdAt DESC")
     List<ProductJpaEntity> findNewestProducts(Pageable pageable);

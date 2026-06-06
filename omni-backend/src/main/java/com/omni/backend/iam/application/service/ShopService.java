@@ -137,6 +137,9 @@ public class ShopService {
         if (dto.getWarehouseProvinceId() != null) shop.setWarehouseProvinceId(dto.getWarehouseProvinceId());
         if (dto.getWarehouseDistrictId() != null) shop.setWarehouseDistrictId(dto.getWarehouseDistrictId());
         if (dto.getWarehouseWardCode() != null) shop.setWarehouseWardCode(dto.getWarehouseWardCode());
+        if (dto.getGhnShopId() != null) shop.setGhnShopId(dto.getGhnShopId());
+        if (dto.getLogoUrl() != null) shop.setLogoUrl(dto.getLogoUrl());
+        if (dto.getBannerUrl() != null) shop.setBannerUrl(dto.getBannerUrl());
 
         ShopJpaEntity updated = shopRepository.save(shop);
         return mapToDto(updated);
@@ -157,9 +160,12 @@ public class ShopService {
                 .warehouseProvinceId(entity.getWarehouseProvinceId())
                 .warehouseDistrictId(entity.getWarehouseDistrictId())
                 .warehouseWardCode(entity.getWarehouseWardCode())
+                .ghnShopId(entity.getGhnShopId())
                 .bankName(entity.getBankName())
                 .bankAccountNumber(entity.getBankAccountNumber())
                 .bankAccountName(entity.getBankAccountName())
+                .logoUrl(entity.getLogoUrl())
+                .bannerUrl(entity.getBannerUrl())
                 .build();
     }
 }

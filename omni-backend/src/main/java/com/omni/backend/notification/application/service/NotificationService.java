@@ -41,6 +41,11 @@ public class NotificationService {
     public void markAllAsRead(UUID userId) {
         notificationRepository.markAllAsRead(userId);
     }
+    
+    @Transactional(readOnly = true)
+    public long getUnreadCount(UUID userId) {
+        return notificationRepository.countByUserIdAndReadAtIsNull(userId);
+    }
 
     // Called by Event Listeners
     @Transactional

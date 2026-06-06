@@ -10,26 +10,62 @@ const { Option } = Select;
 export default function ProductList() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [categoriesMap, setCategoriesMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { shopId } = useAuthStore();
 
-  const fetchProducts = async () => {
+  const fetchCategories = async () => {
+    try {
+      const res = await api.get('/categories');
+      const map: Record<string, string> = {};
+      const buildMap = (cats: any[]) => {
+        cats.forEach(c => {
+          map[c.id] = c.name;
+          if (c.children) buildMap(c.children);
+        });
+      };
+      buildMap(res.data);
+      setCategoriesMap(map);
+      return map;
+    } catch (e) {
+      console.error('Failed to fetch categories', e);
+      return {};
+    }
+  };
+
+  const fetchProducts = async (catMap: Record<string, string>) => {
     setLoading(true);
     try {
       const res = await api.get(`/vendor/products?size=100`);
-      setProducts(res.data.content.map((p: any) => ({
-        key: p.id,
-        id: p.id,
-        shortId: p.id.split('-')[0].toUpperCase(),
-        name: p.name,
-        category: p.categoryName || p.categoryId,
-        price: p.price,
-        stock: p.stock,
-        sales: 0,
-        status: p.status.toLowerCase(),
-        image: p.image || `https://picsum.photos/seed/${p.id}/80/80`
-      })));
+      const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
+      setProducts(res.data.content.map((p: any) => {
+        let price = 0;
+        let stock = 0;
+        if (p.skus && p.skus.length > 0) {
+          price = Math.min(...p.skus.map((s: any) => s.price));
+          stock = p.skus.reduce((sum: number, s: any) => sum + s.stockQuantity, 0);
+        }
+        
+        let image = `https://picsum.photos/seed/${p.id}/80/80`;
+        if (p.images && p.images.length > 0) {
+          const rawUrl = p.images[0].imageUrl;
+          image = rawUrl.startsWith('http') ? rawUrl : `${baseUrl}${rawUrl}`;
+        }
+
+        return {
+          key: p.id,
+          id: p.id,
+          shortId: p.id.split('-')[0].toUpperCase(),
+          name: p.name,
+          category: p.categoryName || catMap[p.categoryId] || p.categoryId,
+          price: price,
+          stock: stock,
+          sales: p.soldCount || p.reviewCount || 0,
+          status: p.status ? p.status.toLowerCase() : 'draft',
+          image: image
+        };
+      }));
     } catch(e) {
       console.error(e);
     } finally {
@@ -38,7 +74,9 @@ export default function ProductList() {
   };
 
   useEffect(() => {
-    fetchProducts();
+    fetchCategories().then(map => {
+      fetchProducts(map);
+    });
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -52,7 +90,7 @@ export default function ProductList() {
         try {
           await api.delete(`/vendor/products/${id}`);
           message.success('Đã xóa sản phẩm');
-          fetchProducts();
+          fetchProducts(categoriesMap);
         } catch (error) {
           message.error('Không thể xóa sản phẩm');
         }
@@ -65,7 +103,7 @@ export default function ProductList() {
     try {
       await api.patch(`/vendor/products/${id}/status?status=${newStatus}`);
       message.success(`Đã ${newStatus === 'ACTIVE' ? 'hiện' : 'ẩn'} sản phẩm`);
-      fetchProducts();
+      fetchProducts(categoriesMap);
     } catch (error) {
       message.error('Cập nhật trạng thái thất bại');
     }
@@ -80,7 +118,7 @@ export default function ProductList() {
       key: 'name',
       render: (text: string, record: any) => (
         <div className="flex items-center gap-3">
-          <img src={record.image} alt={text} className="w-10 h-10 rounded border border-gray-200 object-cover" />
+          <img src={record.image} alt={text} className="rounded border border-gray-200 object-cover flex-shrink-0" style={{ width: '40px', height: '40px', minWidth: '40px' }} />
           <div>
             <div className="font-medium text-gray-800 line-clamp-1 max-w-[200px]" title={text}>{text}</div>
             <div className="text-xs text-gray-500">{record.shortId}</div>
@@ -140,8 +178,8 @@ export default function ProductList() {
     <div className="space-y-8 animate-fade-in pb-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
         <div>
-          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Quản lý Sản phẩm</h1>
-          <p className="text-gray-500 mt-1 font-medium">Danh sách các sản phẩm đang bán trên cửa hàng của bạn.</p>
+          <h1 className="text-3xl font-extrabold text-indigo-700 tracking-tight m-0">Quản lý Sản phẩm</h1>
+          <p className="text-gray-600 mt-1 font-medium">Danh sách các sản phẩm đang bán trên cửa hàng của bạn.</p>
         </div>
         <div className="mt-4 md:mt-0 flex gap-3">
           <Button type="primary" size="large" className="bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md" icon={<Plus size={18} />} onClick={() => navigate('/products/create')}>

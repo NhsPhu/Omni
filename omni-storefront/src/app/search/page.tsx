@@ -335,8 +335,8 @@ function SearchContent() {
                                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>• Đã bán {p.soldCount || 0}</span>
                               </div>
                               <div className="flex items-baseline gap-2 mt-2">
-                                <span className="font-bold text-gradient-gold">{formatPrice(p.discountPrice || p.price)}</span>
-                                {p.discountPrice && p.discountPrice < p.price && <span className="text-xs line-through" style={{ color: "var(--text-muted)" }}>{formatPrice(p.price)}</span>}
+                                <span className="font-bold text-gradient-gold">{formatPrice(p.priceMin ?? p.price)}</span>
+                                {p.priceMax && p.priceMax > (p.priceMin ?? p.price) && <span className="text-xs line-through" style={{ color: "var(--text-muted)" }}>{formatPrice(p.priceMax ?? p.originalPrice)}</span>}
                               </div>
                             </div>
                             <div className="self-center flex-shrink-0 ml-4 hidden sm:block">

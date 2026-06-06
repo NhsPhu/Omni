@@ -57,4 +57,7 @@ public class ProductDocument {
 
     @Field(type = FieldType.Keyword)
     private String shopName;
+
+    @Field(type = FieldType.Keyword)
+    private String imageUrl;
 }

@@ -1,12 +1,150 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="UTF-8"><title>Cập nhật đơn hàng</title></head>
+<head>
+    <meta charset="UTF-8">
+    <title>Cập nhật trạng thái đơn hàng</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f9fafb;
+            margin: 0;
+            padding: 0;
+            color: #111827;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .header {
+            background: linear-gradient(135deg, #111827 0%, #000000 100%);
+            padding: 32px 40px;
+            text-align: center;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+            text-decoration: none;
+        }
+        .logo span {
+            color: #fbbf24;
+        }
+        .content {
+            padding: 40px;
+        }
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 24px;
+            color: #111827;
+        }
+        p {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+            color: #4b5563;
+        }
+        .info-box {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 16px 20px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 32px;
+        }
+        .info-box p {
+            margin: 0;
+            color: #92400e;
+            font-weight: 500;
+        }
+        .order-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+        }
+        .order-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .order-row:last-child {
+            margin-bottom: 0;
+        }
+        .order-label {
+            color: #6b7280;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .order-value {
+            color: #111827;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .button-container {
+            text-align: center;
+            margin-top: 32px;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #ffffff !important;
+            font-weight: 600;
+            font-size: 16px;
+            text-decoration: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.4);
+        }
+        .footer {
+            background-color: #f3f4f6;
+            padding: 24px 40px;
+            text-align: center;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .footer a {
+            color: #4b5563;
+            text-decoration: underline;
+        }
+    </style>
+</head>
 <body>
-  <h2>Đơn hàng của bạn đã được cập nhật</h2>
-  <p>Mã đơn: <strong th:text="${orderCode}">ORDER-001</strong></p>
-  <p>Trạng thái mới: <strong th:text="${newStatus}">Đang giao</strong></p>
-  <p th:if="${trackingCode}">
-    Mã vận đơn: <strong th:text="${trackingCode}">GHN-001</strong>
-  </p>
+    <div class="container">
+        <div class="header">
+            <a href="#" class="logo">OMNI<span>.</span></a>
+        </div>
+        <div class="content">
+            <h2>Xin chào, <span th:text="${buyerName}">Khách hàng</span>!</h2>
+            
+            <p>Chúng tôi xin thông báo đơn hàng của bạn vừa được cập nhật trạng thái mới. Dưới đây là thông tin chi tiết:</p>
+            
+            <div class="info-box">
+                <p th:text="${statusMessage}">Đơn hàng của bạn đã được thanh toán thành công.</p>
+            </div>
+            
+            <div class="order-card">
+                <div class="order-row">
+                    <span class="order-label">Mã đơn hàng</span>
+                    <span class="order-value" th:text="${orderCode}">#ABC12345</span>
+                </div>
+            </div>
+            
+            <p>Bạn có thể theo dõi chi tiết và tiến trình giao hàng trực tiếp trên hệ thống của chúng tôi.</p>
+            
+            <div class="button-container">
+                <a href="http://localhost:3000/orders" class="button">Theo dõi đơn hàng</a>
+            </div>
+        </div>
+        <div class="footer">
+            <p>Cảm ơn bạn đã mua sắm tại OMNI.</p>
+            <p>Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ <a href="mailto:cskh.omni@gmail.com">cskh.omni@gmail.com</a>.</p>
+        </div>
+    </div>
 </body>
 </html>

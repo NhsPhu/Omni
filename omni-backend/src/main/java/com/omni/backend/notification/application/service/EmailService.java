@@ -44,8 +44,8 @@ public class EmailService {
             
             mailSender.send(message);
             log.info("Sent email '{}' to {}", subject, to);
-        } catch (MessagingException e) {
-            log.error("Failed to send email to {}", to, e);
+        } catch (Exception e) {
+            log.error("Failed to send email to {}: {}", to, e.getMessage(), e);
         }
     }
     
@@ -62,8 +62,8 @@ public class EmailService {
             
             mailSender.send(message);
             log.info("Sent simple email '{}' to {}", subject, to);
-        } catch (MessagingException e) {
-            log.error("Failed to send simple email to {}", to, e);
+        } catch (Exception e) {
+            log.error("Failed to send simple email to {}: {}", to, e.getMessage(), e);
         }
     }
 }

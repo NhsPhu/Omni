@@ -30,9 +30,9 @@ public class CartController {
     }
 
     @PostMapping("/items")
-    public ResponseEntity<Void> addToCart(Authentication authentication, @RequestBody AddToCartRequest request) {
+    public ResponseEntity<Void> addToCart(Authentication authentication, @RequestBody AddToCartRequest request, @RequestParam(defaultValue = "false") boolean overwrite) {
         UUID userId = getUserId(authentication);
-        cartService.addToCart(userId, request.getSkuId(), request.getQuantity());
+        cartService.addToCart(userId, request.getSkuId(), request.getQuantity(), overwrite);
         return ResponseEntity.ok().build();
     }
 

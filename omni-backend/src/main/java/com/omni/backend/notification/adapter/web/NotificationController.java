@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+import java.util.HashMap;
 import java.util.UUID;
 
 @RestController
@@ -41,6 +43,14 @@ public class NotificationController {
     public ResponseEntity<Void> markAllAsRead(Authentication authentication) {
         notificationService.markAllAsRead(getUserId(authentication));
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/unread-count")
+    public ResponseEntity<Map<String, Long>> getUnreadCount(Authentication authentication) {
+        long count = notificationService.getUnreadCount(getUserId(authentication));
+        Map<String, Long> response = new HashMap<>();
+        response.put("unreadCount", count);
+        return ResponseEntity.ok(response);
     }
 }
 

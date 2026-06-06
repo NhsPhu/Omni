@@ -222,7 +222,7 @@ export default function Reports() {
     <div className="space-y-8 animate-fade-in pb-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100">
         <div>
-          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight">
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
             Báo cáo & Cấu hình Hệ thống
           </h1>
           <p className="text-gray-500 mt-1 font-medium">Bảng điều khiển dành cho Super Admin</p>

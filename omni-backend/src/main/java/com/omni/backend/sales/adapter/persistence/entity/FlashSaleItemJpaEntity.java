@@ -45,6 +45,9 @@ public class FlashSaleItemJpaEntity {
     @Column(name = "sold_count")
     @Builder.Default
     private Integer soldCount = 0;
+    
+    @Column(name = "max_quantity_per_user")
+    private Integer maxQuantityPerUser;
 
     @Column(nullable = false, length = 20)
     @Builder.Default

@@ -14,8 +14,10 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -45,6 +47,13 @@ public class ProductJpaEntity {
 
     private String description;
 
+    @org.hibernate.annotations.JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private Map<String, String> specs;
+
+    @Column(name = "video_url")
+    private String videoUrl;
+
     @Column(name = "avg_rating")
     private BigDecimal avgRating;
 
@@ -54,6 +63,14 @@ public class ProductJpaEntity {
     @Column(name = "sold_count", nullable = false)
     @Builder.Default
     private Integer soldCount = 0;
+
+    @Column(name = "views_count", nullable = false)
+    @Builder.Default
+    private Integer viewsCount = 0;
+
+    @Column(name = "carts_count", nullable = false)
+    @Builder.Default
+    private Integer cartsCount = 0;
 
     @Column(nullable = false)
     private String status;

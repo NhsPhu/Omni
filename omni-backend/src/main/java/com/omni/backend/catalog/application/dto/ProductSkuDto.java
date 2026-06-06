@@ -17,6 +17,7 @@ public class ProductSkuDto {
     private UUID id;
     private String skuCode;
     private BigDecimal price;
+    private BigDecimal originalPrice;
     private Integer stockQuantity;
     private Map<String, String> attributes;
 }

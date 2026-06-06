@@ -83,6 +83,7 @@ export default function FlashSaleRegister() {
         skuId: values.skuId,
         flashPrice: values.flashPrice,
         flashStock: values.flashStock,
+        maxQuantityPerUser: values.maxQuantityPerUser,
       });
       message.success('Đăng ký thành công! Chờ Admin duyệt.');
       form.resetFields();
@@ -151,7 +152,7 @@ export default function FlashSaleRegister() {
     return (
       <div className="space-y-8 animate-fade-in pb-8">
         <div className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100">
-          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-orange-500 tracking-tight m-0">⚡ Flash Sale</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight m-0">⚡ Flash Sale</h1>
           <p className="text-gray-500 mt-1">Đăng ký sản phẩm vào Flash Sale</p>
         </div>
         <Card className="border-0 rounded-3xl shadow-sm text-center py-12">
@@ -175,7 +176,7 @@ export default function FlashSaleRegister() {
     <div className="space-y-8 animate-fade-in pb-8">
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100">
-        <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-orange-500 tracking-tight m-0">⚡ Flash Sale</h1>
+        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight m-0">⚡ Flash Sale</h1>
         <p className="text-gray-500 mt-1">Đăng ký sản phẩm vào Flash Sale</p>
       </div>
 
@@ -250,9 +251,15 @@ export default function FlashSaleRegister() {
                 </Form.Item>
               </div>
 
-              <Form.Item name="flashStock" label="Số lượng Flash Sale" rules={[{ required: true }]}>
-                <InputNumber size="large" className="w-full" min={1} />
-              </Form.Item>
+              <div className="flex gap-4">
+                <Form.Item name="flashStock" label="Số lượng Flash Sale" rules={[{ required: true }]} className="w-1/2">
+                  <InputNumber size="large" className="w-full" min={1} />
+                </Form.Item>
+
+                <Form.Item name="maxQuantityPerUser" label="Giới hạn mua / User" tooltip="Bỏ trống nếu không giới hạn" className="w-1/2">
+                  <InputNumber size="large" className="w-full" min={1} placeholder="VD: 2" />
+                </Form.Item>
+              </div>
 
               <Button type="primary" htmlType="submit" size="large" loading={registering} className="w-full bg-red-600 hover:bg-red-700 rounded-xl" icon={<Zap size={16} />}>
                 Đăng ký vào Flash Sale

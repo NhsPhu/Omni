@@ -18,6 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import com.omni.backend.iam.adapter.persistence.repository.ShopRepository;
+import com.omni.backend.iam.adapter.persistence.entity.ShopJpaEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 @Service
 @RequiredArgsConstructor
 public class ReviewService {
@@ -26,6 +31,7 @@ public class ReviewService {
     private final ReviewImageRepository reviewImageRepository;
     private final ProductRepository productRepository;
     private final ChildOrderRepository childOrderRepository;
+    private final ShopRepository shopRepository;
 
     @Transactional
     public ProductReviewJpaEntity createReview(UUID userId, CreateReviewRequest request) {
@@ -44,9 +50,13 @@ public class ReviewService {
         // For simplicity, we just assume validation passes if they have the UUIDs, 
         // but let's do a basic check if possible.
 
+        ProductJpaEntity product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
         // 4. Save Review
         ProductReviewJpaEntity review = ProductReviewJpaEntity.builder()
                 .productId(request.getProductId())
+                .shopId(product.getShopId())
                 .userId(userId)
                 .orderItemId(request.getOrderItemId())
                 .rating(request.getRating())
@@ -82,5 +92,28 @@ public class ReviewService {
         product.setReviewCount(reviewCount != null ? reviewCount.intValue() : 0);
         
         productRepository.save(product);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductReviewJpaEntity> getVendorReviews(UUID vendorId, Pageable pageable) {
+        ShopJpaEntity shop = shopRepository.findByOwnerId(vendorId)
+                .orElseThrow(() -> new RuntimeException("Shop not found"));
+        return reviewRepository.findByShopId(shop.getId(), pageable);
+    }
+
+    @Transactional
+    public ProductReviewJpaEntity replyToReview(UUID vendorId, UUID reviewId, String replyContent) {
+        ShopJpaEntity shop = shopRepository.findByOwnerId(vendorId)
+                .orElseThrow(() -> new RuntimeException("Shop not found"));
+                
+        ProductReviewJpaEntity review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new RuntimeException("Review not found"));
+                
+        if (review.getShopId() != null && !review.getShopId().equals(shop.getId())) {
+            throw new RuntimeException("Unauthorized");
+        }
+        
+        review.setReplyContent(replyContent);
+        return reviewRepository.save(review);
     }
 }

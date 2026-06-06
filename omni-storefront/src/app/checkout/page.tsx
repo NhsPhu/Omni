@@ -12,6 +12,7 @@ import type { CartItem } from "@/app/cart/page";
 import { useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
+import { useFlashSaleStore } from "@/store/flashSaleStore";
 
 const STEPS = [
   { id: 1, label: "Địa chỉ",   icon: MapPin      },
@@ -46,7 +47,9 @@ export default function CheckoutPage() {
   const [pinInput, setPinInput] = useState("");
   
   const { user, isAuthenticated } = useAuthStore();
+  const activeEvent = useFlashSaleStore(state => state.activeEvent);
   const router = useRouter();
+  const [usage, setUsage] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (showNewAddr && provinces.length === 0) {
@@ -87,6 +90,10 @@ export default function CheckoutPage() {
       router.push("/auth");
       return;
     }
+    
+    // Fetch usage
+    api.get("/me/flash-sale/usage").then(res => setUsage(res.data)).catch(() => {});
+    
     // Load checkout items from cart
     const skusStr = localStorage.getItem("checkout_skus");
     if (!skusStr) return;
@@ -101,11 +108,13 @@ export default function CheckoutPage() {
             if (selectedSkus.includes(it.skuId)) {
               items.push({
                 id: it.skuId,
+                productId: it.productId,
                 shopId: it.shopId,
                 shopName: "Shop " + it.shopId.substring(0, 8),
                 name: it.productName,
                 sku: it.skuCode,
                 price: it.price,
+                originalPrice: it.originalPrice,
                 quantity: it.quantity,
                 stock: 999,
                 selected: true,
@@ -132,7 +141,19 @@ export default function CheckoutPage() {
   }, []);
 
   const selectedItems = cartItems;
-  const subtotal  = selectedItems.reduce((s, it) => s + it.price * it.quantity, 0);
+  
+  const getItemPrice = (item: CartItem) => {
+    const flashItem = activeEvent?.items?.find((f: any) => f.productId === item.productId && f.flashStock > f.soldCount);
+    if (!flashItem) return item.price;
+    const max = flashItem.maxQuantityPerUser;
+    const bought = usage[item.id] || 0; // item.id is skuId
+    if (max > 0 && (bought >= max || bought + item.quantity > max)) {
+        return item.price;
+    }
+    return flashItem.flashPrice;
+  };
+  
+  const subtotal  = selectedItems.reduce((s, it) => s + getItemPrice(it) * it.quantity, 0);
   
   const displayMethods = [
     {
@@ -434,8 +455,18 @@ export default function CheckoutPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-xs line-clamp-1" style={{ color: "var(--text-secondary)" }}>{it.name}</p>
                         <p className="text-xs" style={{ color: "var(--text-muted)" }}>x{it.quantity}</p>
+                        {(() => {
+                          const fItem = activeEvent?.items?.find((f: any) => f.productId === it.productId && f.flashStock > f.soldCount);
+                          if (fItem && fItem.maxQuantityPerUser > 0) {
+                            const bought = usage[it.id] || 0;
+                            if (bought + it.quantity > fItem.maxQuantityPerUser) {
+                              return <p className="text-[10px] text-orange-500 mt-1 leading-tight">Vượt hạn mức ưu đãi. Tính giá gốc.</p>;
+                            }
+                          }
+                          return null;
+                        })()}
                       </div>
-                      <span className="text-xs font-semibold flex-shrink-0" style={{ color: "var(--text-primary)" }}>{formatPrice(it.price * it.quantity)}</span>
+                      <span className="text-xs font-semibold flex-shrink-0" style={{ color: "var(--text-primary)" }}>{formatPrice(getItemPrice(it) * it.quantity)}</span>
                     </div>
                   ))}
                 </div>
@@ -506,7 +537,8 @@ export default function CheckoutPage() {
       const payload: any = {
         shippingAddressId: selectedAddr,
         skuIds: selectedItems.map(it => it.id),
-        platformVoucherId: activeVoucher?.id || null
+        platformVoucherId: activeVoucher?.id || null,
+        paymentMethod: selectedPayment
       };
       if (pin) payload.pin = pin;
 
@@ -516,11 +548,13 @@ export default function CheckoutPage() {
 
       setIsPinModalOpen(false);
       setPinInput("");
-      setPlaced(true);
 
       if (selectedPayment === "vnpay") {
+        toast.loading("Đang chuyển hướng đến VNPay...");
         const vnRes = await api.post(`/payment/vnpay/create-url?orderId=${parentOrderId}`);
         window.location.href = vnRes.data;
+      } else {
+        setPlaced(true);
       }
     } catch (e: any) {
       toast.error(e.response?.data?.message || "Lỗi khi đặt hàng");

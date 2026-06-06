@@ -24,7 +24,10 @@ public class ShopResponseDto {
     private Integer warehouseProvinceId;
     private Integer warehouseDistrictId;
     private String warehouseWardCode;
+    private String ghnShopId;
     private String bankName;
     private String bankAccountNumber;
     private String bankAccountName;
+    private String logoUrl;
+    private String bannerUrl;
 }

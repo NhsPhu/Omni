@@ -20,7 +20,7 @@ const { TextArea } = Input;
 const TABS = [
   { id: "all", label: "Tất cả" },
   { id: "pending", label: "Chờ thanh toán" },
-  { id: "confirmed", label: "Chờ giao hàng" },
+  { id: "processing", label: "Chờ giao hàng" },
   { id: "shipping", label: "Đang giao" },
   { id: "delivered", label: "Hoàn thành" },
   { id: "cancelled", label: "Đã hủy" },

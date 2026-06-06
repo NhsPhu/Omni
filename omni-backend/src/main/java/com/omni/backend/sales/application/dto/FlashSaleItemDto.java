@@ -20,6 +20,7 @@ public class FlashSaleItemDto {
     private BigDecimal originalPrice;
     private Integer flashStock;
     private Integer soldCount;
+    private Integer maxQuantityPerUser;
     private String status;
     private Integer sortOrder;
     private ZonedDateTime createdAt;

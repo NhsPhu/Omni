@@ -103,7 +103,7 @@ export default function Users() {
     <div className="space-y-8 animate-fade-in pb-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
         <div>
-          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Quản lý Người dùng</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight m-0">Quản lý Người dùng</h1>
           <p className="text-gray-500 mt-1 font-medium">Danh sách và phân quyền toàn bộ thành viên hệ thống.</p>
         </div>
       </div>

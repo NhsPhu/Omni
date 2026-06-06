@@ -11,6 +11,7 @@ import Reviews from './pages/reviews/Reviews';
 import Analytics from './pages/analytics/Analytics';
 import ShopSettings from './pages/settings/ShopSettings';
 import FlashSaleRegister from './pages/flashsale/FlashSaleRegister';
+import ChatInbox from './pages/chat/ChatInbox';
 import Login from './pages/Login';
 
 import SuperAdminLayout from './components/layout/SuperAdminLayout';
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="reviews" element={<Reviews />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="flash-sale" element={<FlashSaleRegister />} />
+          <Route path="chat" element={<ChatInbox />} />
           <Route path="settings" element={<ShopSettings />} />
         </Route>
         

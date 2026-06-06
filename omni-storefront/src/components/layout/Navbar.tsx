@@ -226,7 +226,10 @@ export default function Navbar() {
                     <div className="absolute top-full right-0 mt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 rounded-xl overflow-hidden z-50"
                       style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
                       {user?.role === "ROLE_VENDOR" && (
-                        <Link href="/seller" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Kênh Người Bán</Link>
+                        <>
+                          <Link href="/seller" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Kênh Người Bán</Link>
+                          <Link href="/shop/me" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Shop của bạn</Link>
+                        </>
                       )}
                       <Link href="/profile" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Tài khoản của tôi</Link>
                       <Link href="/orders" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Đơn hàng của tôi</Link>
@@ -258,9 +261,9 @@ export default function Navbar() {
       {/* Mobile drawer */}
       <AnimatePresence>
         {mobileOpen && (
-          <motion.div initial={{ opacity: 0, x: "100%" }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: "100%" }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-y-0 right-0 w-72 z-50 flex flex-col lg:hidden"
+          <motion.div initial={{ opacity: 0, x: "100%", filter: "blur(10px)" }} animate={{ opacity: 1, x: 0, filter: "blur(0px)" }} exit={{ opacity: 0, x: "100%", filter: "blur(10px)" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="fixed inset-y-0 right-0 w-[85%] sm:w-80 z-50 flex flex-col lg:hidden"
             style={{ background: "var(--bg-elevated)", borderLeft: "1px solid var(--border)" }}>
             <div className="flex items-center justify-between p-5" style={{ borderBottom: "1px solid var(--border)" }}>
               <span className="text-lg font-bold text-gradient-gold font-[family-name:var(--font-heading)]">Menu</span>
@@ -298,7 +301,10 @@ export default function Navbar() {
                     </div>
                   </div>
                   {user?.role === "ROLE_VENDOR" && (
-                    <Link href="/seller" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Kênh Người Bán</Button></Link>
+                    <>
+                      <Link href="/seller" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Kênh Người Bán</Button></Link>
+                      <Link href="/shop/me" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Shop của bạn</Button></Link>
+                    </>
                   )}
                   <Link href="/orders" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Đơn hàng của tôi</Button></Link>
                   <Button variant="glass" className="w-full justify-start text-red-400" onClick={() => { logout(); setMobileOpen(false); }}>Đăng xuất</Button>

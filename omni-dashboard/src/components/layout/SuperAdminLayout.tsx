@@ -93,7 +93,7 @@ export default function SuperAdminLayout() {
           closable={false}
           onClose={() => setDrawerVisible(false)}
           open={drawerVisible}
-          bodyStyle={{ padding: 0, background: '#001529' }}
+          styles={{ body: { padding: 0, background: '#001529' } }}
           width={260}
         >
           {sidebarContent}

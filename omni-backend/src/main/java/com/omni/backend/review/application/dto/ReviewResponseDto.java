@@ -15,4 +15,5 @@ public class ReviewResponseDto {
     private ZonedDateTime date;
     private String sku;
     private Integer helpful;
+    private String replyContent;
 }

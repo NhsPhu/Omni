@@ -19,4 +19,7 @@ public class CheckoutRequest {
 
     // PIN code verification if user has one
     private String pin;
+    
+    // vnpay or cod
+    private String paymentMethod;
 }

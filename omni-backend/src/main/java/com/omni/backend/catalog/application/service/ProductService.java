@@ -57,6 +57,8 @@ public class ProductService {
                 .name(dto.getName())
                 .slug(slug)
                 .description(dto.getDescription())
+                .videoUrl(dto.getVideoUrl())
+                .specs(dto.getSpecs())
                 .status(dto.getStatus() != null ? dto.getStatus() : "ACTIVE")
                 .avgRating(BigDecimal.ZERO)
                 .reviewCount(0)
@@ -84,6 +86,8 @@ public class ProductService {
         product.setName(dto.getName());
         product.setSlug(dto.getSlug());
         product.setDescription(dto.getDescription());
+        product.setVideoUrl(dto.getVideoUrl());
+        product.setSpecs(dto.getSpecs());
         product = productRepository.save(product);
 
         // Delete physical images before updating
@@ -101,11 +105,57 @@ public class ProductService {
             }
         }
 
-        // Replace SKUs and Images (Simple approach for now)
-        productSkuRepository.deleteAll(productSkuRepository.findByProductId(id));
+        // Replace Images
         productImageRepository.deleteByProductId(id);
 
-        saveSkusAndImages(id, dto);
+        // Merge SKUs instead of deleting to avoid foreign key violations with order_items
+        List<ProductSkuJpaEntity> existingSkus = new java.util.ArrayList<>(productSkuRepository.findByProductId(id));
+        
+        if (dto.getSkus() != null && !dto.getSkus().isEmpty()) {
+            for (ProductSkuDto skuDto : dto.getSkus()) {
+                ProductSkuJpaEntity existing = existingSkus.stream()
+                        .filter(s -> (s.getSkuCode() != null && s.getSkuCode().equals(skuDto.getSkuCode())) || 
+                                     (s.getAttributes() != null && s.getAttributes().equals(skuDto.getAttributes())))
+                        .findFirst()
+                        .orElse(null);
+                        
+                if (existing != null) {
+                    existing.setPrice(skuDto.getPrice());
+                    existing.setOriginalPrice(skuDto.getOriginalPrice());
+                    existing.setStockQuantity(skuDto.getStockQuantity());
+                    existing.setSkuCode(skuDto.getSkuCode()); // update sku code if it changed but attributes matched
+                    productSkuRepository.save(existing);
+                    existingSkus.remove(existing); // remove from list to track which ones are left
+                } else {
+                    ProductSkuJpaEntity newSku = ProductSkuJpaEntity.builder()
+                            .productId(id)
+                            .skuCode(skuDto.getSkuCode() != null && !skuDto.getSkuCode().isEmpty() ? skuDto.getSkuCode() : "SKU-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                            .price(skuDto.getPrice())
+                            .originalPrice(skuDto.getOriginalPrice())
+                            .stockQuantity(skuDto.getStockQuantity())
+                            .attributes(skuDto.getAttributes())
+                            .build();
+                    productSkuRepository.save(newSku);
+                }
+            }
+        }
+        
+        // For remaining existing SKUs that are not in the new payload, set stock to 0 instead of deleting
+        for (ProductSkuJpaEntity remaining : existingSkus) {
+            remaining.setStockQuantity(0);
+            productSkuRepository.save(remaining);
+        }
+
+        // Save Images
+        if (dto.getImages() != null && !dto.getImages().isEmpty()) {
+            List<ProductImageJpaEntity> imageEntities = dto.getImages().stream().map(img -> ProductImageJpaEntity.builder()
+                    .productId(id)
+                    .imageUrl(img.getImageUrl())
+                    .isPrimary(img.getIsPrimary())
+                    .sortOrder(img.getSortOrder())
+                    .build()).collect(Collectors.toList());
+            productImageRepository.saveAll(imageEntities);
+        }
         indexProductInElasticsearch(product);
 
         dto.setId(id);
@@ -166,6 +216,7 @@ public class ProductService {
                         .id(sku.getId())
                         .skuCode(sku.getSkuCode())
                         .price(sku.getPrice())
+                        .originalPrice(sku.getOriginalPrice())
                         .stockQuantity(sku.getStockQuantity())
                         .attributes(sku.getAttributes())
                         .build())
@@ -192,11 +243,14 @@ public class ProductService {
                 .name(product.getName())
                 .slug(product.getSlug())
                 .description(product.getDescription())
+                .videoUrl(product.getVideoUrl())
+                .specs(product.getSpecs())
                 .status(product.getStatus())
                 .shopName(shopName)
                 .shopLocation(shopLocation)
                 .avgRating(product.getAvgRating())
                 .reviewCount(product.getReviewCount())
+                .soldCount(product.getSoldCount())
                 .skus(skus)
                 .images(images)
                 .build();
@@ -205,14 +259,35 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Page<ProductDto> getProductsByShopId(UUID shopId, int page, int size) {
         return productRepository.findByShopId(shopId, PageRequest.of(page, size))
-                .map(product -> ProductDto.builder()
+                .map(product -> {
+                    List<ProductSkuDto> skus = productSkuRepository.findByProductId(product.getId()).stream()
+                            .map(sku -> ProductSkuDto.builder().price(sku.getPrice()).originalPrice(sku.getOriginalPrice()).stockQuantity(sku.getStockQuantity()).build())
+                            .collect(Collectors.toList());
+                    List<ProductImageDto> images = productImageRepository.findByProductIdOrderBySortOrderAsc(product.getId()).stream()
+                            .map(img -> ProductImageDto.builder().imageUrl(img.getImageUrl()).build())
+                            .collect(Collectors.toList());
+                    return ProductDto.builder()
                         .id(product.getId())
                         .shopId(product.getShopId())
                         .categoryId(product.getCategoryId())
                         .name(product.getName())
                         .slug(product.getSlug())
+                        .videoUrl(product.getVideoUrl())
+                        .specs(product.getSpecs())
                         .status(product.getStatus())
-                        .build()); // Return lightweight DTO for list view
+                        .avgRating(product.getAvgRating())
+                        .reviewCount(product.getReviewCount())
+                        .soldCount(product.getSoldCount())
+                        .skus(skus)
+                        .images(images)
+                        .build();
+                });
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductDocument> getPublicProductsByShopId(UUID shopId, int page, int size) {
+        return productRepository.findByShopId(shopId, PageRequest.of(page, size))
+                .map(this::mapToDocument);
     }
 
     @Transactional(readOnly = true)
@@ -236,12 +311,18 @@ public class ProductService {
                 .map(CategoryJpaEntity::getName).orElse("Unknown");
         List<ProductSkuJpaEntity> skus = productSkuRepository.findByProductId(product.getId());
         BigDecimal minPrice = skus.stream().map(ProductSkuJpaEntity::getPrice).min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
-        BigDecimal maxPrice = skus.stream().map(ProductSkuJpaEntity::getPrice).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+        BigDecimal maxPrice = skus.stream()
+                .map(s -> s.getOriginalPrice() != null && s.getOriginalPrice().compareTo(s.getPrice()) > 0 ? s.getOriginalPrice() : s.getPrice())
+                .max(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
 
         String shopName = shopRepository.findById(product.getShopId())
                 .map(ShopJpaEntity::getName).orElse("Unknown Shop");
 
         int totalStock = skus.stream().mapToInt(ProductSkuJpaEntity::getStockQuantity).sum();
+
+        String imageUrl = productImageRepository.findByProductIdOrderBySortOrderAsc(product.getId()).stream()
+                .findFirst().map(ProductImageJpaEntity::getImageUrl).orElse(null);
 
         return ProductDocument.builder()
                 .id(product.getId())
@@ -257,6 +338,7 @@ public class ProductService {
                 .stockQuantity(totalStock)
                 .categoryName(categoryName)
                 .shopName(shopName)
+                .imageUrl(imageUrl)
                 .build();
     }
 
@@ -267,6 +349,7 @@ public class ProductService {
                             .productId(productId)
                             .skuCode(skuDto.getSkuCode())
                             .price(skuDto.getPrice())
+                            .originalPrice(skuDto.getOriginalPrice())
                             .stockQuantity(skuDto.getStockQuantity())
                             .attributes(skuDto.getAttributes() != null ? skuDto.getAttributes() : Map.of())
                             .build()
@@ -294,12 +377,18 @@ public class ProductService {
 
         List<ProductSkuJpaEntity> skus = productSkuRepository.findByProductId(product.getId());
         BigDecimal minPrice = skus.stream().map(ProductSkuJpaEntity::getPrice).min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
-        BigDecimal maxPrice = skus.stream().map(ProductSkuJpaEntity::getPrice).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+        BigDecimal maxPrice = skus.stream()
+                .map(s -> s.getOriginalPrice() != null && s.getOriginalPrice().compareTo(s.getPrice()) > 0 ? s.getOriginalPrice() : s.getPrice())
+                .max(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
 
         String shopName = shopRepository.findById(product.getShopId())
                 .map(ShopJpaEntity::getName).orElse("Unknown Shop");
 
         int totalStock = skus.stream().mapToInt(ProductSkuJpaEntity::getStockQuantity).sum();
+
+        String imageUrl = productImageRepository.findByProductIdOrderBySortOrderAsc(product.getId()).stream()
+                .findFirst().map(ProductImageJpaEntity::getImageUrl).orElse(null);
 
         ProductDocument doc = ProductDocument.builder()
                 .id(product.getId())
@@ -315,8 +404,25 @@ public class ProductService {
                 .stockQuantity(totalStock)
                 .categoryName(categoryName)
                 .shopName(shopName)
+                .imageUrl(imageUrl)
                 .build();
 
         productSearchRepository.save(doc);
+    }
+
+    @Transactional
+    public void trackView(UUID productId) {
+        productRepository.findById(productId).ifPresent(p -> {
+            p.setViewsCount(p.getViewsCount() + 1);
+            productRepository.save(p);
+        });
+    }
+
+    @Transactional
+    public void trackCart(UUID productId) {
+        productRepository.findById(productId).ifPresent(p -> {
+            p.setCartsCount(p.getCartsCount() + 1);
+            productRepository.save(p);
+        });
     }
 }

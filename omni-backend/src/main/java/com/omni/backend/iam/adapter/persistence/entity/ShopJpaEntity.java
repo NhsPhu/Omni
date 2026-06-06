@@ -49,6 +49,9 @@ public class ShopJpaEntity {
     @Column(name = "warehouse_ward_code", length = 20)
     private String warehouseWardCode;
     
+    @Column(name = "ghn_shop_id", length = 50)
+    private String ghnShopId;
+    
     @Column(name = "approved_at")
     private ZonedDateTime approvedAt;
     

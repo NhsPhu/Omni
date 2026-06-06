@@ -21,8 +21,11 @@ public class ProductDto {
     private String name;
     private String slug;
     private String description;
+    private String videoUrl;
+    private Map<String, String> specs;
     private BigDecimal avgRating;
     private Integer reviewCount;
+    private Integer soldCount;
     private String status;
     private String shopName;
     private String shopLocation;

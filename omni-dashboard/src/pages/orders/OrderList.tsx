@@ -23,6 +23,7 @@ export default function OrderList() {
         total: o.totalAmount,
         items: o.orderItems?.length || 1,
         status: o.status.toLowerCase(),
+        returnReason: o.returnReason,
         shippingMethod: 'Tiêu chuẩn',
         originalId: o.id
       })));
@@ -56,6 +57,7 @@ export default function OrderList() {
       case 'shipping': return { color: 'cyan', text: 'Đang giao hàng', icon: <Truck size={14} /> };
       case 'delivered': return { color: 'success', text: 'Hoàn thành', icon: <CheckCircle size={14} /> };
       case 'cancelled': return { color: 'error', text: 'Đã hủy', icon: <XCircle size={14} /> };
+      case 'returned': return { color: 'magenta', text: 'Trả hàng/Hoàn tiền', icon: <XCircle size={14} /> };
       default: return { color: 'default', text: status, icon: null };
     }
   };
@@ -105,9 +107,16 @@ export default function OrderList() {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => {
+      render: (status: string, record: any) => {
         const config = getStatusConfig(status);
-        return <Tag color={config.color} icon={config.icon} className="flex items-center w-fit gap-1">{config.text}</Tag>;
+        return (
+          <div className="flex flex-col gap-1">
+            <Tag color={config.color} icon={config.icon} className="flex items-center w-fit gap-1">{config.text}</Tag>
+            {status === 'returned' && record.returnReason && (
+              <span className="text-xs text-red-500">Lý do: {record.returnReason}</span>
+            )}
+          </div>
+        );
       }
     },
     {
@@ -132,13 +141,14 @@ export default function OrderList() {
     { key: 'shipping', label: `Đang giao hàng (${orders.filter((o: any) => o.status === 'shipping').length})` },
     { key: 'delivered', label: 'Hoàn thành' },
     { key: 'cancelled', label: 'Đã hủy' },
+    { key: 'returned', label: 'Trả hàng/Hoàn tiền' },
   ];
 
   return (
     <div className="space-y-8 animate-fade-in pb-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100 mb-2">
         <div>
-          <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight m-0">Xử lý đơn hàng</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight m-0">Xử lý đơn hàng</h1>
           <p className="text-gray-500 mt-1 font-medium">Theo dõi và cập nhật trạng thái đơn hàng của bạn.</p>
         </div>
         <div className="mt-4 md:mt-0 flex gap-3">

@@ -15,6 +15,8 @@ public interface ReviewRepository extends JpaRepository<ProductReviewJpaEntity, 
     
     Page<ProductReviewJpaEntity> findByProductIdAndStatus(UUID productId, String status, Pageable pageable);
     
+    Page<ProductReviewJpaEntity> findByShopId(UUID shopId, Pageable pageable);
+    
     boolean existsByUserIdAndProductIdAndOrderItemId(UUID userId, UUID productId, UUID orderItemId);
 
     @Query("SELECT AVG(r.rating) FROM ProductReviewJpaEntity r WHERE r.productId = :productId AND r.status = 'APPROVED'")

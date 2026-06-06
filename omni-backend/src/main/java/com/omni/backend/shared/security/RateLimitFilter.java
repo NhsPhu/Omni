@@ -28,10 +28,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private Bucket newBucket(String ip) {
-        // 50 requests per minute per IP
+        // 1000 requests per minute per IP to support modern SPAs
         Bandwidth limit = Bandwidth.builder()
-                .capacity(50)
-                .refillGreedy(50, Duration.ofMinutes(1))
+                .capacity(1000)
+                .refillGreedy(1000, Duration.ofMinutes(1))
                 .build();
         return Bucket.builder()
                 .addLimit(limit)

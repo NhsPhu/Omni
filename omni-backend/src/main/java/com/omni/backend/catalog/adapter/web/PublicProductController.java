@@ -47,11 +47,23 @@ public class PublicProductController {
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
+    @org.springframework.web.bind.annotation.PostMapping("/{id}/view")
+    public ResponseEntity<Void> trackView(@PathVariable UUID id) {
+        productService.trackView(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/{id}/track-cart")
+    public ResponseEntity<Void> trackCart(@PathVariable UUID id) {
+        productService.trackCart(id);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/shops/{shopId}")
-    public ResponseEntity<Page<com.omni.backend.catalog.application.dto.ProductDto>> getProductsByShopId(
+    public ResponseEntity<Page<ProductDocument>> getProductsByShopId(
             @PathVariable UUID shopId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(productService.getProductsByShopId(shopId, page, size));
+        return ResponseEntity.ok(productService.getPublicProductsByShopId(shopId, page, size));
     }
 }

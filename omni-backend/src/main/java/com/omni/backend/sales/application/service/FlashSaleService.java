@@ -34,6 +34,7 @@ public class FlashSaleService {
     private final ProductSkuRepository productSkuRepository;
     private final ProductImageRepository productImageRepository;
     private final ShopRepository shopRepository;
+    private final com.omni.backend.sales.adapter.persistence.repository.ParentOrderRepository parentOrderRepository;
 
     // ═══════════════════════════════════════════════════════════════════
     // ADMIN: Event CRUD
@@ -140,6 +141,7 @@ public class FlashSaleService {
                 .flashPrice(dto.getFlashPrice())
                 .originalPrice(sku.getPrice())
                 .flashStock(dto.getFlashStock())
+                .maxQuantityPerUser(dto.getMaxQuantityPerUser())
                 .status("PENDING")
                 .build();
 
@@ -213,26 +215,56 @@ public class FlashSaleService {
     }
 
     @Transactional
-    public void recordFlashSalePurchase(UUID skuId, int quantity) {
+    public boolean recordFlashSalePurchase(UUID userId, UUID skuId, int quantity) {
         FlashSaleEventDto activeEvent = getActiveEvent();
-        if (activeEvent == null) return;
+        if (activeEvent == null) return false;
         
-        Optional<FlashSaleItemJpaEntity> itemOpt = flashSaleItemRepository.findByEventIdAndStatus(activeEvent.getId(), "APPROVED").stream()
+        Optional<FlashSaleItemJpaEntity> itemOpt = itemRepository.findByEventIdAndStatus(activeEvent.getId(), "APPROVED").stream()
                 .filter(item -> item.getSkuId().equals(skuId))
                 .findFirst();
                 
         if (itemOpt.isPresent()) {
             FlashSaleItemJpaEntity item = itemOpt.get();
+            
+            // Validate Max Quantity Per User
+            if (item.getMaxQuantityPerUser() != null && item.getMaxQuantityPerUser() > 0) {
+                Integer purchased = parentOrderRepository.getPurchasedQuantityInTimeWindow(
+                        userId, skuId, activeEvent.getStartTime(), activeEvent.getEndTime());
+                int alreadyBought = purchased == null ? 0 : purchased;
+                if (alreadyBought + quantity > item.getMaxQuantityPerUser()) {
+                    return false;
+                }
+            }
+
             if (item.getFlashStock() >= item.getSoldCount() + quantity) {
                 item.setSoldCount(item.getSoldCount() + quantity);
-                flashSaleItemRepository.save(item);
+                itemRepository.save(item);
                 
                 // Clear cache so next getActiveEvent() fetches fresh soldCount
-                clearActiveEventCache();
+                // clearActiveEventCache();
+                return true;
             } else {
-                throw new RuntimeException("Flash Sale stock exceeded for SKU");
+                return false;
             }
         }
+        return false;
+    }
+
+    public Map<UUID, Integer> getFlashSaleUsage(UUID userId) {
+        FlashSaleEventDto activeEvent = getActiveEvent();
+        if (activeEvent == null || activeEvent.getItems() == null) return Collections.emptyMap();
+
+        Map<UUID, Integer> usage = new HashMap<>();
+        for (FlashSaleItemDto item : activeEvent.getItems()) {
+            if (item.getMaxQuantityPerUser() != null && item.getMaxQuantityPerUser() > 0) {
+                Integer purchased = parentOrderRepository.getPurchasedQuantityInTimeWindow(
+                        userId, item.getSkuId(), activeEvent.getStartTime(), activeEvent.getEndTime());
+                if (purchased != null && purchased > 0) {
+                    usage.put(item.getSkuId(), purchased);
+                }
+            }
+        }
+        return usage;
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -303,6 +335,7 @@ public class FlashSaleService {
                 .originalPrice(item.getOriginalPrice())
                 .flashStock(item.getFlashStock())
                 .soldCount(item.getSoldCount())
+                .maxQuantityPerUser(item.getMaxQuantityPerUser())
                 .status(item.getStatus())
                 .sortOrder(item.getSortOrder())
                 .createdAt(item.getCreatedAt())
