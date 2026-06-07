@@ -11,13 +11,13 @@ export default function ThemeToggle() {
     const saved = localStorage.getItem("omni-theme");
     const dark = saved ? saved === "dark" : true; // default dark
     setIsDark(dark);
-    document.documentElement.classList.toggle("light", !dark);
+    document.documentElement.classList.toggle("dark", dark);
   }, []);
 
   const toggle = () => {
     const next = !isDark;
     setIsDark(next);
-    document.documentElement.classList.toggle("light", !next);
+    document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("omni-theme", next ? "dark" : "light");
   };
 

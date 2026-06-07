@@ -15,7 +15,10 @@ import java.util.Set;
 import java.util.UUID;
 
 @Entity
-@Table(name = "child_orders")
+@Table(name = "child_orders", indexes = {
+    @Index(name = "idx_child_order_parent", columnList = "parent_order_id"),
+    @Index(name = "idx_child_order_shop", columnList = "shop_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor

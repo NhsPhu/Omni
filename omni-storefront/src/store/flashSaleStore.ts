@@ -9,6 +9,7 @@ export interface FlashSaleItem {
   originalPrice: number;
   flashStock: number;
   soldCount: number;
+  maxQuantityPerUser: number;
 }
 
 export interface FlashSaleEvent {

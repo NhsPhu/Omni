@@ -3,6 +3,8 @@ package com.omni.backend.iam.adapter.web;
 import com.omni.backend.iam.application.dto.AuthResponse;
 import com.omni.backend.iam.application.dto.LoginRequest;
 import com.omni.backend.iam.application.dto.RegisterRequest;
+import com.omni.backend.iam.application.dto.ForgotPasswordRequest;
+import com.omni.backend.iam.application.dto.ResetPasswordRequest;
 import com.omni.backend.iam.application.dto.SocialLoginRequest;
 import com.omni.backend.iam.application.port.in.AuthUseCase;
 import com.omni.backend.iam.application.service.SocialAuthService;
@@ -60,5 +62,17 @@ public class AuthController {
             return ResponseEntity.badRequest().build();
         }
         return ResponseEntity.ok(authUseCase.refreshToken(token));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authUseCase.forgotPassword(request);
+        return ResponseEntity.ok(java.util.Map.of("message", "Link đặt lại mật khẩu đã được gửi qua email của bạn"));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authUseCase.resetPassword(request);
+        return ResponseEntity.ok(java.util.Map.of("message", "Mật khẩu đã được đặt lại thành công"));
     }
 }

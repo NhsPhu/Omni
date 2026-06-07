@@ -6,6 +6,7 @@ import Script from "next/script";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import SmoothScroll from "@/components/layout/SmoothScroll";
 import ChatWidget from "@/components/chat/ChatWidget";
+import NextTopLoader from "nextjs-toploader";
 
 const cormorant = Cormorant({
   variable: "--font-heading",
@@ -50,6 +51,7 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body className="antialiased">
+        <NextTopLoader color="var(--gold)" showSpinner={false} />
         <SmoothScroll>
           <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
             {children}

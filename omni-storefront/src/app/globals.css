@@ -52,8 +52,39 @@
   --blur-glass:     blur(24px) saturate(150%);
 }
 
-.light {
-  /* Inherit from root */
+.dark {
+  /* Core */
+  --bg-base:        #050509;
+  --bg-surface:     #0A0A0F;
+  --bg-elevated:    #12121A;
+  --bg-card:        rgba(15, 15, 20, 0.6);
+  --bg-glass:       rgba(20, 20, 30, 0.4);
+  --bg-glass-hover: rgba(30, 30, 45, 0.6);
+
+  /* Brand */
+  --gold:           #F59E0B;
+  --gold-light:     #FCD34D;
+  --gold-dim:       rgba(245, 158, 11, 0.15);
+  --purple:         #A78BFA;
+  --purple-light:   #C4B5FD;
+  --purple-dim:     rgba(167, 139, 250, 0.1);
+
+  /* Text */
+  --text-primary:   #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted:     #94A3B8;
+  --text-gold:      #F59E0B;
+
+  /* Borders */
+  --border:         rgba(255, 255, 255, 0.08);
+  --border-gold:    rgba(245, 158, 11, 0.3);
+  --border-purple:  rgba(167, 139, 250, 0.2);
+
+  /* Shadows - Soft Liquid Glass */
+  --shadow-glow-gold:   0 0 40px rgba(245, 158, 11, 0.15);
+  --shadow-glow-purple: 0 0 40px rgba(167, 139, 250, 0.1);
+  --shadow-card:        0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-card-hover:  0 12px 48px rgba(0, 0, 0, 0.6), 0 0 24px rgba(245, 158, 11, 0.1);
 }
 
 @theme inline {

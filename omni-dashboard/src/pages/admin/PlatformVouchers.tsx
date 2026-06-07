@@ -50,7 +50,8 @@ export default function PlatformVouchers() {
         maxDiscountAmount: values.discountType === 'percent' ? values.budget / 100 : values.value,
         usageLimit: Math.floor(values.budget / (values.discountType === 'percent' ? (values.budget/100) : values.value)),
         validFrom: values.dates[0].toISOString(),
-        validTo: values.dates[1].toISOString()
+        validTo: values.dates[1].toISOString(),
+        category: values.category || 'OMNI'
       };
       await api.post('/admin/vouchers', payload);
       message.success('Tạo thành công!');
@@ -77,7 +78,12 @@ export default function PlatformVouchers() {
       title: 'Mã Voucher Sàn', 
       dataIndex: 'code', 
       key: 'code',
-      render: (text: string) => <div className="font-mono font-bold text-red-600 bg-red-50 px-2 py-1 rounded w-fit border border-red-200">{text}</div>
+      render: (text: string, record: any) => (
+        <div className="flex flex-col gap-1 items-start">
+          <div className="font-mono font-bold text-red-600 bg-red-50 px-2 py-1 rounded w-fit border border-red-200">{text}</div>
+          <Tag color={record.category === 'SHIPPING' ? 'green' : 'gold'}>{record.category === 'SHIPPING' ? 'FREESHIP' : 'OMNI'}</Tag>
+        </div>
+      )
     },
     { title: 'Giảm giá', dataIndex: 'discount', key: 'discount', render: (t: string) => <span className="font-semibold">{t}</span> },
     { 
@@ -163,13 +169,20 @@ export default function PlatformVouchers() {
         open={open}
         extra={<Button type="primary" className="bg-red-600 hover:bg-red-700" onClick={() => form.submit()}>Lưu & Phát hành</Button>}
       >
-        <Form form={form} layout="vertical" onFinish={handleCreate}>
+        <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ category: 'OMNI', discountType: 'percent' }}>
+          <Form.Item name="category" label="Loại Voucher" rules={[{ required: true }]}>
+            <Select size="large">
+              <Option value="OMNI">Giảm giá Đơn hàng (OMNI)</Option>
+              <Option value="SHIPPING">Miễn phí Vận chuyển (FREESHIP)</Option>
+            </Select>
+          </Form.Item>
+
           <Form.Item name="code" label="Mã Voucher" rules={[{ required: true }]}>
             <Input size="large" placeholder="VD: MEGA_SALE" style={{ textTransform: 'uppercase' }} />
           </Form.Item>
           
           <div className="flex gap-4">
-            <Form.Item name="discountType" label="Loại giảm" className="flex-1" initialValue="percent">
+            <Form.Item name="discountType" label="Loại giảm" className="flex-1">
               <Select size="large">
                 <Option value="percent">Giảm theo %</Option>
                 <Option value="fixed">Giảm tiền mặt</Option>

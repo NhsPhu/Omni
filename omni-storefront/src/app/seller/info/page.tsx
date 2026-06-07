@@ -12,7 +12,10 @@ const benefits = [
   { icon: ShieldCheck, title: "Bảo vệ nhà bán hàng", desc: "Hệ thống quản lý tranh chấp công bằng, minh bạch. Chống gian lận và bảo vệ nhà bán hàng khỏi các đơn hàng ảo." }
 ];
 
+import { useRouter } from "next/navigation";
+
 export default function SellerInfoPage() {
+  const router = useRouter();
   return (
     <>
       <Navbar />

@@ -20,8 +20,13 @@ import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.UUID;
 
+import jakarta.persistence.Index;
+
 @Entity
-@Table(name = "products")
+@Table(name = "products", indexes = {
+    @Index(name = "idx_product_shop", columnList = "shop_id"),
+    @Index(name = "idx_product_category", columnList = "category_id")
+})
 @SQLRestriction("deleted_at IS NULL") // Soft delete
 @Data
 @Builder

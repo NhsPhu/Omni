@@ -160,7 +160,7 @@ export default function SellerDashboardPage() {
                     }}
                   />
                   <Tooltip 
-                    formatter={(value: number) => [formatCurrency(value), 'Doanh thu']}
+                    formatter={(value: any) => [formatCurrency(Number(value) || 0), 'Doanh thu']}
                     labelFormatter={(label) => `Ngày ${label}`}
                     contentStyle={{ borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)', color: 'var(--text-primary)' }}
                     itemStyle={{ color: 'var(--gold)' }}

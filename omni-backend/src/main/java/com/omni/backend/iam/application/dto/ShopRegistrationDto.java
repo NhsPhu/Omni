@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 public class ShopRegistrationDto {
 
     @NotBlank(message = "Shop name is required")
+    @jakarta.validation.constraints.Pattern(regexp = "^[a-zA-ZÀ-ỹ0-9\\s]+$", message = "Shop name must not contain special characters")
     private String name;
 
     private String description;

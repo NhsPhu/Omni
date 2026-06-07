@@ -24,6 +24,9 @@ public class PlatformVoucherJpaEntity {
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
+    @Column(name = "category", length = 20)
+    private String category = "OMNI"; // OMNI, SHIPPING
+
     @Column(name = "discount_type", nullable = false, length = 20)
     private String discountType; // PERCENTAGE, FIXED_AMOUNT
 

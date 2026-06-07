@@ -10,7 +10,11 @@ import java.time.ZonedDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "order_items")
+@Table(name = "order_items", indexes = {
+    @Index(name = "idx_order_item_child_order", columnList = "child_order_id"),
+    @Index(name = "idx_order_item_product", columnList = "product_id"),
+    @Index(name = "idx_order_item_sku", columnList = "sku_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor

@@ -14,6 +14,9 @@ public class CheckoutRequest {
     // Optional platform voucher applied
     private UUID platformVoucherId;
 
+    // Optional shipping voucher applied
+    private UUID shippingVoucherId;
+
     // Optional shop vouchers applied
     private List<UUID> shopVoucherIds;
 
@@ -23,6 +26,4 @@ public class CheckoutRequest {
     // vnpay or cod
     private String paymentMethod;
 
-    // Use loyalty coins
-    private Boolean useCoins;
 }

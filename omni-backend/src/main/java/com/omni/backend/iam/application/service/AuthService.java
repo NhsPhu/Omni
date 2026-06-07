@@ -11,6 +11,10 @@ import com.omni.backend.iam.domain.UserStatus;
 import com.omni.backend.shared.security.JwtTokenProvider;
 import com.omni.backend.iam.adapter.persistence.entity.EmailVerificationTokenJpaEntity;
 import com.omni.backend.iam.adapter.persistence.repository.EmailVerificationTokenRepository;
+import com.omni.backend.iam.adapter.persistence.repository.PasswordResetTokenRepository;
+import com.omni.backend.iam.adapter.persistence.entity.PasswordResetTokenJpaEntity;
+import com.omni.backend.iam.application.dto.ForgotPasswordRequest;
+import com.omni.backend.iam.application.dto.ResetPasswordRequest;
 import com.omni.backend.notification.application.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,6 +35,7 @@ public class AuthService implements AuthUseCase {
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailVerificationTokenRepository verificationTokenRepo;
     private final com.omni.backend.iam.adapter.persistence.repository.RefreshTokenRepository refreshTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepo;
     private final EmailService emailService;
 
     @org.springframework.beans.factory.annotation.Value("${app.frontend.url:http://localhost:3000}")
@@ -175,5 +180,63 @@ public class AuthService implements AuthUseCase {
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        UserJpaEntity user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại"));
+
+        if (user.getStatus() == UserStatus.BANNED) {
+            throw new RuntimeException("Tài khoản đã bị khóa");
+        }
+
+        // Tạo token mới
+        String token = java.util.UUID.randomUUID().toString();
+        PasswordResetTokenJpaEntity resetToken = PasswordResetTokenJpaEntity.builder()
+                .userId(user.getId())
+                .token(token)
+                .expiresAt(java.time.Instant.now().plus(1, java.time.temporal.ChronoUnit.HOURS))
+                .build();
+        passwordResetTokenRepo.save(resetToken);
+
+        // Gửi email
+        String resetUrl = frontendBaseUrl + "/reset-password?token=" + token;
+        emailService.sendEmailWithTemplate(
+                user.getEmail(),
+                "Yêu cầu đặt lại mật khẩu",
+                "email/password-reset",
+                java.util.Map.of(
+                        "userName", user.getFullName(),
+                        "resetUrl", resetUrl
+                )
+        );
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        PasswordResetTokenJpaEntity resetToken = passwordResetTokenRepo.findByToken(request.getToken())
+                .orElseThrow(() -> new RuntimeException("Token không hợp lệ hoặc không tồn tại"));
+
+        if (resetToken.getExpiresAt().isBefore(java.time.Instant.now())) {
+            throw new RuntimeException("Token đã hết hạn");
+        }
+
+        if (resetToken.getUsedAt() != null) {
+            throw new RuntimeException("Token đã được sử dụng");
+        }
+
+        UserJpaEntity user = userRepository.findById(resetToken.getUserId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        // Đổi mật khẩu
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        // Đánh dấu token đã dùng
+        resetToken.setUsedAt(java.time.Instant.now());
+        passwordResetTokenRepo.save(resetToken);
     }
 }

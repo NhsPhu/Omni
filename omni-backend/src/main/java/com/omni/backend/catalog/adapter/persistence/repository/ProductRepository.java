@@ -27,4 +27,10 @@ public interface ProductRepository extends JpaRepository<ProductJpaEntity, UUID>
     List<ProductJpaEntity> findCheapestProducts(Pageable pageable);
 
     List<ProductJpaEntity> findTop4ByCategoryIdAndIdNotOrderByReviewCountDesc(UUID categoryId, UUID id);
+
+    List<ProductJpaEntity> findAllByIdIn(List<UUID> ids);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE ProductJpaEntity p SET p.soldCount = COALESCE(p.soldCount, 0) + :qty WHERE p.id = :id")
+    void incrementSoldCount(@org.springframework.data.repository.query.Param("id") UUID id, @org.springframework.data.repository.query.Param("qty") int qty);
 }

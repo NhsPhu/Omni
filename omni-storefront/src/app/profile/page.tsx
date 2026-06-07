@@ -605,7 +605,7 @@ export default function ProfilePage() {
                     
                     <h3 className="text-xl font-bold mt-10 mb-4 font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Săn Voucher Omni</h3>
                     <div className="grid md:grid-cols-2 gap-4">
-                      {publicVouchers.length > 0 ? publicVouchers.map((v) => {
+                      {publicVouchers.filter((v: any) => v.category !== "SHIPPING").length > 0 ? publicVouchers.filter((v: any) => v.category !== "SHIPPING").map((v) => {
                         const myVoucher = vouchers.find(my => my.voucherId === v.id);
                         const isSaved = !!myVoucher;
                         if (myVoucher?.isUsed) return null; // Hide used vouchers
@@ -640,6 +640,47 @@ export default function ProfilePage() {
                       }) : (
                         <div className="col-span-2 text-center py-6">
                           <p className="text-sm" style={{ color: "var(--text-muted)" }}>Hiện tại không có voucher nào khả dụng.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <h3 className="text-xl font-bold mt-10 mb-4 font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Săn Voucher Vận Chuyển</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {publicVouchers.filter((v: any) => v.category === "SHIPPING").length > 0 ? publicVouchers.filter((v: any) => v.category === "SHIPPING").map((v) => {
+                        const myVoucher = vouchers.find(my => my.voucherId === v.id);
+                        const isSaved = !!myVoucher;
+                        if (myVoucher?.isUsed) return null;
+                        return (
+                          <div key={v.id} className="flex rounded-xl overflow-hidden relative" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", opacity: isSaved ? 0.7 : 1 }}>
+                            <div className="w-24 flex flex-col items-center justify-center p-2 bg-green-500/20">
+                              <Ticket className="w-8 h-8 text-green-500 mb-1" />
+                              <span className="text-xs text-green-500 font-bold text-center">FREESHIP</span>
+                            </div>
+                            <div className="flex-1 p-3 flex flex-col justify-center pr-20">
+                              <h4 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>{v.code} - Giảm {v.discountType?.toUpperCase() === 'PERCENTAGE' ? `${v.discountValue}%` : `${v.discountValue}đ`} phí vận chuyển</h4>
+                              <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>Đơn tối thiểu {v.minOrderValue}đ</p>
+                              <p className="text-[10px] mt-2" style={{ color: "var(--text-muted)" }}>HSD: {new Date(v.validTo).toLocaleDateString("vi-VN")}</p>
+                            </div>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              {isSaved ? (
+                                <Button variant="glass" size="sm" disabled className="text-[10px] h-7 px-2">Đã lưu</Button>
+                              ) : (
+                                <Button variant="gold" size="sm" className="text-[10px] h-7 px-2" onClick={async () => {
+                                  try {
+                                    await api.post("/me/vouchers/save", { voucherId: v.id, voucherType: "PLATFORM" });
+                                    toast.success("Lưu voucher thành công!");
+                                    api.get("/me/vouchers").then(res => setVouchers(res.data));
+                                  } catch (e: any) {
+                                    toast.error(e.response?.data?.message || "Lỗi lưu voucher");
+                                  }
+                                }}>Lưu ngay</Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }) : (
+                        <div className="col-span-2 text-center py-6">
+                          <p className="text-sm" style={{ color: "var(--text-muted)" }}>Hiện tại không có voucher vận chuyển nào khả dụng.</p>
                         </div>
                       )}
                     </div>

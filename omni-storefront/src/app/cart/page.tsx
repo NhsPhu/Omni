@@ -15,17 +15,18 @@ import { useAuthStore } from "@/store/authStore";
 import { useFlashSaleStore } from "@/store/flashSaleStore";
 
 export interface CartItem {
-  id: string; // mapping from skuId
-  productId?: string;
+  id: string; // sku id
+  productId: string;
   shopId: string;
   shopName: string;
   name: string;
   sku: string;
   price: number;
-  originalPrice?: number;
+  originalPrice: number;
   quantity: number;
   stock: number;
-  selected: boolean;
+  selected?: boolean;
+  imageUrl?: string;
 }
 
 const GRADS = ["from-violet-600/80 to-indigo-600/80","from-amber-500/80 to-orange-600/80","from-blue-600/80 to-cyan-500/80","from-emerald-600/80 to-teal-600/80"];
@@ -218,7 +219,7 @@ export default function CartPage() {
                       <AnimatePresence key={item.id}>
                         <motion.div initial={{ opacity: 1 }} exit={{ opacity: 0, x: -20 }}
                           className="flex gap-4 px-5 py-4" style={{ borderBottom: idx < shop.items.length - 1 ? "1px solid var(--border)" : "none", opacity: item.stock === 0 ? 0.5 : 1 }}>
-                          <Checkbox checked={item.selected} onChange={() => toggle(item.id)} disabled={item.stock === 0} />
+                          <Checkbox checked={item.selected || false} onChange={() => toggle(item.id)} disabled={item.stock === 0} />
 
                           {/* Image */}
                           <div className={`w-20 h-20 rounded-xl flex-shrink-0 bg-gradient-to-br ${GRADS[idx % 4]} flex items-center justify-center relative overflow-hidden`}>

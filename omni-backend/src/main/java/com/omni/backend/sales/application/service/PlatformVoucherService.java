@@ -25,8 +25,9 @@ public class PlatformVoucherService {
 
     public PlatformVoucherDto createVoucher(PlatformVoucherDto dto) {
         PlatformVoucherJpaEntity entity = PlatformVoucherJpaEntity.builder()
-                .code(dto.getCode())
-                .discountType(dto.getDiscountType())
+                .code(dto.getCode().toUpperCase())
+                .category(dto.getCategory() != null ? dto.getCategory().toUpperCase() : "OMNI")
+                .discountType(dto.getDiscountType().toUpperCase())
                 .discountValue(dto.getDiscountValue())
                 .minOrderValue(dto.getMinOrderValue())
                 .maxDiscountAmount(dto.getMaxDiscountAmount())
@@ -43,6 +44,7 @@ public class PlatformVoucherService {
         return PlatformVoucherDto.builder()
                 .id(entity.getId())
                 .code(entity.getCode())
+                .category(entity.getCategory())
                 .discountType(entity.getDiscountType())
                 .discountValue(entity.getDiscountValue())
                 .minOrderValue(entity.getMinOrderValue())

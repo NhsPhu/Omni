@@ -12,5 +12,7 @@ public class CheckoutResponse {
     private UUID parentOrderId;
     private BigDecimal totalAmount;
     private BigDecimal finalAmount;
+    private BigDecimal platformDiscount;
+    private BigDecimal shippingDiscount;
     private String status;
 }

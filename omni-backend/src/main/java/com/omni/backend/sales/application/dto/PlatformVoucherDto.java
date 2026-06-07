@@ -16,6 +16,7 @@ import java.util.UUID;
 public class PlatformVoucherDto {
     private UUID id;
     private String code;
+    private String category;
     private String discountType;
     private BigDecimal discountValue;
     private BigDecimal minOrderValue;

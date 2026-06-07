@@ -11,6 +11,8 @@ interface User {
   exp: number;
   avatarUrl?: string;
   hasPassword?: boolean;
+  hasPin?: boolean;
+  shopId?: string;
 }
 
 interface AuthState {
@@ -39,7 +41,8 @@ export const useAuthStore = create<AuthState>()(
             role: decoded.role || "ROLE_CUSTOMER",
             exp: decoded.exp,
             avatarUrl: existingAvatar,
-            hasPassword: decoded.hasPassword !== undefined ? decoded.hasPassword : true
+            hasPassword: decoded.hasPassword !== undefined ? decoded.hasPassword : true,
+            hasPin: decoded.hasPin !== undefined ? decoded.hasPin : false
           };
           set({ token, user });
           localStorage.setItem("omni_token", token);

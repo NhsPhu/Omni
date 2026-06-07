@@ -12,7 +12,9 @@ import java.util.Set;
 import java.util.UUID;
 
 @Entity
-@Table(name = "parent_orders")
+@Table(name = "parent_orders", indexes = {
+    @Index(name = "idx_parent_order_user", columnList = "user_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -39,6 +41,10 @@ public class ParentOrderJpaEntity {
     @Column(name = "platform_discount", precision = 12, scale = 2)
     @Builder.Default
     private BigDecimal platformDiscount = BigDecimal.ZERO;
+
+    @Column(name = "shipping_discount", precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal shippingDiscount = BigDecimal.ZERO;
 
     @Column(name = "final_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal finalAmount;

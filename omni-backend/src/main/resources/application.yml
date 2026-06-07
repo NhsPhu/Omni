@@ -53,7 +53,7 @@ spring:
     mode: HTML
 
 jwt:
-  secret: YmFzZTY0LWVuY29kZWQtc2VjcmV0LWtleS1tdXN0LWJlLWF0LWxlYXN0LTMyeWJ0ZXMtbG9uZw== # Example base64 key
+  secret: ${JWT_SECRET_KEY:YmFzZTY0LWVuY29kZWQtc2VjcmV0LWtleS1tdXN0LWJlLWF0LWxlYXN0LTMyeWJ0ZXMtbG9uZw==} # Uses ENV variable or fallback
   expiration: 86400000 # 1 day in ms
   refresh-expiration: 604800000 # 7 days in ms
 
@@ -71,4 +71,4 @@ ghn:
 
 vnpay:
   tmn-code: UD2YB7G7
-  hash-secret: DJ8X3REITF7WMJQ5HGIJKNKKTSO8YQDK
+  hash-secret: ${VNPAY_HASH_SECRET:DJ8X3REITF7WMJQ5HGIJKNKKTSO8YQDK}
