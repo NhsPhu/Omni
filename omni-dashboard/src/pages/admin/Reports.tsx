@@ -45,16 +45,16 @@ export default function Reports() {
     <div className="space-y-6">
       <Row gutter={[24, 24]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-blue-50 to-indigo-50">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-300">
+          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-amber-50 to-orange-50">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-300" style={{ color: "var(--gold, #CA8A04)" }}>
               <DollarSign size={80} />
             </div>
             <div className="relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 mb-4">
+              <div className="w-14 h-14 rounded-2xl text-white flex items-center justify-center shadow-lg mb-4" style={{ background: "var(--gold, #CA8A04)", boxShadow: "0 10px 15px -3px rgba(202, 138, 4, 0.3)" }}>
                 <DollarSign size={28} />
               </div>
               <p className="text-gray-600 font-medium mb-1">Tổng GMV toàn sàn</p>
-              <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">{formatCurrency(report?.totalGmv || 0)}</h3>
+              <h3 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--gold, #CA8A04)" }}>{formatCurrency(report?.totalGmv || 0)}</h3>
             </div>
           </Card>
         </Col>
@@ -90,12 +90,12 @@ export default function Reports() {
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
-          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-purple-50 to-fuchsia-50">
+          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-stone-50 to-gray-100">
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-300">
               <ShoppingBag size={80} />
             </div>
             <div className="relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-lg shadow-purple-500/30 mb-4">
+              <div className="w-14 h-14 rounded-2xl text-white flex items-center justify-center shadow-lg mb-4" style={{ background: "#1C1917" }}>
                 <ShoppingBag size={28} />
               </div>
               <p className="text-gray-600 font-medium mb-1">Tổng đơn hàng</p>
@@ -113,12 +113,12 @@ export default function Reports() {
                 <AreaChart data={report?.chartData || []} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
                   <defs>
                     <linearGradient id="colorGmv" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#CA8A04" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#CA8A04" stopOpacity={0}/>
                     </linearGradient>
                     <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#1C1917" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#1C1917" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
@@ -144,8 +144,9 @@ export default function Reports() {
                     formatter={(value: any, name: any) => [formatCurrency(value), name]}
                     contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)', padding: '12px 16px', fontWeight: 500 }}
                   />
-                  <Area yAxisId="left" type="monotone" dataKey="gmv" name="Tổng GMV" stroke="#4F46E5" strokeWidth={4} fillOpacity={1} fill="url(#colorGmv)" activeDot={{ r: 8, strokeWidth: 0, fill: '#4F46E5' }} />
-                  <Area yAxisId="right" type="monotone" dataKey="revenue" name="Doanh thu Sàn" stroke="#10B981" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" activeDot={{ r: 8, strokeWidth: 0, fill: '#10B981' }} />
+                  <Area yAxisId="left" type="monotone" dataKey="gmv" name="Tổng GMV" stroke="#CA8A04" strokeWidth={4} fillOpacity={1} fill="url(#colorGmv)" activeDot={{ r: 8, strokeWidth: 0, fill: '#CA8A04' }} />
+                  <Area yAxisId="right" type="monotone" dataKey="revenue" name="Doanh thu Sàn" stroke="#1C1917" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" activeDot={{ r: 8, strokeWidth: 0, fill: '#1C1917' }} />
+
                 </AreaChart>
               </ResponsiveContainer>
             </div>

@@ -60,4 +60,10 @@ public class ProductDocument {
 
     @Field(type = FieldType.Keyword)
     private String imageUrl;
+
+    @Field(type = FieldType.Keyword)
+    private String shopLocation;
+
+    @Field(type = FieldType.Date)
+    private java.time.ZonedDateTime createdAt;
 }

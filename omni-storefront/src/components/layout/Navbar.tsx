@@ -231,6 +231,12 @@ export default function Navbar() {
                           <Link href="/shop/me" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Shop của bạn</Link>
                         </>
                       )}
+                      {user?.role === "ROLE_ADMIN" && (
+                        <>
+                          <Link href="/admin/shops" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Phê duyệt Shop</Link>
+                          <Link href="/admin/newsletter" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Gửi Bản Tin</Link>
+                        </>
+                      )}
                       <Link href="/profile" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Tài khoản của tôi</Link>
                       <Link href="/orders" className="flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5" style={{ color: "var(--text-secondary)" }}>Đơn hàng của tôi</Link>
                       <button onClick={logout} className="w-full flex items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-white/5 text-red-400 cursor-pointer">
@@ -304,6 +310,12 @@ export default function Navbar() {
                     <>
                       <Link href="/seller" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Kênh Người Bán</Button></Link>
                       <Link href="/shop/me" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Shop của bạn</Button></Link>
+                    </>
+                  )}
+                  {user?.role === "ROLE_ADMIN" && (
+                    <>
+                      <Link href="/admin/shops" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Phê duyệt Shop</Button></Link>
+                      <Link href="/admin/newsletter" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Gửi Bản Tin</Button></Link>
                     </>
                   )}
                   <Link href="/orders" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="glass" className="w-full justify-start">Đơn hàng của tôi</Button></Link>

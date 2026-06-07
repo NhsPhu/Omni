@@ -135,7 +135,7 @@ export default function Withdrawals() {
           </Select>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 text-blue-700 p-3 rounded-lg text-sm mb-4">
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg text-sm mb-4">
           💡 <strong>Quy trình xử lý:</strong> 1. Export file danh sách chờ chuyển khoản ➔ 2. Upload file lên hệ thống Ngân hàng doanh nghiệp để chuyển lô ➔ 3. Quay lại màn hình này cập nhật trạng thái hoặc Import file kết quả từ ngân hàng.
         </div>
 

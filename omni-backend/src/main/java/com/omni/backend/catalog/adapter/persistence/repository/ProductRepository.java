@@ -25,4 +25,6 @@ public interface ProductRepository extends JpaRepository<ProductJpaEntity, UUID>
 
     @Query("SELECT p FROM ProductJpaEntity p, ProductSkuJpaEntity s WHERE p.id = s.productId AND p.deletedAt IS NULL AND p.status = 'ACTIVE' GROUP BY p.id, p.shopId, p.categoryId, p.name, p.slug, p.description, p.avgRating, p.reviewCount, p.status, p.deletedAt, p.createdAt, p.updatedAt ORDER BY MIN(s.price) ASC")
     List<ProductJpaEntity> findCheapestProducts(Pageable pageable);
+
+    List<ProductJpaEntity> findTop4ByCategoryIdAndIdNotOrderByReviewCountDesc(UUID categoryId, UUID id);
 }

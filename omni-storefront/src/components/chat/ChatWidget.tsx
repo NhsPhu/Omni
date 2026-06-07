@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { MessageCircle, X, Send, Store, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/axios';
@@ -9,6 +10,7 @@ import { useChatStore } from '@/store/chatStore';
 import { format } from 'date-fns';
 
 export default function ChatWidget() {
+  const pathname = usePathname();
   const { user, token } = useAuthStore();
   const { isWidgetOpen, activeRoomId, toggleWidget, setActiveRoom, contextMessage } = useChatStore();
   
@@ -83,7 +85,9 @@ export default function ChatWidget() {
   }, [messages, view]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   };
 
   const fetchRooms = async () => {
@@ -176,6 +180,7 @@ export default function ChatWidget() {
   };
 
   if (!user || !token) return null; // Don't show if not logged in
+  if (pathname?.startsWith('/seller')) return null; // Hide on seller dashboard
 
   const totalUnread = rooms.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
 
@@ -199,45 +204,73 @@ export default function ChatWidget() {
 
       {/* Chat Panel */}
       {isWidgetOpen && (
-        <div className="fixed bottom-6 right-6 w-[360px] h-[550px] bg-white rounded-2xl shadow-2xl z-50 flex flex-col border border-gray-100 overflow-hidden animate-fade-in">
+        <div className="fixed bottom-6 right-6 w-[360px] h-[550px] bg-white/90 backdrop-blur-2xl rounded-3xl shadow-2xl z-50 flex flex-col border border-black/5 overflow-hidden animate-fade-in"
+             style={{ boxShadow: 'var(--shadow-card-hover)' }}>
           
           {/* Header */}
-          <div className="p-4 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #020617 100%)' }}>
+          <div className="p-4 flex items-center justify-between z-10" style={{ background: 'var(--primary-color, #1C1917)' }}>
             <div className="flex items-center gap-3">
               {view === 'CHAT' && (
-                <button onClick={() => { setView('LIST'); setActiveRoom(null); }} className="text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors">
+                <button onClick={() => { setView('LIST'); setActiveRoom(null); }} className="text-white/70 hover:text-white p-1.5 rounded-lg transition-colors">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
                 </button>
               )}
-              <h3 className="font-bold text-white text-lg font-[family-name:var(--font-heading)] tracking-wide">
-                {view === 'CHAT' ? activeRoomData?.shopName : 'Tin nhắn'}
-              </h3>
+              {view === 'CHAT' && activeRoomData?.shopAvatar ? (
+                <img 
+                  src={activeRoomData.shopAvatar.startsWith('http') ? activeRoomData.shopAvatar : `http://localhost:8080${activeRoomData.shopAvatar}`} 
+                  alt="Avatar" 
+                  className="w-8 h-8 rounded-full object-cover bg-white/20"
+                />
+              ) : view === 'CHAT' ? (
+                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                  <Store className="w-4 h-4 text-white" />
+                </div>
+              ) : null}
+              {view === 'CHAT' ? (
+                <a href={`/shop/${activeRoomData?.shopId}`} className="font-bold text-white text-lg font-[family-name:var(--font-heading)] tracking-wide hover:text-[var(--gold)] transition-colors cursor-pointer" target="_blank" rel="noopener noreferrer">
+                  {activeRoomData?.shopName}
+                </a>
+              ) : (
+                <h3 className="font-bold text-white text-lg font-[family-name:var(--font-heading)] tracking-wide">
+                  Tin nhắn
+                </h3>
+              )}
             </div>
-            <button onClick={toggleWidget} className="text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors">
+            <button onClick={toggleWidget} className="text-white/70 hover:text-white p-1.5 rounded-lg transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto bg-gray-50 flex flex-col">
+          <div className="flex-1 overflow-y-auto flex flex-col bg-[#FAFAF9]/80">
             {view === 'LIST' ? (
-              <div className="p-2">
+              <div className="p-3">
                 {rooms.length === 0 ? (
-                  <div className="text-center text-gray-500 mt-20 text-sm">Chưa có cuộc trò chuyện nào</div>
+                  <div className="text-center text-gray-500 mt-20 text-sm font-medium">Chưa có cuộc trò chuyện nào</div>
                 ) : (
                   rooms.map(room => (
                     <div 
                       key={room.id} 
                       onClick={() => setActiveRoom(room.id)}
-                      className="p-3 bg-white rounded-xl mb-2 flex items-center gap-3 cursor-pointer hover:shadow-sm border border-gray-50"
+                      className="p-3 bg-white/80 rounded-2xl mb-2 flex items-center gap-3 cursor-pointer hover:shadow-md transition-all duration-300 border border-black/5 group"
                     >
-                      <div className="w-11 h-11 rounded-full bg-gray-900 flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #1f2937, #111827)" }}>
-                        <Store className="w-5 h-5 text-amber-400" />
-                      </div>
+                      {room.shopAvatar ? (
+                        <img 
+                          src={room.shopAvatar.startsWith('http') ? room.shopAvatar : `http://localhost:8080${room.shopAvatar}`} 
+                          alt="Avatar" 
+                          className="w-12 h-12 rounded-full object-cover shadow-sm shrink-0 border border-black/5"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-sm" style={{ background: "var(--grad-gold)" }}>
+                          <Store className="w-5 h-5 text-white" />
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline">
-                          <span className="font-semibold text-sm truncate">{room.shopName}</span>
-                          <span className="text-[10px] text-gray-400 shrink-0">
+                        <div className="flex justify-between items-baseline mb-0.5">
+                          <a href={`/shop/${room.shopId}`} onClick={(e) => e.stopPropagation()} className="font-bold text-sm text-gray-900 truncate hover:text-[var(--gold)] transition-colors cursor-pointer" target="_blank" rel="noopener noreferrer">
+                            {room.shopName}
+                          </a>
+                          <span className="text-[10px] text-gray-400 shrink-0 font-medium">
                             {room.lastMessageAt ? format(new Date(room.lastMessageAt), 'HH:mm') : ''}
                           </span>
                         </div>
@@ -246,7 +279,7 @@ export default function ChatWidget() {
                         </div>
                       </div>
                       {room.unreadCount > 0 && (
-                        <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center text-[10px] text-white font-bold shrink-0">
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-bold shrink-0 shadow-sm" style={{ background: "var(--grad-gold)" }}>
                           {room.unreadCount}
                         </div>
                       )}
@@ -255,7 +288,7 @@ export default function ChatWidget() {
                 )}
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {loading ? (
                   <div className="flex justify-center mt-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
                 ) : (
@@ -264,9 +297,11 @@ export default function ChatWidget() {
                       const isMe = msg.senderType === 'USER';
                       return (
                         <div key={msg.id || idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${isMe ? 'bg-gray-900 text-white rounded-br-sm' : 'bg-white text-gray-800 border border-gray-100 rounded-bl-sm'}`}
-                               style={isMe ? { background: "linear-gradient(135deg, #1f2937, #111827)" } : {}}>
+                          <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${isMe ? 'bg-[#1C1917] text-white rounded-br-sm' : 'bg-white text-gray-800 border border-black/5 rounded-bl-sm'}`}>
                             <div className="whitespace-pre-wrap">{msg.content}</div>
+                            <div className={`text-[9px] mt-1 text-right ${isMe ? 'text-white/50' : 'text-gray-400'}`}>
+                              {format(new Date(msg.createdAt), 'HH:mm')}
+                            </div>
                           </div>
                         </div>
                       );
@@ -280,20 +315,20 @@ export default function ChatWidget() {
 
           {/* Footer (Input) */}
           {view === 'CHAT' && (
-            <div className="p-3 bg-white border-t border-gray-100 flex gap-2 items-center">
+            <div className="p-3 bg-white/90 backdrop-blur-md border-t border-black/5 flex gap-2 items-center z-10">
               <input
                 type="text"
                 placeholder="Nhập tin nhắn..."
                 value={messageInput}
                 onChange={e => setMessageInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                className="flex-1 bg-gray-100 text-gray-900 placeholder-gray-500 rounded-full px-4 py-2.5 text-sm outline-none focus:bg-gray-200 transition-colors border border-transparent focus:border-gray-300"
+                className="flex-1 bg-gray-100/80 text-gray-900 placeholder-gray-500 rounded-xl px-4 py-3 text-sm outline-none focus:bg-white transition-all border border-transparent focus:border-[var(--gold)] focus:ring-1 focus:ring-[var(--gold)]"
               />
               <button 
                 onClick={sendMessage}
                 disabled={!messageInput.trim()}
-                className="w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 transition-transform active:scale-95"
-                style={{ background: "linear-gradient(135deg, #1f2937, #111827)", color: "white" }}
+                className="w-11 h-11 rounded-xl flex items-center justify-center disabled:opacity-50 transition-transform active:scale-95 shadow-sm"
+                style={{ background: "var(--grad-gold)", color: "white" }}
               >
                 <Send className="w-4 h-4 ml-0.5" />
               </button>

@@ -12,6 +12,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
+import { useChatStore } from "@/store/chatStore";
 import { useRouter } from "next/navigation";
 import { Modal, Form, Input, Rate } from "antd";
 
@@ -51,6 +52,7 @@ export default function OrdersPage() {
 
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedItemToReview, setSelectedItemToReview] = useState<any>(null);
+  const [reviewedItems, setReviewedItems] = useState<Set<string>>(new Set());
   const [form] = Form.useForm();
 
   const [returnModalOpen, setReturnModalOpen] = useState(false);
@@ -101,10 +103,11 @@ export default function OrdersPage() {
         productId: selectedItemToReview.productId,
         orderItemId: selectedItemToReview.id,
         rating: values.rating,
-        comment: values.comment,
+        comment: values.comment || "",
         imageUrls: [] // Optional: implement image upload later
       });
       toast.success("Đánh giá sản phẩm thành công!");
+      setReviewedItems(prev => new Set([...prev, selectedItemToReview.id]));
       setReviewModalOpen(false);
       form.resetFields();
     } catch (e: any) {
@@ -131,6 +134,11 @@ export default function OrdersPage() {
               status: child.status.toLowerCase(), // 'pending', 'confirmed', 'shipping', 'delivered', 'cancelled'
               createdAt: new Date(parent.createdAt).toLocaleDateString("vi-VN"),
               total: child.totalAmount,
+              subtotal: child.subtotal,
+              shippingFee: child.shippingFee,
+              shopDiscount: child.shopDiscount,
+              parentPlatformDiscount: parent.platformDiscount,
+              parentFinalAmount: parent.finalAmount,
               items: child.items?.map((it:any) => ({
                 id: it.id, // orderItemId
                 productId: it.productId,
@@ -170,6 +178,7 @@ export default function OrdersPage() {
     }
     fetchOrders();
     fetchAddresses();
+    api.get("/me/reviews/items").then(res => setReviewedItems(new Set(res.data))).catch(() => {});
   }, []);
 
   const filteredOrders = orders.filter(order => {
@@ -264,7 +273,7 @@ export default function OrdersPage() {
                               </div>
                               <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>x{item.quantity}</p>
                             </div>
-                            {["delivered", "completed"].includes(order.status) && (
+                            {["delivered", "completed"].includes(order.status) && !reviewedItems.has(item.id) && (
                               <Button variant="glass" size="sm" className="ml-4" onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedItemToReview(item);
@@ -283,6 +292,14 @@ export default function OrdersPage() {
                         </div>
                         
                         <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <Button variant="ghost" size="sm" className="flex-1 sm:flex-none" onClick={async () => {
+                            try {
+                              const res = await api.post(`/chat/rooms/shop/${order.shopId}`);
+                              useChatStore.getState().startChatWithShop(res.data.id, `Chào Shop, tôi cần hỗ trợ về đơn hàng ${order.id}`);
+                            } catch(e) {
+                              toast.error("Không thể kết nối Chat với Shop");
+                            }
+                          }}>Chat với Shop</Button>
                           {order.status === "pending" && (
                             <>
                               <Button variant="ghost" size="sm" className="flex-1 sm:flex-none" onClick={async () => {
@@ -367,8 +384,8 @@ export default function OrdersPage() {
           <Form.Item name="rating" label="Đánh giá chất lượng" rules={[{ required: true, message: 'Vui lòng chọn số sao' }]}>
             <Rate className="text-yellow-400" />
           </Form.Item>
-          <Form.Item name="comment" label="Nhận xét" rules={[{ required: true, message: 'Vui lòng viết nhận xét' }]}>
-            <TextArea rows={4} placeholder="Hãy chia sẻ trải nghiệm của bạn về sản phẩm này nhé..." />
+          <Form.Item name="comment" label="Nhận xét">
+            <TextArea rows={4} placeholder="Hãy chia sẻ trải nghiệm của bạn về sản phẩm này nhé... (Không bắt buộc)" />
           </Form.Item>
         </Form>
       </Modal>
@@ -395,10 +412,32 @@ export default function OrdersPage() {
             
             <div className="p-6 space-y-6">
               {/* Payment & Total */}
-              <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50">
-                <div>
-                  <p className="text-xs text-gray-500">Thành tiền</p>
-                  <p className="text-lg font-bold text-amber-500 mt-1">{formatPrice(viewingOrder.total)}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Tạm tính:</span>
+                    <span className="font-medium text-gray-800">{formatPrice(viewingOrder.subtotal || 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Phí vận chuyển:</span>
+                    <span className="font-medium text-gray-800">{formatPrice(viewingOrder.shippingFee || 0)}</span>
+                  </div>
+                  {(viewingOrder.shopDiscount > 0) && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Giảm giá từ Shop:</span>
+                      <span className="font-medium text-emerald-600">-{formatPrice(viewingOrder.shopDiscount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
+                    <span className="font-bold text-gray-800">Tổng tiền Shop:</span>
+                    <span className="font-bold text-amber-500 text-lg">{formatPrice(viewingOrder.total)}</span>
+                  </div>
+                  {viewingOrder.parentPlatformDiscount > 0 && (
+                    <div className="mt-2 text-xs text-gray-500 bg-amber-50 p-2 rounded">
+                      * Đơn hàng tổng (bao gồm Shop này và các Shop khác nếu có) đã được giảm thêm <span className="font-bold text-emerald-600">{formatPrice(viewingOrder.parentPlatformDiscount)}</span> (Omni Voucher/Tier Discount/Xu). 
+                      Thực tế thanh toán toàn đơn: <span className="font-bold">{formatPrice(viewingOrder.parentFinalAmount)}</span>.
+                    </div>
+                  )}
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Phương thức thanh toán</p>

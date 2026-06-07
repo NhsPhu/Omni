@@ -25,7 +25,7 @@ export default function ShopRedirectPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
-      <div className="w-8 h-8 rounded-full animate-spin" style={{ border: "4px solid var(--border)", borderTopColor: "var(--purple)" }}></div>
+      <div className="w-8 h-8 rounded-full animate-spin" style={{ border: "4px solid var(--border)", borderTopColor: "var(--gold)" }}></div>
     </div>
   );
 }

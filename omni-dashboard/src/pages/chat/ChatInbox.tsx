@@ -44,7 +44,9 @@ export default function ChatInbox() {
   }, [messages]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   };
 
   const fetchRooms = async () => {
@@ -160,10 +162,10 @@ export default function ChatInbox() {
               <div 
                 key={room.id}
                 onClick={() => setActiveRoom(room)}
-                className={`p-3 mb-2 rounded-xl cursor-pointer transition-all duration-200 flex items-center gap-3 ${activeRoom?.id === room.id ? 'bg-indigo-50 border border-indigo-100' : 'hover:bg-gray-50 border border-transparent'}`}
+                className={`p-3 mb-2 rounded-xl cursor-pointer transition-all duration-300 flex items-center gap-3 ${activeRoom?.id === room.id ? 'bg-primary/5 border border-primary/10 shadow-sm' : 'hover:bg-gray-50 border border-transparent'}`}
               >
                 <Badge count={room.unreadCount} size="small">
-                  <Avatar icon={<User size={18} />} className={`${activeRoom?.id === room.id ? 'bg-indigo-600' : 'bg-gray-300'}`} />
+                  <Avatar icon={<User size={18} />} className={`${activeRoom?.id === room.id ? 'bg-primary' : 'bg-gray-300'}`} />
                 </Badge>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-1">
@@ -184,15 +186,15 @@ export default function ChatInbox() {
       <Card className="flex-1 h-full border-0 rounded-3xl shadow-sm flex flex-col" styles={{ body: { padding: 0, height: '100%', display: 'flex', flexDirection: 'column' } }}>
         {activeRoom ? (
           <>
-            <div className="p-4 border-b border-gray-100 flex items-center gap-3 bg-white/80 backdrop-blur-xl rounded-t-3xl">
-              <Avatar icon={<User size={18} />} className="bg-indigo-600" />
+            <div className="p-4 border-b border-gray-100 flex items-center gap-3 bg-white/80 backdrop-blur-xl rounded-t-3xl shadow-sm z-10 relative">
+              <Avatar icon={<User size={18} />} className="bg-primary" />
               <div>
                 <div className="font-bold text-gray-900">{activeRoom.userName}</div>
-                <div className="text-xs text-green-500 font-medium">Đang trực tuyến</div>
+                <div className="text-xs text-secondary font-medium">Đang trực tuyến</div>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+            <div className="flex-1 overflow-y-auto p-6 bg-[#FAFAF9]">
               {loadingMessages ? (
                 <div className="flex justify-center p-8"><Spin /></div>
               ) : (
@@ -206,22 +208,22 @@ export default function ChatInbox() {
                           <Avatar size={28} icon={<User size={14} />} className="bg-gray-300 shrink-0 mb-1" />
                         )}
                         <div className="flex flex-col max-w-[70%]">
-                          <span className={`text-[10px] font-medium mb-1 ${isShop ? 'text-right text-indigo-400' : 'text-left text-gray-400'}`}>
-                            {isShop ? 'Shop 🏾' : (activeRoom?.userName || 'Khách')}
+                          <span className={`text-[10px] font-medium mb-1 ${isShop ? 'text-right text-gold' : 'text-left text-gray-400'}`}>
+                            {isShop ? 'Shop ✦' : (activeRoom?.userName || 'Khách')}
                           </span>
-                          <div className={`rounded-2xl px-4 py-2.5 ${isShop
-                            ? 'bg-indigo-600 text-white rounded-br-sm'
-                            : 'bg-white border border-gray-100 text-gray-800 shadow-sm rounded-bl-sm'
+                          <div className={`rounded-2xl px-4 py-2.5 shadow-sm ${isShop
+                            ? 'bg-primary text-white rounded-br-sm'
+                            : 'bg-white border border-gray-100 text-gray-800 rounded-bl-sm'
                           }`}>
                             <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
-                            <div className={`text-[10px] mt-1 text-right ${isShop ? 'text-indigo-200' : 'text-gray-400'}`}>
+                            <div className={`text-[10px] mt-1 text-right ${isShop ? 'text-gray-400' : 'text-gray-400'}`}>
                               {format(new Date(msg.createdAt), 'HH:mm')}
                             </div>
                           </div>
                         </div>
                         {/* Avatar SHOP (right side) */}
                         {isShop && (
-                          <Avatar size={28} icon={<Store size={14} />} className="bg-indigo-600 shrink-0 mb-1" />
+                          <Avatar size={28} icon={<Store size={14} />} className="bg-primary shrink-0 mb-1" />
                         )}
                       </div>
                     );
@@ -231,21 +233,21 @@ export default function ChatInbox() {
               )}
             </div>
 
-            <div className="p-4 border-t border-gray-100 bg-white rounded-b-3xl flex gap-2 items-center">
+            <div className="p-4 border-t border-gray-100 bg-white/80 backdrop-blur-xl rounded-b-3xl flex gap-2 items-center z-10 relative">
               <Input
                 placeholder="Nhập tin nhắn..."
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
                 onPressEnter={sendMessage}
                 size="large"
-                className="rounded-xl border-gray-200 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="rounded-xl border-gray-200 hover:border-gold focus:border-gold focus:ring-1 focus:ring-gold"
               />
               <Button 
                 type="primary" 
                 size="large" 
                 icon={<Send size={18} />} 
                 onClick={sendMessage}
-                className="rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-sm px-6"
+                className="rounded-xl bg-primary hover:bg-gray-800 shadow-sm px-6 border-0"
               />
             </div>
           </>

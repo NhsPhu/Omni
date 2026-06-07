@@ -7,6 +7,7 @@ import FlashSaleSection from "@/components/sections/FlashSaleSection";
 import TopDealsSection from "@/components/sections/TopDealsSection";
 import SellerCTASection from "@/components/sections/SellerCTASection";
 import TrustSection from "@/components/sections/TrustSection";
+import VoucherBannerSection from "@/components/sections/VoucherBannerSection";
 
 export default function Home() {
   return (
@@ -14,6 +15,7 @@ export default function Home() {
       <Navbar />
       <main className="flex-1">
         <HeroSection />
+        <VoucherBannerSection />
         <CategoriesSection />
         <FeaturedProducts />
         <FlashSaleSection />

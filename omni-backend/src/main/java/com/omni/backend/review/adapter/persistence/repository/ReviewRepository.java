@@ -19,6 +19,8 @@ public interface ReviewRepository extends JpaRepository<ProductReviewJpaEntity, 
     
     boolean existsByUserIdAndProductIdAndOrderItemId(UUID userId, UUID productId, UUID orderItemId);
 
+    java.util.List<ProductReviewJpaEntity> findByUserId(UUID userId);
+
     @Query("SELECT AVG(r.rating) FROM ProductReviewJpaEntity r WHERE r.productId = :productId AND r.status = 'APPROVED'")
     Double getAverageRatingByProductId(@Param("productId") UUID productId);
 

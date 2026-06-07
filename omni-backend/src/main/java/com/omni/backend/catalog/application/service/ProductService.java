@@ -306,6 +306,15 @@ public class ProductService {
         return entities.stream().map(this::mapToDocument).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<ProductDocument> getRecommendations(UUID productId) {
+        ProductJpaEntity product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        // Get top 4 products in same category, excluding this one
+        List<ProductJpaEntity> recommendations = productRepository.findTop4ByCategoryIdAndIdNotOrderByReviewCountDesc(product.getCategoryId(), productId);
+        return recommendations.stream().map(this::mapToDocument).collect(Collectors.toList());
+    }
+
     private ProductDocument mapToDocument(ProductJpaEntity product) {
         String categoryName = categoryRepository.findById(product.getCategoryId())
                 .map(CategoryJpaEntity::getName).orElse("Unknown");
@@ -318,6 +327,9 @@ public class ProductService {
 
         String shopName = shopRepository.findById(product.getShopId())
                 .map(ShopJpaEntity::getName).orElse("Unknown Shop");
+        String shopLocation = shopRepository.findById(product.getShopId())
+                .map(s -> s.getAddress() != null && !s.getAddress().isEmpty() ? s.getAddress() : "TP. Hồ Chí Minh")
+                .orElse("TP. Hồ Chí Minh");
 
         int totalStock = skus.stream().mapToInt(ProductSkuJpaEntity::getStockQuantity).sum();
 
@@ -339,6 +351,8 @@ public class ProductService {
                 .categoryName(categoryName)
                 .shopName(shopName)
                 .imageUrl(imageUrl)
+                .shopLocation(shopLocation)
+                .createdAt(product.getCreatedAt())
                 .build();
     }
 
@@ -384,6 +398,9 @@ public class ProductService {
 
         String shopName = shopRepository.findById(product.getShopId())
                 .map(ShopJpaEntity::getName).orElse("Unknown Shop");
+        String shopLocation = shopRepository.findById(product.getShopId())
+                .map(s -> s.getAddress() != null && !s.getAddress().isEmpty() ? s.getAddress() : "TP. Hồ Chí Minh")
+                .orElse("TP. Hồ Chí Minh");
 
         int totalStock = skus.stream().mapToInt(ProductSkuJpaEntity::getStockQuantity).sum();
 
@@ -405,6 +422,8 @@ public class ProductService {
                 .categoryName(categoryName)
                 .shopName(shopName)
                 .imageUrl(imageUrl)
+                .shopLocation(shopLocation)
+                .createdAt(product.getCreatedAt())
                 .build();
 
         productSearchRepository.save(doc);

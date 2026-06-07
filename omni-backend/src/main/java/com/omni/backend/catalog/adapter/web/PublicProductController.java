@@ -29,10 +29,13 @@ public class PublicProductController {
             @RequestParam(required = false) List<UUID> categoryId,
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) Double minRating,
+            @RequestParam(required = false) String shopLocation,
+            @RequestParam(required = false) String sortBy,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         
-        Page<ProductDocument> results = productSearchService.searchProducts(keyword, categoryId, minPrice, maxPrice, page, size);
+        Page<ProductDocument> results = productSearchService.searchProducts(keyword, categoryId, minPrice, maxPrice, minRating, shopLocation, sortBy, page, size);
         return ResponseEntity.ok(results);
     }
 
@@ -45,6 +48,11 @@ public class PublicProductController {
     @GetMapping("/{id}")
     public ResponseEntity<com.omni.backend.catalog.application.dto.ProductDto> getProductById(@PathVariable UUID id) {
         return ResponseEntity.ok(productService.getProductById(id));
+    }
+
+    @GetMapping("/{id}/recommendations")
+    public ResponseEntity<List<ProductDocument>> getRecommendations(@PathVariable UUID id) {
+        return ResponseEntity.ok(productService.getRecommendations(id));
     }
 
     @org.springframework.web.bind.annotation.PostMapping("/{id}/view")

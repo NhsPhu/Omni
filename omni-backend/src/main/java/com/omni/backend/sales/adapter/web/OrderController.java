@@ -97,6 +97,18 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getVendorStatistics(shopId));
     }
 
+    @GetMapping("/vendor/funnel")
+    public ResponseEntity<com.omni.backend.sales.application.dto.FunnelDataDto> getVendorFunnel(Authentication authentication) {
+        UUID shopId = getShopIdForCurrentUser(authentication);
+        return ResponseEntity.ok(orderService.getFunnelData(shopId));
+    }
+
+    @GetMapping("/vendor/sku-performance")
+    public ResponseEntity<List<com.omni.backend.sales.application.dto.SkuPerformanceDto>> getVendorSkuPerformance(Authentication authentication) {
+        UUID shopId = getShopIdForCurrentUser(authentication);
+        return ResponseEntity.ok(orderService.getSkuPerformance(shopId));
+    }
+
     @PatchMapping("/vendor/orders/{id}/status")
     public ResponseEntity<Void> updateVendorOrderStatus(
             Authentication authentication,

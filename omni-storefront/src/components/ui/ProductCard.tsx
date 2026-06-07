@@ -79,17 +79,17 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-40px" }}
         transition={{ duration: 0.5, delay: index * 0.06, ease: [0.22, 1, 0.36, 1] }}
-        className="relative rounded-2xl overflow-hidden cursor-pointer h-full"
+        className="relative rounded-2xl overflow-hidden cursor-pointer h-full transition-transform duration-700 hover:-translate-y-2"
         style={{
           background: "var(--bg-card)",
-          backdropFilter: "blur(20px)",
+          backdropFilter: "blur(24px)",
           border: "1px solid var(--border)",
           boxShadow: "var(--shadow-card)",
         }}
       >
       {/* Hover glow border */}
-      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-        style={{ boxShadow: "var(--shadow-card-hover)", border: "1px solid var(--border-purple)" }} />
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+        style={{ boxShadow: "var(--shadow-card-hover)", border: "1px solid var(--border-gold)" }} />
 
       {/* Image */}
       <div className={`relative aspect-[4/3] overflow-hidden ${!imageSrc ? `bg-gradient-to-br ${grad}` : ''}`}>
@@ -97,7 +97,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         {imageSrc ? (
           <img
             src={imageSrc}
-            alt={product.name}
+            alt={product.name.replace(/<[^>]+>/g, '')}
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             onError={(e) => {
               // Hide broken image, show gradient fallback
@@ -159,9 +159,9 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       {/* Info */}
       <div className="p-4 space-y-2.5">
         <h3 className="text-sm font-medium line-clamp-2 leading-snug transition-colors duration-200 group-hover:text-gold"
-          style={{ color: "var(--text-primary)", fontFamily: "var(--font-body)" }}>
-          {product.name}
-        </h3>
+          style={{ color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
+          dangerouslySetInnerHTML={{ __html: product.name }}
+        />
 
         {/* Price */}
         <div className="flex items-baseline gap-2">
@@ -179,7 +179,14 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
             <Star className="w-3.5 h-3.5 fill-gold text-gold" />
-            <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>{product.rating ?? (product as any).avgRating ?? 0.0}</span>
+            <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
+              {(() => {
+                const sold = product.sold ?? (product as any).soldCount ?? 0;
+                const rawRating = product.rating ?? (product as any).avgRating ?? 0.0;
+                const finalRating = sold === 0 ? 0 : rawRating;
+                return Number(finalRating).toFixed(1);
+              })()}
+            </span>
           </div>
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>Đã bán {formatCompact(product.sold ?? (product as any).soldCount ?? 0)}</span>
         </div>

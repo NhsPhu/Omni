@@ -212,8 +212,8 @@ export default function Dashboard() {
                 <LineChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#CA8A04" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#CA8A04" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
@@ -241,8 +241,8 @@ export default function Dashboard() {
                     }}
                     contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)', padding: '12px 16px', fontWeight: 500 }}
                   />
-                  <Line yAxisId="left" type="monotone" dataKey="revenue" name="Doanh thu" stroke="#4F46E5" strokeWidth={4} dot={{ r: 0 }} activeDot={{ r: 8, strokeWidth: 0, fill: '#4F46E5' }} fill="url(#colorRevenue)" />
-                  <Line yAxisId="right" type="monotone" dataKey="orders" name="Đơn hàng" stroke="#10B981" strokeWidth={4} dot={{ r: 0 }} activeDot={{ r: 8, strokeWidth: 0, fill: '#10B981' }} />
+                  <Line yAxisId="left" type="monotone" dataKey="revenue" name="Doanh thu" stroke="#CA8A04" strokeWidth={4} dot={{ r: 0 }} activeDot={{ r: 8, strokeWidth: 0, fill: '#CA8A04' }} fill="url(#colorRevenue)" />
+                  <Line yAxisId="right" type="monotone" dataKey="orders" name="Đơn hàng" stroke="#1C1917" strokeWidth={4} dot={{ r: 0 }} activeDot={{ r: 8, strokeWidth: 0, fill: '#1C1917' }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

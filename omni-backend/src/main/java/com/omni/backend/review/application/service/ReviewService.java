@@ -32,6 +32,7 @@ public class ReviewService {
     private final ProductRepository productRepository;
     private final ChildOrderRepository childOrderRepository;
     private final ShopRepository shopRepository;
+    private final com.omni.backend.catalog.adapter.elasticsearch.ProductSearchRepository productSearchRepository;
 
     @Transactional
     public ProductReviewJpaEntity createReview(UUID userId, CreateReviewRequest request) {
@@ -92,6 +93,12 @@ public class ReviewService {
         product.setReviewCount(reviewCount != null ? reviewCount.intValue() : 0);
         
         productRepository.save(product);
+
+        productSearchRepository.findById(productId).ifPresent(doc -> {
+            doc.setAvgRating(product.getAvgRating());
+            doc.setReviewCount(product.getReviewCount());
+            productSearchRepository.save(doc);
+        });
     }
 
     @Transactional(readOnly = true)

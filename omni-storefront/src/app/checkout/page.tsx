@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Truck, CreditCard, CheckCircle, ChevronRight, ShoppingCart, Edit2 } from "lucide-react";
+import { MapPin, Truck, CreditCard, CheckCircle, ChevronRight, ShoppingCart, Edit2, Store, Ticket } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Button from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
@@ -35,6 +35,10 @@ export default function CheckoutPage() {
   const [selectedPayment, setSelectedPayment] = useState(paymentMethods?.[0]?.id || "");
   const [voucher, setVoucher] = useState("");
   const [activeVoucher, setActiveVoucher] = useState<any>(null);
+  const [myVouchers, setMyVouchers] = useState<any[]>([]);
+  const [platformVouchers, setPlatformVouchers] = useState<any[]>([]);
+  const [shopVouchersData, setShopVouchersData] = useState<Record<string, any[]>>({});
+  const [selectedShopVouchers, setSelectedShopVouchers] = useState<Record<string, any>>({});
   const [placed, setPlaced] = useState(false);
   const [orderId, setOrderId] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -45,6 +49,8 @@ export default function CheckoutPage() {
   const [wards, setWards] = useState<any[]>([]);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [pinInput, setPinInput] = useState("");
+  const [useCoins, setUseCoins] = useState(false);
+  const [loyaltyInfo, setLoyaltyInfo] = useState<any>(null);
   
   const { user, isAuthenticated } = useAuthStore();
   const activeEvent = useFlashSaleStore(state => state.activeEvent);
@@ -94,6 +100,9 @@ export default function CheckoutPage() {
     // Fetch usage
     api.get("/me/flash-sale/usage").then(res => setUsage(res.data)).catch(() => {});
     
+    // Fetch loyalty
+    api.get("/me/loyalty").then(res => setLoyaltyInfo(res.data)).catch(() => {});
+    
     // Load checkout items from cart
     const skusStr = localStorage.getItem("checkout_skus");
     if (!skusStr) return;
@@ -124,6 +133,25 @@ export default function CheckoutPage() {
           });
         });
         setCartItems(items);
+        const shopIds = Array.from(new Set(items.map(it => it.shopId)));
+        
+        // Fetch all shop vouchers
+        shopIds.forEach(sid => {
+          api.get(`/public/vouchers/shop/${sid}`).then(r => {
+            setShopVouchersData(p => ({...p, [sid]: r.data}));
+          }).catch(() => {});
+        });
+
+        // Fetch user vouchers
+        api.get('/me/vouchers').then(res => {
+          setMyVouchers(res.data || []);
+        }).catch(() => {});
+
+        // Fetch platform vouchers
+        api.get('/public/vouchers/platform').then(res => {
+          setPlatformVouchers(res.data || []);
+        }).catch(() => {});
+
       }).catch((e: any) => {
         if (e.response?.status !== 401 && e.response?.status !== 403) console.error(e);
       });
@@ -154,6 +182,22 @@ export default function CheckoutPage() {
   };
   
   const subtotal  = selectedItems.reduce((s, it) => s + getItemPrice(it) * it.quantity, 0);
+  
+  const itemsByShop = selectedItems.reduce((acc, item) => {
+    if (!acc[item.shopId]) acc[item.shopId] = { items: [], name: item.shopName };
+    acc[item.shopId].items.push(item);
+    return acc;
+  }, {} as Record<string, { items: CartItem[], name: string }>);
+
+  const totalShopDiscount = Object.values(selectedShopVouchers).reduce((sum, v) => {
+    if (!v) return sum;
+    const shopSubtotal = itemsByShop[v.shopId]?.items.reduce((s, it) => s + getItemPrice(it) * it.quantity, 0) || 0;
+    if (shopSubtotal < v.minOrderValue) return sum;
+    if (v.discountType?.toUpperCase() === "PERCENTAGE") {
+      return sum + Math.min((shopSubtotal * v.discountValue) / 100, v.maxDiscountAmount || 999999999);
+    }
+    return sum + Math.min(v.discountValue, shopSubtotal);
+  }, 0);
   
   const displayMethods = [
     {
@@ -320,11 +364,11 @@ export default function CheckoutPage() {
                         {displayMethods.map(m => (
                           <div key={m.id} onClick={() => setSelectedShipping(m.id)}
                             className="flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all duration-200"
-                            style={{ background: "var(--bg-card)", border: selectedShipping === m.id ? "2px solid var(--purple)" : "1px solid var(--border)" }}>
+                            style={{ background: "var(--bg-card)", border: selectedShipping === m.id ? "2px solid var(--gold)" : "1px solid var(--border)" }}>
                             <div className="flex items-center gap-3">
                               <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                                style={{ border: selectedShipping === m.id ? "none" : "1.5px solid var(--border)", background: selectedShipping === m.id ? "var(--purple)" : "transparent" }}>
-                                {selectedShipping === m.id && <span className="text-[9px] text-white font-bold">✓</span>}
+                                style={{ border: selectedShipping === m.id ? "none" : "1.5px solid var(--border)", background: selectedShipping === m.id ? "var(--gold)" : "transparent" }}>
+                                {selectedShipping === m.id && <span className="text-[9px] text-black font-bold">✓</span>}
                               </div>
                               <div>
                                 <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{m.label}</p>
@@ -337,35 +381,23 @@ export default function CheckoutPage() {
                       </div>
                     </div>
 
-                    <div>
-                      <h2 className="text-lg font-bold mb-4 font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Mã giảm giá</h2>
-                      <div className="flex gap-2">
-                        <input value={voucher} onChange={e => setVoucher(e.target.value)} placeholder="Nhập mã voucher..."
-                          className="flex-1 px-4 py-3 rounded-xl text-sm outline-none bg-transparent font-[family-name:var(--font-body)]"
-                          style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
-                        <Button variant={activeVoucher ? "glass" : "gold"} onClick={async () => {
-                          if (activeVoucher) {
-                            setActiveVoucher(null);
-                            setVoucher("");
-                            return;
-                          }
-                          if (!voucher.trim()) return;
-                          try {
-                            const res = await api.get(`/public/vouchers/validate?code=${voucher.toUpperCase()}`);
-                            const v = res.data;
-                            if (subtotal < v.minOrderValue) {
-                              toast.error(`Đơn hàng tối thiểu ${formatPrice(v.minOrderValue)} để áp dụng mã này`);
-                              return;
-                            }
-                            setActiveVoucher(v);
-                            toast.success("Áp dụng mã thành công");
-                          } catch (e: any) {
-                            toast.error(e.response?.data?.message || "Mã giảm giá không hợp lệ");
-                          }
-                        }}>{activeVoucher ? "Hủy" : "Áp dụng"}</Button>
+                    {loyaltyInfo && loyaltyInfo.points > 0 && (
+                      <div>
+                        <h2 className="text-lg font-bold mb-4 font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Khách hàng thân thiết</h2>
+                        <div className="flex items-center justify-between p-4 rounded-2xl cursor-pointer" style={{ background: "var(--bg-card)", border: useCoins ? "2px solid var(--gold)" : "1px solid var(--border)" }} onClick={() => setUseCoins(!useCoins)}>
+                          <div className="flex items-center gap-3">
+                            <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ border: useCoins ? "none" : "1.5px solid var(--border)", background: useCoins ? "var(--gold)" : "transparent" }}>
+                              {useCoins && <span className="text-[9px] text-black font-bold">✓</span>}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>Dùng Omni Coins</p>
+                              <p className="text-xs" style={{ color: "var(--text-muted)" }}>Bạn có {loyaltyInfo.points} xu (tương đương {formatPrice(loyaltyInfo.points)})</p>
+                            </div>
+                          </div>
+                          <span className="font-bold text-sm" style={{ color: useCoins ? "var(--gold)" : "var(--text-muted)" }}>{useCoins ? `-${formatPrice(Math.min(loyaltyInfo.points, subtotal + actualShipFee))}` : ""}</span>
+                        </div>
                       </div>
-                      {activeVoucher && <p className="text-xs mt-2" style={{ color: "#10B981" }}>✓ Đã áp dụng giảm {activeVoucher.discountType === "PERCENTAGE" ? `${activeVoucher.discountValue}%` : formatPrice(activeVoucher.discountValue)}</p>}
-                    </div>
+                    )}
 
                     <div className="flex gap-3">
                       <Button variant="glass" onClick={() => setStep(1)}>Quay lại</Button>
@@ -414,10 +446,96 @@ export default function CheckoutPage() {
                         <button onClick={() => setStep(1)} className="ml-auto cursor-pointer"><Edit2 className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} /></button>
                       </div>
                       <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-                        <Truck className="w-4 h-4 flex-shrink-0" style={{ color: "var(--purple-light)" }} />
+                        <Truck className="w-4 h-4 flex-shrink-0" style={{ color: "var(--gold)" }} />
                         {displayMethods.find(s => s.id === selectedShipping)?.label || "Chưa chọn vận chuyển"}
                         <button onClick={() => setStep(2)} className="ml-auto cursor-pointer"><Edit2 className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} /></button>
                       </div>
+                    </div>
+
+                    {/* Vouchers Step 3 */}
+                    <div className="p-5 rounded-2xl space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                      <h3 className="font-bold text-sm font-[family-name:var(--font-body)]" style={{ color: "var(--text-primary)" }}>Mã giảm giá (Omni Voucher)</h3>
+                      <div className="flex gap-2">
+                        <input value={voucher} onChange={e => setVoucher(e.target.value)} placeholder="Nhập mã voucher..."
+                          className="flex-1 px-4 py-3 rounded-xl text-sm outline-none bg-transparent font-[family-name:var(--font-body)]"
+                          style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                        <Button variant={activeVoucher && activeVoucher.code === voucher ? "glass" : "gold"} onClick={async () => {
+                          if (activeVoucher && activeVoucher.code === voucher) {
+                            setActiveVoucher(null);
+                            setVoucher("");
+                            return;
+                          }
+                          if (!voucher.trim()) return;
+                          try {
+                            const res = await api.get(`/public/vouchers/validate?code=${voucher.toUpperCase()}`);
+                            const v = res.data;
+                            if (subtotal < v.minOrderValue) {
+                              toast.error(`Đơn hàng tối thiểu ${formatPrice(v.minOrderValue)} để áp dụng mã này`);
+                              return;
+                            }
+                            
+                            const isSaved = myVouchers.some((my: any) => my.voucherId === v.id);
+                            if (!isSaved) {
+                              try {
+                                await api.post("/me/vouchers/save", { voucherId: v.id, voucherType: "PLATFORM" });
+                                setMyVouchers(prev => [...prev, { voucherId: v.id }]);
+                              } catch (err: any) {
+                                toast.error(err.response?.data?.message || "Lỗi lưu voucher");
+                                return;
+                              }
+                            }
+
+                            setActiveVoucher(v);
+                            toast.success("Áp dụng mã thành công");
+                          } catch (e: any) {
+                            toast.error(e.response?.data?.message || "Mã giảm giá không hợp lệ");
+                          }
+                        }}>{activeVoucher && activeVoucher.code === voucher ? "Hủy" : "Áp dụng"}</Button>
+                      </div>
+                      {activeVoucher && <p className="text-xs mt-2" style={{ color: "#10B981" }}>✓ Đã áp dụng giảm {activeVoucher.discountType?.toUpperCase() === "PERCENTAGE" ? `${activeVoucher.discountValue}%` : formatPrice(activeVoucher.discountValue)}</p>}
+                      
+                      {platformVouchers.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          <p className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Voucher có sẵn của bạn:</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {platformVouchers.map(v => {
+                              const isActive = activeVoucher?.id === v.id;
+                              const isEligible = subtotal >= v.minOrderValue;
+                              const myVoucher = myVouchers.find(my => my.voucherId === v.id);
+                              const isSaved = !!myVoucher;
+                              if (myVoucher?.isUsed) return null;
+                              return (
+                                <div key={v.id} onClick={async () => {
+                                  if (!isEligible) { toast.error(`Đơn hàng tối thiểu ${formatPrice(v.minOrderValue)}`); return; }
+                                  if (isActive) { setActiveVoucher(null); setVoucher(""); }
+                                  else { 
+                                    if (!isSaved) {
+                                      try {
+                                        await api.post("/me/vouchers/save", { voucherId: v.id, voucherType: "PLATFORM" });
+                                        setMyVouchers(prev => [...prev, { voucherId: v.id }]);
+                                        toast.success("Đã lưu voucher vào kho!");
+                                      } catch (e: any) {
+                                        toast.error(e.response?.data?.message || "Lỗi lưu voucher. Có thể đã hết lượt.");
+                                        return;
+                                      }
+                                    }
+                                    setActiveVoucher(v); 
+                                    setVoucher(v.code); 
+                                  }
+                                }} className={`p-3 rounded-xl border cursor-pointer transition-colors ${isActive ? 'bg-primary/5 border-gold' : isEligible ? 'hover:border-gold/50 border-gray-200' : 'opacity-50 border-gray-100 cursor-not-allowed'}`}>
+                                  <div className="flex justify-between items-start">
+                                    <span className="font-bold text-xs" style={{ color: isActive ? "var(--gold)" : "var(--text-primary)" }}>{v.code}</span>
+                                    <span className="text-xs font-bold text-green-500">
+                                      -{v.discountType?.toUpperCase() === 'PERCENTAGE' ? `${v.discountValue}%` : formatPrice(v.discountValue)}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Đơn tối thiểu {formatPrice(v.minOrderValue)}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex gap-3">
@@ -442,57 +560,157 @@ export default function CheckoutPage() {
             <div className="lg:w-72 flex-shrink-0">
               <div className="sticky top-24 p-5 rounded-2xl space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
                 <h3 className="font-bold font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Đơn hàng ({selectedItems.length})</h3>
-                <div className="space-y-3 max-h-52 overflow-y-auto scroll-hide">
-                  {selectedItems.map(it => (
-                    <div key={it.id} className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
-                        {it.imageUrl ? (
-                          <img src={it.imageUrl.startsWith('http') ? it.imageUrl : `http://localhost:8080${it.imageUrl}`} className="w-full h-full object-cover" alt={it.name} />
-                        ) : (
-                          <ShoppingCart className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
-                        )}
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto scroll-hide pr-1">
+                  {Object.keys(itemsByShop).map(shopId => {
+                    const shopGroup = itemsByShop[shopId];
+                    const shopVouchers = shopVouchersData[shopId] || [];
+                    const shopSubtotal = shopGroup.items.reduce((s, it) => s + getItemPrice(it) * it.quantity, 0);
+                    return (
+                      <div key={shopId} className="space-y-3 pb-3" style={{ borderBottom: "1px dashed var(--border)" }}>
+                        <div className="flex items-center gap-2">
+                          <Store className="w-4 h-4" style={{ color: "var(--gold)" }} />
+                          <span className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>{shopGroup.name}</span>
+                        </div>
+                        {shopGroup.items.map(it => (
+                          <div key={it.id} className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
+                              {it.imageUrl ? (
+                                <img src={it.imageUrl.startsWith('http') ? it.imageUrl : `http://localhost:8080${it.imageUrl}`} className="w-full h-full object-cover" alt={it.name} />
+                              ) : (
+                                <ShoppingCart className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs line-clamp-1" style={{ color: "var(--text-secondary)" }}>{it.name}</p>
+                              <p className="text-xs" style={{ color: "var(--text-muted)" }}>x{it.quantity}</p>
+                              {(() => {
+                                const fItem = activeEvent?.items?.find((f: any) => f.productId === it.productId && f.flashStock > f.soldCount);
+                                if (fItem && fItem.maxQuantityPerUser > 0) {
+                                  const bought = usage[it.id] || 0;
+                                  if (bought + it.quantity > fItem.maxQuantityPerUser) {
+                                    return <p className="text-[10px] text-orange-500 mt-1 leading-tight">Vượt hạn mức. Giá gốc.</p>;
+                                  }
+                                }
+                                return null;
+                              })()}
+                            </div>
+                            <span className="text-xs font-semibold flex-shrink-0" style={{ color: "var(--text-primary)" }}>{formatPrice(getItemPrice(it) * it.quantity)}</span>
+                          </div>
+                        ))}
+                        
+                        {/* Shop Vouchers Input */}
+                        <div className="mt-4 pt-3" style={{ borderTop: "1px dashed var(--border)" }}>
+                          <h4 className="text-xs font-bold mb-2 flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+                            <Ticket className="w-3.5 h-3.5" style={{ color: "var(--gold)" }} />
+                            Voucher của Shop
+                          </h4>
+                          <div className="flex gap-2 mb-3">
+                            <input 
+                              type="text" 
+                              placeholder="Nhập mã giảm giá của Shop..." 
+                              className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
+                              style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  const code = e.currentTarget.value.toUpperCase();
+                                  const v = shopVouchers.find((sv: any) => sv.code.toUpperCase() === code);
+                                  if (v) {
+                                    if (shopSubtotal < v.minOrderValue) return toast.error(`Đơn hàng tối thiểu ${formatPrice(v.minOrderValue)}`);
+                                    
+                                    const isSaved = myVouchers.some((my: any) => my.voucherId === v.id);
+                                    if (!isSaved) {
+                                      api.post("/me/vouchers/save", { voucherId: v.id, voucherType: "SHOP" }).then(() => {
+                                        setMyVouchers(prev => [...prev, { voucherId: v.id }]);
+                                      }).catch(() => {});
+                                    }
+
+                                    setSelectedShopVouchers(prev => ({ ...prev, [shopId]: v }));
+                                    toast.success("Áp dụng mã thành công");
+                                    e.currentTarget.value = "";
+                                  } else {
+                                    toast.error("Mã giảm giá không hợp lệ hoặc không thuộc shop này");
+                                  }
+                                }
+                              }}
+                            />
+                          </div>
+                          
+                          {/* List available shop vouchers */}
+                          {shopVouchers.length > 0 && (
+                            <div className="space-y-2">
+                              {shopVouchers.map(v => {
+                                const isSelected = selectedShopVouchers[shopId]?.id === v.id;
+                                const isEligible = shopSubtotal >= v.minOrderValue;
+                                const myVoucher = myVouchers.find(my => my.voucherId === v.id);
+                                const isSaved = !!myVoucher;
+                                if (myVoucher?.isUsed) return null;
+                                return (
+                                  <div key={v.id} onClick={async () => {
+                                    if (!isEligible) { toast.error(`Cần mua thêm ${formatPrice(v.minOrderValue - shopSubtotal)}`); return; }
+                                    
+                                    if (!isSelected && !isSaved) {
+                                      try {
+                                        await api.post("/me/vouchers/save", { voucherId: v.id, voucherType: "SHOP" });
+                                        setMyVouchers(prev => [...prev, { voucherId: v.id }]);
+                                        toast.success("Đã lưu voucher vào kho!");
+                                      } catch (e: any) {
+                                        toast.error(e.response?.data?.message || "Lỗi lưu voucher. Có thể đã hết lượt.");
+                                        return;
+                                      }
+                                    }
+
+                                    setSelectedShopVouchers(prev => {
+                                      const next = { ...prev };
+                                      if (isSelected) delete next[shopId];
+                                      else next[shopId] = v;
+                                      return next;
+                                    });
+                                  }} className={`p-2.5 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'bg-gold/10 border-gold' : isEligible ? 'hover:border-gold/50 border-gray-200' : 'opacity-40 border-gray-100 cursor-not-allowed'}`}>
+                                    <div className="flex justify-between items-start">
+                                      <span className="font-bold text-xs" style={{ color: isSelected ? "var(--gold)" : "var(--text-primary)" }}>{v.code}</span>
+                                      <span className="text-xs font-bold text-green-500">
+                                        -{v.discountType?.toUpperCase() === 'PERCENTAGE' ? `${v.discountValue}%` : formatPrice(v.discountValue)}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between items-end mt-0.5">
+                                      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Đơn tối thiểu {formatPrice(v.minOrderValue)}</p>
+                                      {!isSaved && isEligible && !isSelected && <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-gold/10 text-gold border border-gold/20">Lưu & Dùng</span>}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs line-clamp-1" style={{ color: "var(--text-secondary)" }}>{it.name}</p>
-                        <p className="text-xs" style={{ color: "var(--text-muted)" }}>x{it.quantity}</p>
-                        {(() => {
-                          const fItem = activeEvent?.items?.find((f: any) => f.productId === it.productId && f.flashStock > f.soldCount);
-                          if (fItem && fItem.maxQuantityPerUser > 0) {
-                            const bought = usage[it.id] || 0;
-                            if (bought + it.quantity > fItem.maxQuantityPerUser) {
-                              return <p className="text-[10px] text-orange-500 mt-1 leading-tight">Vượt hạn mức ưu đãi. Tính giá gốc.</p>;
-                            }
-                          }
-                          return null;
-                        })()}
-                      </div>
-                      <span className="text-xs font-semibold flex-shrink-0" style={{ color: "var(--text-primary)" }}>{formatPrice(getItemPrice(it) * it.quantity)}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="space-y-2 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
                   {[
                     ["Tạm tính", formatPrice(subtotal)], 
-                    ...(activeVoucher ? [["Giảm giá", `-${formatPrice(
-                      activeVoucher.discountType === "PERCENTAGE" 
-                        ? Math.min((subtotal * activeVoucher.discountValue) / 100, activeVoucher.maxDiscountAmount || 999999999)
-                        : Math.min(activeVoucher.discountValue, subtotal)
+                    ...(totalShopDiscount > 0 ? [["Voucher Shop", `-${formatPrice(totalShopDiscount)}`]] : []),
+                    ...(activeVoucher ? [["Omni Voucher", `-${formatPrice(
+                      activeVoucher.discountType?.toUpperCase() === "PERCENTAGE" 
+                        ? Math.min(((subtotal - totalShopDiscount) * activeVoucher.discountValue) / 100, activeVoucher.maxDiscountAmount || 999999999)
+                        : Math.min(activeVoucher.discountValue, Math.max(0, subtotal - totalShopDiscount))
                     )}`]] : []),
-                    ["Vận chuyển", step >= 2 ? formatPrice(actualShipFee) : "—"]
+                    ["Vận chuyển", step >= 2 ? formatPrice(actualShipFee) : "—"],
+                    ...(useCoins && loyaltyInfo ? [["Omni Coins", `-${formatPrice(Math.min(loyaltyInfo.points, subtotal - totalShopDiscount + actualShipFee))}`]] : [])
                   ].map(([l, v]) => (
-                    <div key={l} className="flex justify-between text-sm">
+                    <div key={l as string} className="flex justify-between text-sm">
                       <span style={{ color: "var(--text-secondary)" }}>{l}</span>
-                      <span className={l === "Giảm giá" ? "text-green-400" : ""} style={{ color: l === "Giảm giá" ? undefined : "var(--text-primary)" }}>{v}</span>
+                      <span className={(l as string).includes("Voucher") || l === "Omni Coins" ? "text-green-500 font-medium" : ""} style={{ color: (l as string).includes("Voucher") || l === "Omni Coins" ? undefined : "var(--text-primary)" }}>{v}</span>
                     </div>
                   ))}
                   <div className="flex justify-between font-bold pt-2" style={{ borderTop: "1px solid var(--border)" }}>
                     <span style={{ color: "var(--text-primary)" }}>Tổng</span>
                     <span className="text-gradient-gold font-[family-name:var(--font-heading)]">{formatPrice(
-                      subtotal + actualShipFee - (activeVoucher 
-                        ? (activeVoucher.discountType === "PERCENTAGE" 
-                            ? Math.min((subtotal * activeVoucher.discountValue) / 100, activeVoucher.maxDiscountAmount || 999999999) 
-                            : Math.min(activeVoucher.discountValue, subtotal))
-                        : 0)
+                      Math.max(0, subtotal - totalShopDiscount + actualShipFee - (activeVoucher 
+                        ? (activeVoucher.discountType?.toUpperCase() === "PERCENTAGE" 
+                            ? Math.min(((subtotal - totalShopDiscount) * activeVoucher.discountValue) / 100, activeVoucher.maxDiscountAmount || 999999999) 
+                            : Math.min(activeVoucher.discountValue, Math.max(0, subtotal - totalShopDiscount)))
+                        : 0) - (useCoins ? Math.min(loyaltyInfo.points, subtotal - totalShopDiscount + actualShipFee) : 0))
                     )}</span>
                   </div>
                 </div>
@@ -538,7 +756,9 @@ export default function CheckoutPage() {
         shippingAddressId: selectedAddr,
         skuIds: selectedItems.map(it => it.id),
         platformVoucherId: activeVoucher?.id || null,
-        paymentMethod: selectedPayment
+        shopVoucherIds: Object.values(selectedShopVouchers).map((v: any) => v.id),
+        paymentMethod: selectedPayment,
+        useCoins: useCoins
       };
       if (pin) payload.pin = pin;
 

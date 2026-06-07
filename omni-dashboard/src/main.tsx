@@ -11,34 +11,34 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       locale={viVN}
       theme={{
         token: {
-          colorPrimary: '#8B5CF6', // Purple as primary for admin to differentiate from gold storefront
+          colorPrimary: '#1C1917', // Charcoal as primary for a sleek, premium admin
           colorSuccess: '#10B981',
-          colorWarning: '#F59E0B',
+          colorWarning: '#EAB308',
           colorError: '#EF4444',
-          colorInfo: '#8B5CF6',
-          fontFamily: `'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif`,
+          colorInfo: '#1C1917',
+          fontFamily: `'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif`,
           borderRadius: 12,
           colorBgContainer: '#ffffff',
-          colorBgLayout: '#f8f9fa',
-          colorBorderSecondary: '#f0f0f0',
-          boxShadowSecondary: '0 4px 20px rgba(139, 92, 246, 0.08)',
+          colorBgLayout: '#FAFAF9',
+          colorBorderSecondary: '#e7e5e4',
+          boxShadowSecondary: '0 8px 32px rgba(0, 0, 0, 0.04)',
         },
         components: {
           Card: {
             headerBg: 'transparent',
             borderRadiusLG: 16,
-            boxShadowTertiary: '0 4px 24px rgba(139, 92, 246, 0.05)',
+            boxShadowTertiary: '0 8px 32px rgba(0, 0, 0, 0.04)',
           },
           Button: {
             borderRadius: 10,
             controlHeight: 38,
-            primaryShadow: '0 4px 14px rgba(139, 92, 246, 0.3)',
+            primaryShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
           },
           Menu: {
             itemBorderRadius: 10,
-            itemActiveBg: 'rgba(139, 92, 246, 0.1)',
-            itemSelectedBg: 'rgba(139, 92, 246, 0.15)',
-            itemSelectedColor: '#7C3AED',
+            itemActiveBg: 'rgba(0, 0, 0, 0.04)',
+            itemSelectedBg: 'rgba(202, 138, 4, 0.1)',
+            itemSelectedColor: '#CA8A04',
           },
           Layout: {
             headerBg: 'rgba(255, 255, 255, 0.8)',

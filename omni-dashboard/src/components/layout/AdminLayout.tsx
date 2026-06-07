@@ -61,7 +61,7 @@ export default function AdminLayout() {
     <>
       <div className="h-16 flex items-center justify-center gap-3 border-b border-gray-100 px-4">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
-             style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', boxShadow: '0 4px 14px rgba(139, 92, 246, 0.4)' }}>
+             style={{ background: 'linear-gradient(135deg, #CA8A04, #854d0e)', boxShadow: '0 4px 14px rgba(202, 138, 4, 0.4)' }}>
           <Store size={18} strokeWidth={2.5} />
         </div>
         {!collapsed && <span className="font-bold text-lg text-gray-800 truncate" style={{ fontFamily: "'Bodoni Moda', serif", letterSpacing: '-0.5px' }}>Omni Vendor</span>}

@@ -10,8 +10,12 @@ import com.omni.backend.sales.application.dto.CartDto;
 import com.omni.backend.sales.application.dto.CartItemDto;
 import com.omni.backend.sales.application.dto.CheckoutRequest;
 import com.omni.backend.sales.application.dto.CheckoutResponse;
-import com.omni.backend.sales.adapter.persistence.entity.VoucherJpaEntity;
-import com.omni.backend.sales.adapter.persistence.repository.VoucherRepository;
+import com.omni.backend.catalog.adapter.elasticsearch.ProductSearchRepository;
+import com.omni.backend.catalog.adapter.persistence.entity.ProductJpaEntity;
+import com.omni.backend.catalog.adapter.persistence.repository.ProductRepository;
+import com.omni.backend.sales.adapter.persistence.entity.PlatformVoucherJpaEntity;
+import com.omni.backend.sales.adapter.persistence.repository.PlatformVoucherRepository;
+import com.omni.backend.sales.adapter.persistence.repository.UserVoucherRepository;
 import com.omni.backend.sales.domain.event.OrderPlacedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.omni.backend.iam.adapter.persistence.repository.UserRepository;
 import com.omni.backend.iam.adapter.persistence.entity.UserJpaEntity;
+import com.omni.backend.iam.application.service.LoyaltyService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
@@ -36,13 +41,19 @@ public class CheckoutService {
     private final CartService cartService;
     private final ProductSkuRepository productSkuRepository;
     private final ParentOrderRepository parentOrderRepository;
-    private final VoucherRepository voucherRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final PlatformVoucherRepository platformVoucherRepository;
+    private final com.omni.backend.sales.adapter.persistence.repository.ShopVoucherRepository shopVoucherRepository;
+    private final UserVoucherRepository userVoucherRepository;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final com.omni.backend.shipping.application.service.GhnShippingClient ghnShippingClient;
     private final com.omni.backend.iam.adapter.persistence.repository.UserAddressRepository userAddressRepository;
     private final com.omni.backend.iam.adapter.persistence.repository.ShopRepository shopRepository;
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final com.omni.backend.iam.adapter.persistence.repository.UserRepository userRepository;
+    private final ProductRepository productRepository;
+    private final ProductSearchRepository productSearchRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final com.omni.backend.iam.application.service.LoyaltyService loyaltyService;
+    private final com.omni.backend.iam.adapter.persistence.repository.LoyaltyTierRepository loyaltyTierRepository;
     @org.springframework.context.annotation.Lazy
     @org.springframework.beans.factory.annotation.Autowired
     private FlashSaleService flashSaleService;
@@ -90,6 +101,22 @@ public class CheckoutService {
                 .status(initialStatus)
                 .build();
 
+        BigDecimal tierDiscountPercent = BigDecimal.ZERO;
+        boolean isFreeshipEligible = false;
+        
+        if (user.getLoyaltyTier() != null) {
+            var tierOpt = loyaltyTierRepository.findById(user.getLoyaltyTier());
+            if (tierOpt.isPresent()) {
+                var tier = tierOpt.get();
+                if (tier.getDiscountPercent() != null) {
+                    tierDiscountPercent = tier.getDiscountPercent();
+                }
+                if (Boolean.TRUE.equals(tier.getFreeshipEligible())) {
+                    isFreeshipEligible = true;
+                }
+            }
+        }
+
         BigDecimal grandTotal = BigDecimal.ZERO;
         
         // 3. Xử lý từng Shop (Child Order)
@@ -122,14 +149,15 @@ public class CheckoutService {
                 if (shop.getWarehouseWardCode() != null) fromWardCode = shop.getWarehouseWardCode();
             }
             long shippingFee = ghnShippingClient.calculateFee(fromDistrictId, fromWardCode, toDistrictId, toWardCode, 500, 20, 15, 5);
+            if (isFreeshipEligible) {
+                shippingFee = 0;
+            }
             ChildOrderJpaEntity childOrder = ChildOrderJpaEntity.builder()
                     .parentOrder(parentOrder)
                     .shopId(shopId)
                     .shopName(shopName)
                     .status(initialStatus)
-                    // Note: Cần thêm logic tìm shopVoucherId nếu req gửi lên list
-                    // và apply shipping_fee 
-                    .shippingFee(BigDecimal.valueOf(shippingFee)) // Gọi GHN tính phí
+                    .shippingFee(BigDecimal.valueOf(shippingFee))
                     .build();
 
             for (CartItemDto item : shopItems) {
@@ -144,6 +172,17 @@ public class CheckoutService {
                 // Trừ tồn kho (Hibernate sẽ check @Version lúc flush)
                 sku.setStockQuantity(sku.getStockQuantity() - item.getQuantity());
                 productSkuRepository.save(sku);
+
+                // Increment sold count on Product
+                ProductJpaEntity product = productRepository.findById(item.getProductId())
+                        .orElseThrow(() -> new RuntimeException("Product not found"));
+                product.setSoldCount((product.getSoldCount() != null ? product.getSoldCount() : 0) + item.getQuantity());
+                productRepository.save(product);
+                
+                productSearchRepository.findById(item.getProductId()).ifPresent(doc -> {
+                    doc.setSoldCount(product.getSoldCount());
+                    productSearchRepository.save(doc);
+                });
 
                 // GLOBAL PRICING: If Flash Sale is active, use flashPrice, deduct flashStock
                 BigDecimal finalPrice = sku.getPrice();
@@ -171,7 +210,44 @@ public class CheckoutService {
                 childOrder.getItems().add(orderItem);
             }
 
+            BigDecimal shopDiscount = BigDecimal.ZERO;
+            if (request.getShopVoucherIds() != null) {
+                for (UUID vId : request.getShopVoucherIds()) {
+                    var vOpt = shopVoucherRepository.findById(vId);
+                    if (vOpt.isPresent()) {
+                        var v = vOpt.get();
+                        if (v.getShopId().equals(shopId) && !v.getValidTo().isBefore(java.time.ZonedDateTime.now()) && !v.getValidFrom().isAfter(java.time.ZonedDateTime.now())) {
+                            if (shopSubtotal.compareTo(v.getMinOrderValue()) >= 0) {
+                                BigDecimal calculatedDiscount;
+                                if ("PERCENTAGE".equalsIgnoreCase(v.getDiscountType())) {
+                                    calculatedDiscount = shopSubtotal.multiply(v.getDiscountValue()).divide(BigDecimal.valueOf(100));
+                                    if (v.getMaxDiscountAmount() != null && calculatedDiscount.compareTo(v.getMaxDiscountAmount()) > 0) {
+                                        calculatedDiscount = v.getMaxDiscountAmount();
+                                    }
+                                } else {
+                                    calculatedDiscount = v.getDiscountValue();
+                                }
+                                shopDiscount = calculatedDiscount;
+
+                                // Mark user voucher as used and update usage count
+                                userVoucherRepository.findByUserIdAndVoucherId(userId, v.getId()).ifPresent(uv -> {
+                                    uv.setIsUsed(true);
+                                    userVoucherRepository.save(uv);
+                                });
+                                if (v.getUsedCount() != null) {
+                                    v.setUsedCount(v.getUsedCount() + 1);
+                                    shopVoucherRepository.save(v);
+                                }
+
+                                break; // Only apply one voucher per shop
+                            }
+                        }
+                    }
+                }
+            }
+            
             childOrder.setSubtotal(shopSubtotal);
+            childOrder.setShopDiscount(shopDiscount);
             childOrder.setTotalAmount(shopSubtotal.add(childOrder.getShippingFee()).subtract(childOrder.getShopDiscount()));
             
             parentOrder.getChildOrders().add(childOrder);
@@ -181,18 +257,38 @@ public class CheckoutService {
         // Apply Platform voucher discount logic here
         BigDecimal platformDiscount = BigDecimal.ZERO;
         if (request.getPlatformVoucherId() != null) {
-            VoucherJpaEntity voucher = voucherRepository.findById(request.getPlatformVoucherId())
+            PlatformVoucherJpaEntity voucher = platformVoucherRepository.findById(request.getPlatformVoucherId())
                     .orElse(null);
             
-            if (voucher != null && voucher.getActive() && voucher.getExpiryDate().isAfter(java.time.ZonedDateTime.now())) {
+            if (voucher != null && !voucher.getValidTo().isBefore(java.time.ZonedDateTime.now()) && !voucher.getValidFrom().isAfter(java.time.ZonedDateTime.now())) {
                 if (grandTotal.compareTo(voucher.getMinOrderValue()) >= 0) {
-                    BigDecimal calculatedDiscount = grandTotal.multiply(voucher.getDiscountPercent()).divide(BigDecimal.valueOf(100));
-                    if (voucher.getMaxDiscountAmount() != null && calculatedDiscount.compareTo(voucher.getMaxDiscountAmount()) > 0) {
-                        calculatedDiscount = voucher.getMaxDiscountAmount();
+                    BigDecimal calculatedDiscount;
+                    if ("PERCENTAGE".equalsIgnoreCase(voucher.getDiscountType())) {
+                        calculatedDiscount = grandTotal.multiply(voucher.getDiscountValue()).divide(BigDecimal.valueOf(100));
+                        if (voucher.getMaxDiscountAmount() != null && calculatedDiscount.compareTo(voucher.getMaxDiscountAmount()) > 0) {
+                            calculatedDiscount = voucher.getMaxDiscountAmount();
+                        }
+                    } else {
+                        calculatedDiscount = voucher.getDiscountValue();
                     }
                     platformDiscount = calculatedDiscount;
+
+                    // Mark user voucher as used and update usage count
+                    userVoucherRepository.findByUserIdAndVoucherId(userId, voucher.getId()).ifPresent(uv -> {
+                        uv.setIsUsed(true);
+                        userVoucherRepository.save(uv);
+                    });
+                    if (voucher.getUsedCount() != null) {
+                        voucher.setUsedCount(voucher.getUsedCount() + 1);
+                        platformVoucherRepository.save(voucher);
+                    }
                 }
             }
+        }
+
+        if (tierDiscountPercent.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal tierDiscountAmount = grandTotal.multiply(tierDiscountPercent).divide(BigDecimal.valueOf(100));
+            platformDiscount = platformDiscount.add(tierDiscountAmount);
         }
 
         parentOrder.setPlatformDiscount(platformDiscount);
@@ -201,6 +297,16 @@ public class CheckoutService {
 
         // Lưu toàn bộ tree: Parent -> Child -> Items
         parentOrder = parentOrderRepository.save(parentOrder);
+
+        // Apply Loyalty Coins
+        if (Boolean.TRUE.equals(request.getUseCoins()) && user.getLoyaltyPoints() != null && user.getLoyaltyPoints() > 0) {
+            int maxCoins = Math.min(user.getLoyaltyPoints(), parentOrder.getFinalAmount().intValue());
+            if (maxCoins > 0) {
+                parentOrder.setFinalAmount(parentOrder.getFinalAmount().subtract(BigDecimal.valueOf(maxCoins)));
+                parentOrder = parentOrderRepository.save(parentOrder);
+                loyaltyService.spendPoints(userId, maxCoins, "SPEND_ON_ORDER", parentOrder.getId(), "Dùng xu giảm giá đơn hàng");
+            }
+        }
 
         // 4. Xóa các item đã mua khỏi Redis Cart
         for (UUID skuId : request.getSkuIds()) {
@@ -234,6 +340,20 @@ public class CheckoutService {
                 if (address.getGhnWardCode() != null) toWardCode = address.getGhnWardCode();
             }
         }
+        
+        UserJpaEntity user = null;
+        if (userId != null) {
+            user = userRepository.findById(userId).orElse(null);
+        }
+        boolean isFreeship = false;
+        if (user != null && user.getLoyaltyTier() != null) {
+            var tierOpt = loyaltyTierRepository.findById(user.getLoyaltyTier());
+            if (tierOpt.isPresent() && Boolean.TRUE.equals(tierOpt.get().getFreeshipEligible())) {
+                isFreeship = true;
+            }
+        }
+
+        if (isFreeship) return 0;
         
         long totalFee = 0;
         int fromDistrictId = 1442;

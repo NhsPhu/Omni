@@ -51,15 +51,16 @@ export default function SuperAdminLayout() {
 
   const sidebarContent = (
     <>
-      <div className="h-16 flex items-center justify-center gap-2 border-b border-gray-800 px-4">
-        <div className="w-8 h-8 rounded bg-red-600 flex items-center justify-center text-white shrink-0">
-          <ShieldCheck size={18} />
+      <div className="h-16 flex items-center justify-center gap-3 border-b border-gray-100 px-4">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+             style={{ background: 'linear-gradient(135deg, #1C1917, #44403C)', boxShadow: '0 4px 14px rgba(28, 25, 23, 0.4)' }}>
+          <ShieldCheck size={18} strokeWidth={2.5} style={{ color: "#CA8A04" }} />
         </div>
-        {!collapsed && <span className="font-bold text-lg text-white truncate">Omni Admin</span>}
+        {!collapsed && <span className="font-bold text-lg text-gray-800 truncate" style={{ fontFamily: "'Bodoni Moda', serif", letterSpacing: '-0.5px' }}>Omni Admin</span>}
       </div>
       <div className="py-4">
         <Menu
-          theme="dark"
+          theme="light"
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
@@ -81,8 +82,8 @@ export default function SuperAdminLayout() {
           collapsible 
           collapsed={collapsed}
           width={260}
-          theme="dark"
-          style={{ background: '#001529' }}
+          theme="light"
+          style={{ background: '#ffffff', borderRight: '1px solid #f3f4f6' }}
         >
           {sidebarContent}
         </Sider>
@@ -93,7 +94,7 @@ export default function SuperAdminLayout() {
           closable={false}
           onClose={() => setDrawerVisible(false)}
           open={drawerVisible}
-          styles={{ body: { padding: 0, background: '#001529' } }}
+          styles={{ body: { padding: 0, background: '#ffffff' } }}
           width={260}
         >
           {sidebarContent}
@@ -135,7 +136,7 @@ export default function SuperAdminLayout() {
               placement="bottomRight"
             >
               <div className="flex items-center gap-2 cursor-pointer">
-                <Avatar src="https://api.dicebear.com/7.x/notionists/svg?seed=Admin" className="bg-red-100" />
+                <Avatar src="https://api.dicebear.com/7.x/notionists/svg?seed=Admin" style={{ background: '#f5f5f5' }} />
                 <span className="text-sm font-medium text-gray-700 hidden sm:block">Super Admin</span>
               </div>
             </Dropdown>

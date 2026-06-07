@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { User, MapPin, Package, Ticket, Bell, LogOut, Camera, Shield, CreditCard, ChevronRight, Plus, Trash2, Edit2 } from "lucide-react";
+import { User, MapPin, Package, Ticket, Bell, LogOut, Camera, Shield, CreditCard, ChevronRight, Plus, Trash2, Edit2, Info, X, CheckCircle } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
@@ -18,7 +18,9 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("profile");
   const [addresses, setAddresses] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
+  const [publicVouchers, setPublicVouchers] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [loyaltyInfo, setLoyaltyInfo] = useState<any>(null);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -53,6 +55,7 @@ export default function ProfilePage() {
 
   // PIN Modal State
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [isTierModalOpen, setIsTierModalOpen] = useState(false);
   const [pinForm, setPinForm] = useState({ oldPin: "", newPin: "", confirmPin: "" });
   const [savingPin, setSavingPin] = useState(false);
 
@@ -102,10 +105,13 @@ export default function ProfilePage() {
       if (provinces.length === 0) fetchProvinces();
     } else if (activeTab === "vouchers") {
       api.get("/me/vouchers").then(res => setVouchers(res.data)).catch(() => {});
+      api.get("/public/vouchers/platform").then(res => setPublicVouchers(res.data)).catch(() => {});
     } else if (activeTab === "notifications") {
       api.get("/me/notifications?page=0&size=50").then(res => {
         if (res.data && res.data.content) setNotifications(res.data.content);
       }).catch(() => {});
+    } else if (activeTab === "profile") {
+      api.get("/me/loyalty").then(res => setLoyaltyInfo(res.data)).catch(() => {});
     }
   }, [activeTab]);
 
@@ -413,6 +419,56 @@ export default function ProfilePage() {
                     <h2 className="text-2xl font-bold mb-1 font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Hồ sơ của tôi</h2>
                     <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>Quản lý thông tin bảo mật để bảo vệ tài khoản</p>
 
+                    <div className="perspective-1000 mb-8" style={{ perspective: "1000px" }}>
+                      <motion.div
+                        onMouseMove={(e: any) => {
+                          const card = e.currentTarget;
+                          const rect = card.getBoundingClientRect();
+                          const x = e.clientX - rect.left - rect.width / 2;
+                          const y = e.clientY - rect.top - rect.height / 2;
+                          card.style.transform = `rotateX(${-y / 10}deg) rotateY(${x / 10}deg)`;
+                        }}
+                        onMouseLeave={(e: any) => {
+                          e.currentTarget.style.transform = `rotateX(0deg) rotateY(0deg)`;
+                        }}
+                        style={{
+                          background: "linear-gradient(135deg, #1f1f23 0%, #050509 100%)",
+                          border: "1px solid var(--gold)",
+                          transformStyle: "preserve-3d",
+                          transition: "transform 0.1s ease-out"
+                        }}
+                        className="relative w-full max-w-sm mx-auto aspect-[1.586/1] rounded-2xl p-6 flex flex-col justify-between overflow-hidden shadow-2xl cursor-pointer"
+                      >
+                        <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: "radial-gradient(circle at 50% 50%, var(--gold) 0%, transparent 50%)", transform: "translateZ(0)" }}></div>
+                        <div style={{ transform: "translateZ(30px)" }}>
+                          <h3 className="text-lg font-bold text-gradient-gold uppercase tracking-widest flex items-center gap-2">
+                            {loyaltyInfo?.tier || getRank()}
+                            <Info 
+                              className="w-4 h-4 text-gold/60 cursor-pointer hover:text-gold transition-colors" 
+                              onClick={(e) => { e.stopPropagation(); setIsTierModalOpen(true); }}
+                            />
+                          </h3>
+                          <p className="text-xs text-gray-400 mt-1">OMNI VIP MEMBER</p>
+                        </div>
+                        <div style={{ transform: "translateZ(40px)" }} className="flex justify-between items-end">
+                          <div>
+                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Card Holder</p>
+                            <p className="text-base font-semibold text-white tracking-widest">{fullName || user.fullName}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center justify-end gap-1 mb-1">
+                              <p className="text-xs text-gray-400 uppercase tracking-wider">Omni Coins</p>
+                              <Info 
+                                className="w-3.5 h-3.5 text-gray-400 cursor-pointer hover:text-gold transition-colors" 
+                                onClick={() => toast.info("Omni Coin là điểm thưởng tích lũy, 1 xu = 1 VNĐ. Bạn có thể dùng để giảm giá trực tiếp khi thanh toán đơn hàng.")}
+                              />
+                            </div>
+                            <p className="text-lg font-bold text-gold">{loyaltyInfo?.points || 0}</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    </div>
+
                     <div className="flex flex-col md:flex-row gap-10">
                       {/* Form */}
                       <form onSubmit={handleUpdate} className="flex-1 space-y-5">
@@ -531,18 +587,59 @@ export default function ProfilePage() {
                         <div key={v.id} className="flex rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
                           <div className="w-24 flex flex-col items-center justify-center p-2" style={{ background: "var(--grad-purple)" }}>
                             <Ticket className="w-8 h-8 text-white mb-1" />
-                            <span className="text-xs text-white font-bold text-center">{v.shopId ? "SHOP" : "OMNI"}</span>
+                            <span className="text-xs text-white font-bold text-center">{v.voucherType === "SHOP" ? "SHOP" : "OMNI"}</span>
                           </div>
                           <div className="flex-1 p-3 flex flex-col justify-center">
-                            <h4 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Giảm {v.discountPercent || v.discountAmount}%</h4>
+                            <h4 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>{v.code} - Giảm {v.discountType?.toUpperCase() === 'PERCENTAGE' ? `${v.discountValue}%` : `${v.discountValue}đ`}</h4>
                             <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>Đơn tối thiểu {v.minOrderValue}đ</p>
-                            <p className="text-[10px] mt-2 text-red-400">HSD: {new Date(v.validUntil).toLocaleDateString("vi-VN")}</p>
+                            <p className="text-[10px] mt-2 text-red-400">HSD: {new Date(v.validTo).toLocaleDateString("vi-VN")}</p>
                           </div>
                         </div>
                       )) : (
-                        <div className="col-span-2 text-center py-10">
+                        <div className="col-span-2 text-center py-10 border border-dashed rounded-2xl border-[var(--border)]">
                           <Ticket className="w-12 h-12 mx-auto mb-3 opacity-20" style={{ color: "var(--text-muted)" }} />
-                          <p className="text-sm" style={{ color: "var(--text-muted)" }}>Kho voucher đang trống</p>
+                          <p className="text-sm" style={{ color: "var(--text-muted)" }}>Kho voucher của bạn đang trống</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <h3 className="text-xl font-bold mt-10 mb-4 font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Săn Voucher Omni</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {publicVouchers.length > 0 ? publicVouchers.map((v) => {
+                        const myVoucher = vouchers.find(my => my.voucherId === v.id);
+                        const isSaved = !!myVoucher;
+                        if (myVoucher?.isUsed) return null; // Hide used vouchers
+                        return (
+                          <div key={v.id} className="flex rounded-xl overflow-hidden relative" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", opacity: isSaved ? 0.7 : 1 }}>
+                            <div className="w-24 flex flex-col items-center justify-center p-2" style={{ background: "var(--grad-gold)" }}>
+                              <Ticket className="w-8 h-8 text-black mb-1" />
+                              <span className="text-xs text-black font-bold text-center">OMNI</span>
+                            </div>
+                            <div className="flex-1 p-3 flex flex-col justify-center pr-20">
+                              <h4 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>{v.code} - Giảm {v.discountType?.toUpperCase() === 'PERCENTAGE' ? `${v.discountValue}%` : `${v.discountValue}đ`}</h4>
+                              <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>Đơn tối thiểu {v.minOrderValue}đ</p>
+                              <p className="text-[10px] mt-2" style={{ color: "var(--text-muted)" }}>HSD: {new Date(v.validTo).toLocaleDateString("vi-VN")}</p>
+                            </div>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              {isSaved ? (
+                                <Button variant="glass" size="sm" disabled className="text-[10px] h-7 px-2">Đã lưu</Button>
+                              ) : (
+                                <Button variant="gold" size="sm" className="text-[10px] h-7 px-2" onClick={async () => {
+                                  try {
+                                    await api.post("/me/vouchers/save", { voucherId: v.id, voucherType: "PLATFORM" });
+                                    toast.success("Lưu voucher thành công!");
+                                    api.get("/me/vouchers").then(res => setVouchers(res.data));
+                                  } catch (e: any) {
+                                    toast.error(e.response?.data?.message || "Lỗi lưu voucher");
+                                  }
+                                }}>Lưu ngay</Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }) : (
+                        <div className="col-span-2 text-center py-6">
+                          <p className="text-sm" style={{ color: "var(--text-muted)" }}>Hiện tại không có voucher nào khả dụng.</p>
                         </div>
                       )}
                     </div>
@@ -781,6 +878,43 @@ export default function ProfilePage() {
           </motion.div>
         </div>
       )}
+
+      {/* Tier Info Modal */}
+      {isTierModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsTierModalOpen(false)} />
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="relative w-full max-w-md rounded-3xl p-6 shadow-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            <div className="flex justify-between items-center mb-6">
+               <h3 className="text-xl font-bold font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Hạng thành viên Omni</h3>
+               <button onClick={() => setIsTierModalOpen(false)}><X className="w-5 h-5 text-gray-400 hover:text-gray-200 transition-colors" /></button>
+            </div>
+            
+            <div className="space-y-4">
+               {[
+                 { name: "BRONZE", minPoints: 0, freeship: false, discount: "0%" },
+                 { name: "SILVER", minPoints: 1000, freeship: false, discount: "2%" },
+                 { name: "GOLD", minPoints: 5000, freeship: true, discount: "5%" },
+                 { name: "DIAMOND", minPoints: 10000, freeship: true, discount: "10%" }
+               ].map(tier => (
+                 <div key={tier.name} className={`p-4 rounded-xl border ${loyaltyInfo?.tier === tier.name ? 'border-gold bg-gold/5' : 'border-[var(--border)] bg-[var(--bg-surface)]'}`}>
+                   <div className="flex justify-between items-center mb-2">
+                     <span className="font-bold uppercase tracking-widest" style={{ color: loyaltyInfo?.tier === tier.name ? "var(--gold)" : "var(--text-primary)" }}>{tier.name}</span>
+                     <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Từ {tier.minPoints.toLocaleString()} Omni Coins</span>
+                   </div>
+                   <ul className="text-sm space-y-1 mt-3" style={{ color: "var(--text-secondary)" }}>
+                     <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" /> Tích lũy 1 xu với mỗi 10,000đ mua sắm</li>
+                     {tier.discount !== "0%" && <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" /> Giảm giá tự động {tier.discount} khi mua sắm</li>}
+                     {tier.freeship && <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" /> Luôn được Miễn phí giao hàng (Freeship)</li>}
+                   </ul>
+                 </div>
+               ))}
+            </div>
+            
+            <p className="text-xs mt-6 text-center" style={{ color: "var(--text-muted)" }}>Omni Coins được cộng vào tài khoản ngay sau khi bạn xác nhận Đã nhận được hàng.</p>
+          </motion.div>
+        </div>
+      )}
+
     </>
   );
 }

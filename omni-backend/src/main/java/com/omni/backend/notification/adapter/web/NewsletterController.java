@@ -6,7 +6,9 @@ import com.omni.backend.notification.application.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -45,5 +47,29 @@ public class NewsletterController {
             // Email configuration might be missing, but we still saved the subscriber
             return ResponseEntity.ok(Map.of("message", "Đăng ký nhận tin thành công! (Chưa thể gửi email xác nhận do chưa cấu hình SMTP)"));
         }
+    }
+
+    @PostMapping("/admin/broadcast")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> broadcastNewsletter(@RequestBody Map<String, String> request) {
+        String subject = request.get("subject");
+        String content = request.get("content"); // HTML content
+        
+        if (subject == null || content == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Subject and content are required"));
+        }
+        
+        List<NewsletterSubscriberJpaEntity> subscribers = subscriberRepository.findAll();
+        int successCount = 0;
+        for (NewsletterSubscriberJpaEntity sub : subscribers) {
+            try {
+                emailService.sendHtmlEmail(sub.getEmail(), subject, content);
+                successCount++;
+            } catch (Exception e) {
+                // Ignore error for individual subscriber
+            }
+        }
+        
+        return ResponseEntity.ok(Map.of("message", "Đã gửi broadcast thành công tới " + successCount + "/" + subscribers.size() + " người đăng ký."));
     }
 }

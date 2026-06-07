@@ -72,4 +72,12 @@ public class UserJpaEntity {
 
     @Column(name = "provider_id", length = 255)
     private String providerId;
+
+    @Column(name = "loyalty_points", nullable = false)
+    @Builder.Default
+    private Integer loyaltyPoints = 0;
+
+    @Column(name = "loyalty_tier", nullable = false, length = 50)
+    @Builder.Default
+    private String loyaltyTier = "BRONZE";
 }

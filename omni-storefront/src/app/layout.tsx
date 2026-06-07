@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bodoni_Moda, Jost } from "next/font/google";
+import { Cormorant, Montserrat } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import Script from "next/script";
@@ -7,7 +7,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import SmoothScroll from "@/components/layout/SmoothScroll";
 import ChatWidget from "@/components/chat/ChatWidget";
 
-const bodoniModa = Bodoni_Moda({
+const cormorant = Cormorant({
   variable: "--font-heading",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
@@ -15,7 +15,7 @@ const bodoniModa = Bodoni_Moda({
   display: "swap",
 });
 
-const jost = Jost({
+const montserrat = Montserrat({
   variable: "--font-body",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
@@ -45,7 +45,7 @@ export default function RootLayout({
   return (
     <html
       lang="vi"
-      className={`${bodoniModa.variable} ${jost.variable}`}
+      className={`${cormorant.variable} ${montserrat.variable}`}
       suppressHydrationWarning
       data-scroll-behavior="smooth"
     >

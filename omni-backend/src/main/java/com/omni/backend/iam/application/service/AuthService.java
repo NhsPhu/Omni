@@ -133,6 +133,18 @@ public class AuthService implements AuthUseCase {
         
         vToken.setUsedAt(java.time.Instant.now());
         verificationTokenRepo.save(vToken);
+        
+        // Gửi Welcome email
+        try {
+            emailService.sendEmailWithTemplate(
+                user.getEmail(),
+                "Chào mừng bạn đến với Omni!",
+                "email/welcome",
+                java.util.Map.of("userName", user.getFullName())
+            );
+        } catch (Exception e) {
+            // Ignore email error to not fail the transaction
+        }
     }
 
     @Override

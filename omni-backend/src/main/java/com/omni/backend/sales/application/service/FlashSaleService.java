@@ -15,6 +15,8 @@ import com.omni.backend.sales.adapter.persistence.repository.FlashSaleItemReposi
 import com.omni.backend.sales.application.dto.FlashSaleEventDto;
 import com.omni.backend.sales.application.dto.FlashSaleItemDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +37,7 @@ public class FlashSaleService {
     private final ProductImageRepository productImageRepository;
     private final ShopRepository shopRepository;
     private final com.omni.backend.sales.adapter.persistence.repository.ParentOrderRepository parentOrderRepository;
+    private final StringRedisTemplate redisTemplate;
 
     // ═══════════════════════════════════════════════════════════════════
     // ADMIN: Event CRUD
@@ -225,23 +228,37 @@ public class FlashSaleService {
                 
         if (itemOpt.isPresent()) {
             FlashSaleItemJpaEntity item = itemOpt.get();
+            int maxPerUser = item.getMaxQuantityPerUser() != null ? item.getMaxQuantityPerUser() : 0;
             
-            // Validate Max Quantity Per User
-            if (item.getMaxQuantityPerUser() != null && item.getMaxQuantityPerUser() > 0) {
-                Integer purchased = parentOrderRepository.getPurchasedQuantityInTimeWindow(
-                        userId, skuId, activeEvent.getStartTime(), activeEvent.getEndTime());
-                int alreadyBought = purchased == null ? 0 : purchased;
-                if (alreadyBought + quantity > item.getMaxQuantityPerUser()) {
-                    return false;
-                }
-            }
+            String script = 
+                "local stockKey = KEYS[1]\n" +
+                "local userPurchaseKey = KEYS[2]\n" +
+                "local requestQty = tonumber(ARGV[1])\n" +
+                "local maxPerUser = tonumber(ARGV[2])\n" +
+                "local currentStockStr = redis.call('GET', stockKey)\n" +
+                "if not currentStockStr then return -1 end\n" +
+                "local currentStock = tonumber(currentStockStr)\n" +
+                "if currentStock < requestQty then return -1 end\n" +
+                "if maxPerUser > 0 then\n" +
+                "    local userBoughtStr = redis.call('GET', userPurchaseKey)\n" +
+                "    local userBought = userBoughtStr and tonumber(userBoughtStr) or 0\n" +
+                "    if userBought + requestQty > maxPerUser then return -2 end\n" +
+                "    redis.call('INCRBY', userPurchaseKey, requestQty)\n" +
+                "end\n" +
+                "redis.call('DECRBY', stockKey, requestQty)\n" +
+                "return 1";
 
-            if (item.getFlashStock() >= item.getSoldCount() + quantity) {
+            RedisScript<Long> redisScript = RedisScript.of(script, Long.class);
+            List<String> keys = Arrays.asList(
+                "flash_sale:stock:" + skuId.toString(),
+                "flash_sale:user:" + userId.toString() + ":" + skuId.toString()
+            );
+            
+            Long result = redisTemplate.execute(redisScript, keys, String.valueOf(quantity), String.valueOf(maxPerUser));
+            
+            if (result != null && result == 1L) {
                 item.setSoldCount(item.getSoldCount() + quantity);
                 itemRepository.save(item);
-                
-                // Clear cache so next getActiveEvent() fetches fresh soldCount
-                // clearActiveEventCache();
                 return true;
             } else {
                 return false;
@@ -283,6 +300,15 @@ public class FlashSaleService {
             if (e.getEndTime().isAfter(now)) {
                 e.setStatus("ACTIVE");
                 eventRepository.save(e);
+                
+                // Initialize Redis Stock for active items
+                List<FlashSaleItemJpaEntity> items = itemRepository.findByEventIdAndStatus(e.getId(), "APPROVED");
+                for (FlashSaleItemJpaEntity item : items) {
+                    int availableStock = item.getFlashStock() - item.getSoldCount();
+                    if (availableStock > 0) {
+                        redisTemplate.opsForValue().set("flash_sale:stock:" + item.getSkuId(), String.valueOf(availableStock));
+                    }
+                }
             }
         }
 

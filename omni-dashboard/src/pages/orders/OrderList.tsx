@@ -40,7 +40,11 @@ export default function OrderList() {
 
   const updateStatus = async (id: string, newStatus: string) => {
     try {
-      await api.patch(`/vendor/orders/${id}/status?status=${newStatus}`);
+      if (newStatus === 'SHIPPED') {
+        await api.post(`/vendor/orders/${id}/ship`);
+      } else {
+        await api.patch(`/vendor/orders/${id}/status?status=${newStatus}`);
+      }
       message.success("Cập nhật trạng thái thành công");
       fetchOrders();
     } catch(e) {
@@ -53,11 +57,14 @@ export default function OrderList() {
   const getStatusConfig = (status: string) => {
     switch(status) {
       case 'pending': return { color: 'warning', text: 'Chờ xác nhận', icon: <CheckCircle size={14} /> };
-      case 'confirmed': return { color: 'processing', text: 'Đang chuẩn bị', icon: <Package size={14} /> };
-      case 'shipping': return { color: 'cyan', text: 'Đang giao hàng', icon: <Truck size={14} /> };
-      case 'delivered': return { color: 'success', text: 'Hoàn thành', icon: <CheckCircle size={14} /> };
+      case 'processing': return { color: 'processing', text: 'Đang chuẩn bị', icon: <Package size={14} /> };
+      case 'shipped': return { color: 'cyan', text: 'Đang giao hàng', icon: <Truck size={14} /> };
+      case 'delivered': return { color: 'success', text: 'Đã giao', icon: <CheckCircle size={14} /> };
+      case 'completed': return { color: 'success', text: 'Hoàn thành', icon: <CheckCircle size={14} /> };
       case 'cancelled': return { color: 'error', text: 'Đã hủy', icon: <XCircle size={14} /> };
-      case 'returned': return { color: 'magenta', text: 'Trả hàng/Hoàn tiền', icon: <XCircle size={14} /> };
+      case 'return_requested': return { color: 'magenta', text: 'Yêu cầu trả hàng', icon: <XCircle size={14} /> };
+      case 'returned': return { color: 'magenta', text: 'Đã trả hàng', icon: <XCircle size={14} /> };
+      case 'return_rejected': return { color: 'default', text: 'Từ chối trả hàng', icon: <XCircle size={14} /> };
       default: return { color: 'default', text: status, icon: null };
     }
   };
@@ -124,8 +131,8 @@ export default function OrderList() {
       key: 'action',
       render: (_: any, record: any) => (
         <Space>
-          {record.status === 'pending' && <Button type="primary" size="small" onClick={() => updateStatus(record.originalId, 'CONFIRMED')}>Xác nhận</Button>}
-          {record.status === 'confirmed' && <Button type="primary" size="small" onClick={() => updateStatus(record.originalId, 'SHIPPING')}>Giao ĐVVC</Button>}
+          {record.status === 'pending' && <Button type="primary" size="small" onClick={() => updateStatus(record.originalId, 'PROCESSING')}>Xác nhận</Button>}
+          {record.status === 'processing' && <Button type="primary" size="small" onClick={() => updateStatus(record.originalId, 'SHIPPED')}>Giao ĐVVC</Button>}
           <Button size="small" icon={<FileText size={14} />} />
         </Space>
       )
@@ -137,11 +144,12 @@ export default function OrderList() {
   const tabItems = [
     { key: 'all', label: `Tất cả (${orders.length})` },
     { key: 'pending', label: `Chờ xác nhận (${orders.filter((o: any) => o.status === 'pending').length})` },
-    { key: 'confirmed', label: `Đang chuẩn bị (${orders.filter((o: any) => o.status === 'confirmed').length})` },
-    { key: 'shipping', label: `Đang giao hàng (${orders.filter((o: any) => o.status === 'shipping').length})` },
-    { key: 'delivered', label: 'Hoàn thành' },
+    { key: 'processing', label: `Đang chuẩn bị (${orders.filter((o: any) => o.status === 'processing').length})` },
+    { key: 'shipped', label: `Đang giao hàng (${orders.filter((o: any) => o.status === 'shipped').length})` },
+    { key: 'delivered', label: 'Đã giao' },
+    { key: 'completed', label: 'Hoàn thành' },
     { key: 'cancelled', label: 'Đã hủy' },
-    { key: 'returned', label: 'Trả hàng/Hoàn tiền' },
+    { key: 'return_requested', label: 'Yêu cầu trả hàng' },
   ];
 
   return (

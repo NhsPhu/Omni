@@ -108,22 +108,22 @@ export default function Vendors() {
       </div>
 
       <Row gutter={24} className="mb-6">
-        <Col span={8}>
-          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-blue-50 to-indigo-50">
+        <Col xs={24} sm={8}>
+          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-amber-50 to-orange-50">
             <div className="text-gray-600 font-medium mb-1">Hồ sơ chờ duyệt</div>
-            <div className="text-4xl font-extrabold text-blue-600 tracking-tight">{shops.filter((a: any) => a.status === 'PENDING_REVIEW').length}</div>
+            <div className="text-4xl font-extrabold tracking-tight" style={{ color: "var(--gold, #CA8A04)" }}>{shops.filter((a: any) => a.status === 'PENDING_REVIEW').length}</div>
           </Card>
         </Col>
-        <Col span={8}>
-          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-emerald-50 to-teal-50">
+        <Col xs={24} sm={8}>
+          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-stone-50 to-gray-100">
             <div className="text-gray-600 font-medium mb-1">Đã duyệt (Tổng)</div>
-            <div className="text-4xl font-extrabold text-emerald-600 tracking-tight">{shops.filter((a: any) => a.status === 'ACTIVE').length}</div>
+            <div className="text-4xl font-extrabold text-gray-800 tracking-tight">{shops.filter((a: any) => a.status === 'ACTIVE').length}</div>
           </Card>
         </Col>
-        <Col span={8}>
-          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-rose-50 to-red-50">
+        <Col xs={24} sm={8}>
+          <Card className="border-0 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 relative group bg-gradient-to-br from-red-50 to-rose-50">
             <div className="text-gray-600 font-medium mb-1">Từ chối</div>
-            <div className="text-4xl font-extrabold text-rose-600 tracking-tight">{shops.filter((a: any) => a.status === 'REJECTED').length}</div>
+            <div className="text-4xl font-extrabold text-red-600 tracking-tight">{shops.filter((a: any) => a.status === 'REJECTED').length}</div>
           </Card>
         </Col>
       </Row>
@@ -155,15 +155,15 @@ export default function Vendors() {
       >
         {selectedApp && (
           <div className="space-y-6">
-            <div className="bg-blue-50 p-4 rounded-lg flex justify-between items-center">
+            <div className="p-4 rounded-lg flex justify-between items-center" style={{ background: "var(--bg-elevated, #f5f5f4)" }}>
               <div>
-                <div className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">Trạng thái hiện tại</div>
-                {selectedApp.status === 'PENDING_REVIEW' && <Badge status="processing" text={<span className="font-semibold text-blue-800 text-lg">Chờ duyệt</span>} />}
-                {selectedApp.status === 'ACTIVE' && <Badge status="success" text={<span className="font-semibold text-green-800 text-lg">Đã duyệt</span>} />}
-                {selectedApp.status === 'REJECTED' && <Badge status="error" text={<span className="font-semibold text-red-800 text-lg">Đã từ chối</span>} />}
+                <div className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--text-secondary, #78716c)" }}>Trạng thái hiện tại</div>
+                {selectedApp.status === 'PENDING_REVIEW' && <Badge status="processing" text={<span className="font-semibold text-lg" style={{ color: "var(--gold, #CA8A04)" }}>Chờ duyệt</span>} />}
+                {selectedApp.status === 'ACTIVE' && <Badge status="success" text={<span className="font-semibold text-emerald-600 text-lg">Đã duyệt</span>} />}
+                {selectedApp.status === 'REJECTED' && <Badge status="error" text={<span className="font-semibold text-red-600 text-lg">Đã từ chối</span>} />}
               </div>
               <div className="text-right">
-                <div className="text-xs text-blue-600">Ngày gửi</div>
+                <div className="text-xs" style={{ color: "var(--text-secondary, #78716c)" }}>Ngày gửi</div>
                 <div className="font-medium">{dayjs(selectedApp.createdAt).format('DD/MM/YYYY')}</div>
               </div>
             </div>

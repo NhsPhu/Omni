@@ -66,4 +66,22 @@ public class EmailService {
             log.error("Failed to send simple email to {}: {}", to, e.getMessage(), e);
         }
     }
+
+    @Async
+    public void sendHtmlEmail(String to, String subject, String htmlBody) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true); // true indicates HTML content
+            
+            mailSender.send(message);
+            log.info("Sent HTML email '{}' to {}", subject, to);
+        } catch (Exception e) {
+            log.error("Failed to send HTML email to {}: {}", to, e.getMessage(), e);
+        }
+    }
 }

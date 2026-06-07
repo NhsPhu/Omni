@@ -82,9 +82,11 @@ public class ChatService {
                 .content(content)
                 .build();
         message = chatMessageRepository.save(message);
+        
+        ZonedDateTime msgTime = message.getCreatedAt() != null ? message.getCreatedAt() : ZonedDateTime.now();
 
         room.setLastMessage(content);
-        room.setLastMessageAt(message.getCreatedAt());
+        room.setLastMessageAt(msgTime);
         chatRoomRepository.save(room);
 
         return ChatMessageDto.builder()
@@ -94,7 +96,7 @@ public class ChatService {
                 .senderType(message.getSenderType())
                 .content(message.getContent())
                 .isRead(message.getIsRead())
-                .createdAt(message.getCreatedAt())
+                .createdAt(msgTime)
                 .build();
     }
 
@@ -106,8 +108,14 @@ public class ChatService {
     }
 
     private ChatRoomDto mapToDto(ChatRoomJpaEntity room, String context) {
-        String userName = userRepository.findById(room.getUserId()).map(UserJpaEntity::getFullName).orElse("Unknown User");
-        String shopName = shopRepository.findById(room.getShopId()).map(ShopJpaEntity::getName).orElse("Unknown Shop");
+        UserJpaEntity user = userRepository.findById(room.getUserId()).orElse(null);
+        ShopJpaEntity shop = shopRepository.findById(room.getShopId()).orElse(null);
+        
+        String userName = user != null ? user.getFullName() : "Unknown User";
+        String userAvatar = user != null ? user.getAvatarUrl() : null;
+        
+        String shopName = shop != null ? shop.getName() : "Unknown Shop";
+        String shopAvatar = shop != null ? shop.getLogoUrl() : null;
         
         // Count unread messages. If context is USER, count messages sent by SHOP that are unread
         String targetSenderType = "USER".equals(context) ? "SHOP" : "USER";
@@ -118,7 +126,9 @@ public class ChatService {
                 .userId(room.getUserId())
                 .shopId(room.getShopId())
                 .userName(userName)
+                .userAvatar(userAvatar)
                 .shopName(shopName)
+                .shopAvatar(shopAvatar)
                 .lastMessage(room.getLastMessage())
                 .lastMessageAt(room.getLastMessageAt())
                 .unreadCount(unreadCount)

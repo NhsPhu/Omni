@@ -1,5 +1,6 @@
 package com.omni.backend.catalog.application.service;
 
+import org.springframework.stereotype.Service;
 import com.omni.backend.catalog.adapter.elasticsearch.ProductDocument;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -9,9 +10,15 @@ import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHitSupport;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.SearchPage;
-import org.springframework.stereotype.Service;
 import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.elasticsearch.core.query.HighlightQuery;
+import org.springframework.data.elasticsearch.core.query.highlight.Highlight;
+import org.springframework.data.elasticsearch.core.query.highlight.HighlightField;
+import org.springframework.data.elasticsearch.core.query.highlight.HighlightFieldParameters;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
@@ -21,7 +28,7 @@ public class ProductSearchService {
     private final ElasticsearchOperations elasticsearchOperations;
     private final com.omni.backend.catalog.adapter.persistence.repository.CategoryRepository categoryRepository;
 
-    public Page<ProductDocument> searchProducts(String keyword, java.util.List<UUID> categoryIds, Double minPrice, Double maxPrice, int page, int size) {
+    public Page<ProductDocument> searchProducts(String keyword, java.util.List<UUID> categoryIds, Double minPrice, Double maxPrice, Double minRating, String shopLocation, String sortBy, int page, int size) {
         BoolQuery.Builder boolQueryBuilder = QueryBuilders.bool();
 
         // 1. Full-text search on name and description
@@ -64,14 +71,57 @@ public class ProductSearchService {
             boolQueryBuilder.filter(rangeQuery.build()._toQuery());
         }
 
-        NativeQuery nativeQuery = NativeQuery.builder()
+        // 4. Filter by Rating
+        if (minRating != null && minRating > 0) {
+            boolQueryBuilder.filter(QueryBuilders.range().field("avgRating").gte(co.elastic.clients.json.JsonData.of(minRating)).build()._toQuery());
+        }
+
+        // 5. Filter by Location
+        if (shopLocation != null && !shopLocation.isBlank()) {
+            boolQueryBuilder.filter(QueryBuilders.term().field("shopLocation").value(shopLocation).build()._toQuery());
+        }
+
+        NativeQueryBuilder queryBuilder = NativeQuery.builder()
                 .withQuery(boolQueryBuilder.build()._toQuery())
-                .withPageable(PageRequest.of(page, size))
+                .withPageable(PageRequest.of(page, size));
+
+        // Add Highlighting
+        HighlightFieldParameters parameters = HighlightFieldParameters.builder()
+                .withPreTags("<span class=\"text-gold font-bold\">")
+                .withPostTags("</span>")
                 .build();
+        queryBuilder.withHighlightQuery(new HighlightQuery(new Highlight(java.util.List.of(new HighlightField("name", parameters))), ProductDocument.class));
+
+        // 6. Sorting
+        if (sortBy != null && !sortBy.isBlank()) {
+            switch (sortBy.toLowerCase()) {
+                case "price_asc":
+                    queryBuilder.withSort(Sort.by(Sort.Direction.ASC, "priceMin"));
+                    break;
+                case "price_desc":
+                    queryBuilder.withSort(Sort.by(Sort.Direction.DESC, "priceMin"));
+                    break;
+                case "newest":
+                    queryBuilder.withSort(Sort.by(Sort.Direction.DESC, "createdAt"));
+                    break;
+                case "topselling":
+                    queryBuilder.withSort(Sort.by(Sort.Direction.DESC, "soldCount"));
+                    break;
+            }
+        }
+
+        NativeQuery nativeQuery = queryBuilder.build();
 
         SearchHits<ProductDocument> searchHits = elasticsearchOperations.search(nativeQuery, ProductDocument.class);
-        SearchPage<ProductDocument> searchPage = SearchHitSupport.searchPageFor(searchHits, nativeQuery.getPageable());
+        
+        java.util.List<ProductDocument> docs = searchHits.getSearchHits().stream().map(hit -> {
+            ProductDocument doc = hit.getContent();
+            if (hit.getHighlightField("name") != null && !hit.getHighlightField("name").isEmpty()) {
+                doc.setName(hit.getHighlightField("name").get(0));
+            }
+            return doc;
+        }).collect(Collectors.toList());
 
-        return (Page<ProductDocument>) SearchHitSupport.unwrapSearchHits(searchPage);
+        return new org.springframework.data.domain.PageImpl<>(docs, nativeQuery.getPageable(), searchHits.getTotalHits());
     }
 }

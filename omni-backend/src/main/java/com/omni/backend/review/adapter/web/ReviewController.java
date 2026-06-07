@@ -40,6 +40,15 @@ public class ReviewController {
         return ResponseEntity.ok(review);
     }
 
+    @GetMapping("/me/reviews/items")
+    public ResponseEntity<java.util.List<UUID>> getReviewedItems(Authentication authentication) {
+        java.util.List<UUID> items = reviewRepository.findByUserId(getUserId(authentication))
+            .stream()
+            .map(ProductReviewJpaEntity::getOrderItemId)
+            .toList();
+        return ResponseEntity.ok(items);
+    }
+
     @GetMapping("/products/{productId}/reviews")
     public ResponseEntity<Page<ReviewResponseDto>> getProductReviews(
             @PathVariable UUID productId,

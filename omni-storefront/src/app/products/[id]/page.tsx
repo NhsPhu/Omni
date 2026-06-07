@@ -1,11 +1,12 @@
 "use client";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Heart, ShoppingCart, Zap, Shield, Truck, RefreshCw, Share2, ChevronRight, Minus, Plus, Store, MessageCircle } from "lucide-react";
+import { Star, Heart, ShoppingCart, Zap, Shield, Truck, RefreshCw, Share2, ChevronRight, Minus, Plus, Store, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
+import ProductCard from "@/components/ui/ProductCard";
 
 import { formatPrice, calcDiscount } from "@/lib/utils";
 import api from "@/lib/axios";
@@ -30,6 +31,7 @@ export default function ProductDetailPage() {
   
   const [p, setP] = useState<any>(null); // State for product details
   const [activeImg, setActiveImg] = useState(0);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
 
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [wishlisted, setWishlisted] = useState(false);
@@ -45,17 +47,20 @@ export default function ProductDetailPage() {
   const [qty, setQty] = useState(1);
   const [activeTab, setActiveTab] = useState(0);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [showFullSpecs, setShowFullSpecs] = useState(false);
 
   useEffect(() => {
     if (params?.id) {
       Promise.all([
         api.get("/products/" + params.id),
         api.get("/products/" + params.id + "/reviews"),
+        api.get("/products/" + params.id + "/recommendations"),
         api.post("/products/" + params.id + "/view").catch(() => {}) // Track view
-      ]).then(([resP, resR]) => {
+      ]).then(([resP, resR, resRec]) => {
          const productData = resP.data;
          productData.reviews = resR.data.content;
          setP(productData);
+         setRecommendations(resRec.data);
       }).catch((e: any) => {
         if (e.response?.status !== 401 && e.response?.status !== 403) console.error(e);
       });
@@ -98,6 +103,10 @@ export default function ProductDetailPage() {
   const currentPrice = flashItem ? flashItem.flashPrice : basePrice;
   const originalPriceForDiscount = flashItem ? basePrice : (activeSku?.originalPrice ?? p?.skus?.[0]?.originalPrice);
   const stockLeft = flashItem ? (flashItem.flashStock - flashItem.soldCount) : (activeSku?.stockQuantity ?? activeSku?.stock ?? p?.skus?.[0]?.stockQuantity ?? 0);
+  
+  const sold = p.sold ?? p.soldCount ?? 0;
+  const rawRating = p.rating ?? p.avgRating ?? 0.0;
+  const finalRating = sold === 0 ? 0 : rawRating;
   
   const canAdd = availableKeys.every(k => !!selectedAttributes[k]) && stockLeft > 0;
 
@@ -366,13 +375,40 @@ export default function ProductDetailPage() {
                   {/* Specs */}
                   {activeTab === 1 && (
                     <motion.div key="specs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                      className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-                      {Object.entries(p.specs ?? {}).map(([key, val]: any, i: number) => (
-                        <div key={key} className="flex items-start" style={{ background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-elevated)", borderBottom: "1px solid var(--border)" }}>
-                          <span className="w-44 flex-shrink-0 px-5 py-3 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>{key}</span>
-                          <span className="flex-1 px-5 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{val}</span>
-                        </div>
-                      ))}
+                      className="relative rounded-3xl overflow-hidden" style={{ border: "1px solid var(--border)", background: "var(--bg-card)" }}>
+                      
+                      <div className={`transition-all duration-500 overflow-hidden ${!showFullSpecs && Object.entries(p.specs ?? {}).length > 6 ? 'max-h-[380px]' : ''}`}>
+                        {Object.entries(p.specs ?? {}).length === 0 ? (
+                          <div className="p-10 text-center text-sm font-medium" style={{ color: "var(--text-muted)" }}>Chưa có thông số kỹ thuật</div>
+                        ) : (
+                          Object.entries(p.specs ?? {}).map(([key, val]: any, i: number) => (
+                            <div key={key} className="flex items-start transition-colors duration-200" 
+                                 style={{ background: i % 2 === 0 ? "transparent" : "var(--bg-elevated)", borderBottom: "1px solid var(--border)" }}>
+                              <span className="w-1/3 md:w-1/4 flex-shrink-0 px-6 py-4 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>{key}</span>
+                              <span className="flex-1 px-6 py-4 text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{val}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      
+                      {Object.entries(p.specs ?? {}).length > 6 && !showFullSpecs && (
+                        <div className="absolute bottom-[52px] left-0 right-0 h-28 pointer-events-none" 
+                             style={{ background: "linear-gradient(to top, var(--bg-card), transparent)" }} />
+                      )}
+                      
+                      {Object.entries(p.specs ?? {}).length > 6 && (
+                        <button 
+                          onClick={() => setShowFullSpecs(!showFullSpecs)}
+                          className="w-full py-4 text-sm font-bold flex items-center justify-center gap-2 transition-all hover:bg-black/5"
+                          style={{ color: "var(--gold)", borderTop: "1px solid var(--border)" }}
+                        >
+                          {showFullSpecs ? (
+                            <>Thu gọn <ChevronUp className="w-4 h-4" /></>
+                          ) : (
+                            <>Xem cấu hình chi tiết ({Object.entries(p.specs ?? {}).length}) <ChevronDown className="w-4 h-4" /></>
+                          )}
+                        </button>
+                      )}
                     </motion.div>
                   )}
 
@@ -382,11 +418,11 @@ export default function ProductDetailPage() {
                       {/* Rating summary */}
                       <div className="flex items-center gap-6 p-6 rounded-2xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
                         <div className="text-center">
-                          <div className="text-5xl font-bold text-gradient-gold font-[family-name:var(--font-heading)]">{p.rating ?? 5.0}</div>
+                          <div className="text-5xl font-bold text-gradient-gold font-[family-name:var(--font-heading)]">{Number(finalRating).toFixed(1)}</div>
                           <div className="flex justify-center gap-0.5 mt-1">
-                            {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`w-4 h-4 ${i < Math.floor(p.rating ?? 5.0) ? "fill-gold text-gold" : "text-border"}`} />)}
+                            {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`w-4 h-4 ${i < Math.floor(finalRating) ? "fill-gold text-gold" : "text-border"}`} />)}
                           </div>
-                          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{p.reviews?.length} đánh giá</p>
+                          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{p.reviews?.length ?? 0} đánh giá</p>
                         </div>
                         <div className="flex-1 space-y-1.5">
                           {[5,4,3,2,1].map(star => {
@@ -449,7 +485,7 @@ export default function ProductDetailPage() {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="px-2.5 py-1 text-xs font-semibold rounded-lg" style={{ background: "var(--gold-dim)", color: "var(--gold)", border: "1px solid var(--border-gold)" }}>Bán chạy</span>
-                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>Đã bán {((p.sold ?? 0).toLocaleString("vi-VN"))}</span>
+                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>Đã bán {((sold).toLocaleString("vi-VN"))}</span>
                 </div>
                 <h1 className="text-2xl lg:text-3xl font-bold leading-tight font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>
                   {p.name}
@@ -457,9 +493,9 @@ export default function ProductDetailPage() {
                 <div className="flex items-center gap-4 mt-3">
                   <div className="flex items-center gap-1.5">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} className={`w-4 h-4 ${i < Math.floor(p.rating ?? 5.0) ? "fill-gold text-gold" : "text-border"}`} />
+                      <Star key={i} className={`w-4 h-4 ${i < Math.floor(finalRating) ? "fill-gold text-gold" : "text-border"}`} />
                     ))}
-                    <span className="text-sm font-semibold ml-1" style={{ color: "var(--gold)" }}>{p.rating ?? 5.0}</span>
+                    <span className="text-sm font-semibold ml-1" style={{ color: "var(--gold)" }}>{Number(finalRating).toFixed(1)}</span>
                   </div>
                   <span className="text-xs" style={{ color: "var(--text-muted)" }}>({p.reviews?.length ?? 0} đánh giá)</span>
                   <button className="ml-auto flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: "var(--text-muted)" }}>
@@ -599,6 +635,18 @@ export default function ProductDetailPage() {
             </Button>
           </div>
         </div>
+
+        {/* Recommended Products */}
+        {recommendations.length > 0 && (
+          <div className="max-w-7xl mx-auto px-4 lg:px-6 py-12 border-t mt-12" style={{ borderColor: "var(--border)" }}>
+            <h2 className="text-2xl font-bold font-[family-name:var(--font-heading)] mb-6" style={{ color: "var(--text-primary)" }}>Sản phẩm cùng danh mục</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+              {recommendations.map(prod => (
+                <ProductCard key={prod.id} product={prod} />
+              ))}
+            </div>
+          </div>
+        )}
       </main>
       <Footer />
     </>

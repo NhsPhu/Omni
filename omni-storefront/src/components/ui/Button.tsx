@@ -13,10 +13,10 @@ export default function Button({ variant = "gold", size = "md", loading = false,
   const base = "inline-flex items-center justify-center gap-2 font-semibold rounded-xl cursor-pointer transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-bg-base disabled:opacity-40 disabled:cursor-not-allowed font-[family-name:var(--font-body)] tracking-wide";
 
   const variants = {
-    gold:   "bg-gold text-bg-base hover:bg-gold-light focus:ring-gold shadow-[0_4px_20px_rgba(245,158,11,0.3)] hover:shadow-[0_6px_30px_rgba(245,158,11,0.5)] active:scale-[0.97]",
-    purple: "bg-purple text-white hover:bg-purple-light focus:ring-purple shadow-[0_4px_20px_rgba(139,92,246,0.3)] hover:shadow-[0_6px_30px_rgba(139,92,246,0.5)] active:scale-[0.97]",
-    glass:  "glass text-text-primary hover:bg-glass-hover border-border focus:ring-purple active:scale-[0.97]",
-    ghost:  "bg-transparent text-text-secondary hover:text-text-primary hover:bg-glass focus:ring-purple",
+    gold:   "bg-[var(--gold)] text-white hover:bg-[#B45309] focus:ring-[var(--gold)] shadow-[0_8px_24px_rgba(202,138,4,0.3)] hover:shadow-[0_12px_32px_rgba(202,138,4,0.4)] active:scale-[0.98] border border-transparent",
+    purple: "bg-[#1C1917] text-white hover:bg-[#0C0A09] focus:ring-[#1C1917] shadow-[0_8px_24px_rgba(28,25,23,0.3)] hover:shadow-[0_12px_32px_rgba(28,25,23,0.4)] active:scale-[0.98] border border-transparent",
+    glass:  "bg-white/70 backdrop-blur-xl text-gray-900 hover:bg-white/90 border border-black/5 focus:ring-[#1C1917] active:scale-[0.98] shadow-sm",
+    ghost:  "bg-transparent text-gray-500 hover:text-gray-900 hover:bg-black/5 focus:ring-[#1C1917]",
   };
 
   const sizes = { sm: "px-4 py-2 text-sm", md: "px-6 py-3 text-base", lg: "px-8 py-4 text-lg" };

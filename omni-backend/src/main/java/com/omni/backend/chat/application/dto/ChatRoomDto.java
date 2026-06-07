@@ -17,7 +17,9 @@ public class ChatRoomDto {
     private UUID userId;
     private UUID shopId;
     private String userName; // To display in Shop Inbox
+    private String userAvatar; 
     private String shopName; // To display in User Inbox
+    private String shopAvatar;
     private String lastMessage;
     private ZonedDateTime lastMessageAt;
     private Integer unreadCount; // To display unread badges

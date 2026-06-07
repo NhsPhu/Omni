@@ -22,4 +22,7 @@ public class CheckoutRequest {
     
     // vnpay or cod
     private String paymentMethod;
+
+    // Use loyalty coins
+    private Boolean useCoins;
 }

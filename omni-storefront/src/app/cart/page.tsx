@@ -167,8 +167,14 @@ export default function CartPage() {
           </h1>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <span className="text-sm">Đang tải giỏ hàng...</span>
+            <div className="flex flex-col lg:flex-row gap-6">
+              <div className="flex-1 space-y-4">
+                <div className="h-12 w-full rounded-2xl animate-pulse" style={{ background: "var(--bg-card)" }} />
+                {[1, 2].map(i => (
+                  <div key={i} className="h-40 w-full rounded-2xl animate-pulse" style={{ background: "var(--bg-card)" }} />
+                ))}
+              </div>
+              <div className="lg:w-80 h-64 rounded-2xl animate-pulse" style={{ background: "var(--bg-card)" }} />
             </div>
           ) : items.length === 0 ? (
             /* Empty state */
@@ -356,8 +362,8 @@ function Checkbox({ checked, onChange, disabled = false }: { checked: boolean; o
   return (
     <div onClick={() => !disabled && onChange(!checked)}
       className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all duration-150 ${disabled ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}`}
-      style={{ border: checked ? "none" : "1.5px solid var(--border)", background: checked ? "var(--purple)" : "transparent" }}>
-      {checked && <span className="text-white text-xs font-bold">✓</span>}
+      style={{ border: checked ? "none" : "1.5px solid var(--border)", background: checked ? "var(--gold)" : "transparent" }}>
+      {checked && <span className="text-black text-xs font-bold">✓</span>}
     </div>
   );
 }

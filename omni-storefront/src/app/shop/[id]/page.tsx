@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Store, Star, MapPin, Package, Calendar, CheckCircle, Heart } from "lucide-react";
+import { Store, Star, MapPin, Package, Calendar, CheckCircle, Heart, Ticket } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import Navbar from "@/components/layout/Navbar";
@@ -15,8 +15,11 @@ export default function ShopPage() {
   const router = useRouter();
   const [shop, setShop] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
+  const [shopVouchers, setShopVouchers] = useState<any[]>([]);
+  const [myVouchers, setMyVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const { isAuthenticated } = require("@/store/authStore").useAuthStore();
 
   const handleFollow = () => {
     setIsFollowing(!isFollowing);
@@ -39,12 +42,18 @@ export default function ShopPage() {
     if (!id) return;
     const fetchShopAndProducts = async () => {
       try {
-        const [shopRes, productsRes] = await Promise.all([
+        const [shopRes, productsRes, vouchersRes] = await Promise.all([
           api.get(`/shops/${id}`),
-          api.get(`/products/shops/${id}`)
+          api.get(`/products/shops/${id}`),
+          api.get(`/public/vouchers/shop/${id}`).catch(() => ({ data: [] }))
         ]);
         setShop(shopRes.data);
-        setProducts(productsRes.data.content);
+        setProducts(productsRes.data.content || productsRes.data);
+        setShopVouchers(vouchersRes.data);
+
+        if (isAuthenticated()) {
+          api.get("/me/vouchers").then(res => setMyVouchers(res.data)).catch(() => {});
+        }
       } catch (err) {
         console.error("Failed to load shop details", err);
       } finally {
@@ -59,7 +68,7 @@ export default function ShopPage() {
       <>
         <Navbar />
         <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
-          <div className="w-8 h-8 rounded-full animate-spin" style={{ border: "4px solid var(--border)", borderTopColor: "var(--purple)" }}></div>
+          <div className="w-8 h-8 rounded-full animate-spin" style={{ border: "4px solid var(--border)", borderTopColor: "var(--gold)" }}></div>
         </div>
         <Footer />
       </>
@@ -117,7 +126,7 @@ export default function ShopPage() {
                   {shop.logoUrl ? (
                     <img src={shop.logoUrl.startsWith('http') ? shop.logoUrl : `http://localhost:8080${shop.logoUrl}`} alt={shop.name} className="w-full h-full object-cover" />
                   ) : (
-                    <Store className="w-16 h-16" style={{ color: "var(--purple-light)" }} />
+                    <Store className="w-16 h-16" style={{ color: "var(--gold)" }} />
                   )}
                 </motion.div>
                 
@@ -140,7 +149,7 @@ export default function ShopPage() {
                       <span style={{ color: "var(--text-muted)" }}>({shop.reviewCount || 0})</span>
                     </div>
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-                      <Package className="w-4 h-4" style={{ color: "var(--purple-light)" }} />
+                      <Package className="w-4 h-4" style={{ color: "var(--gold)" }} />
                       <span className="font-medium" style={{ color: "var(--text-primary)" }}>{products.length}</span>
                       <span style={{ color: "var(--text-muted)" }}>Sản phẩm</span>
                     </div>
@@ -152,7 +161,7 @@ export default function ShopPage() {
                   <Button variant="glass" className="flex-1 md:flex-none" onClick={handleLocation}>
                     <MapPin className="w-4 h-4 mr-2" /> {shop.city || shop.province || "Vị trí"}
                   </Button>
-                  <Button variant={isFollowing ? "glass" : "purple"} className="flex-1 md:flex-none transition-all duration-300" onClick={handleFollow}>
+                  <Button variant={isFollowing ? "glass" : "gold"} className="flex-1 md:flex-none transition-all duration-300" onClick={handleFollow}>
                     {isFollowing ? (
                       <><CheckCircle className="w-4 h-4 mr-2" /> Đang theo dõi</>
                     ) : (
@@ -169,6 +178,65 @@ export default function ShopPage() {
               </div>
             </div>
           </motion.div>
+
+          {/* Shop Vouchers Section */}
+          {shopVouchers.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="mb-12"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <Ticket className="w-6 h-6 text-gold" />
+                <h2 className="text-2xl font-bold font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Mã Giảm Giá Của Shop</h2>
+              </div>
+              
+              <div className="flex overflow-x-auto pb-4 gap-4 scroll-hide">
+                {shopVouchers.map((v) => {
+                  const myVoucher = myVouchers.find(my => my.voucherId === v.id);
+                  const isSaved = !!myVoucher;
+                  if (myVoucher?.isUsed) return null; // Hide used vouchers
+                  return (
+                    <div key={v.id} className="flex rounded-xl overflow-hidden flex-shrink-0" style={{ width: "320px", background: "var(--bg-card)", border: "1px solid var(--border)", opacity: isSaved ? 0.7 : 1 }}>
+                      <div className="w-24 flex flex-col items-center justify-center p-2 relative" style={{ background: "var(--grad-purple)" }}>
+                        <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full" style={{ background: "var(--bg-base)" }}></div>
+                        <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full" style={{ background: "var(--bg-card)" }}></div>
+                        <Ticket className="w-8 h-8 text-white mb-1" />
+                        <span className="text-xs text-white font-bold text-center">SHOP</span>
+                      </div>
+                      <div className="flex-1 p-3 flex flex-col justify-center relative">
+                        <h4 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>{v.code} - Giảm {v.discountType?.toUpperCase() === 'PERCENTAGE' ? `${v.discountValue}%` : `${require('@/lib/utils').formatPrice(v.discountValue)}`}</h4>
+                        <p className="text-[11px] mt-1" style={{ color: "var(--text-secondary)" }}>Đơn tối thiểu {require('@/lib/utils').formatPrice(v.minOrderValue)}</p>
+                        <p className="text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>HSD: {new Date(v.validTo).toLocaleDateString("vi-VN")}</p>
+                        
+                        <div className="absolute right-3 bottom-3">
+                          {isSaved ? (
+                            <Button variant="glass" size="sm" disabled className="text-[10px] h-7 px-2">Đã lưu</Button>
+                          ) : (
+                            <Button variant="gold" size="sm" className="text-[10px] h-7 px-2" onClick={async () => {
+                              if (!isAuthenticated()) {
+                                toast.error("Vui lòng đăng nhập để lưu mã");
+                                router.push("/auth");
+                                return;
+                              }
+                              try {
+                                await api.post("/me/vouchers/save", { voucherId: v.id, voucherType: "SHOP" });
+                                toast.success("Lưu voucher thành công!");
+                                setMyVouchers(prev => [...prev, { voucherId: v.id }]);
+                              } catch (e: any) {
+                                toast.error(e.response?.data?.message || "Lỗi lưu voucher");
+                              }
+                            }}>Lưu ngay</Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
 
           {/* Shop Products */}
           <motion.div 

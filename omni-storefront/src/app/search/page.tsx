@@ -27,6 +27,13 @@ const PRICE_RANGES = [
   { id: "over10m",label: "Trên 10M",    min: 10000000,max: Infinity },
 ];
 
+const LOCATIONS = [
+  { id: "all", label: "Toàn quốc" },
+  { id: "TP. Hồ Chí Minh", label: "TP. Hồ Chí Minh" },
+  { id: "Hà Nội", label: "Hà Nội" },
+  { id: "Đà Nẵng", label: "Đà Nẵng" }
+];
+
 function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") || "";
@@ -34,6 +41,7 @@ function SearchContent() {
   const [sort, setSort] = useState("popular");
   const [priceRange, setPriceRange] = useState("all");
   const [minRating, setMinRating] = useState(0);
+  const [shopLocation, setShopLocation] = useState("all");
   const [selectedCats, setSelectedCats] = useState<string[]>(initCategoryId ? [initCategoryId] : []);
   const [filterOpen, setFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -62,6 +70,7 @@ function SearchContent() {
   const chips: { id: string; label: string; onRemove: () => void }[] = [
     ...(priceRange !== "all" ? [{ id: "price", label: PRICE_RANGES.find(r => r.id === priceRange)!.label, onRemove: () => setPriceRange("all") }] : []),
     ...(minRating > 0 ? [{ id: "rating", label: `${minRating}★ trở lên`, onRemove: () => setMinRating(0) }] : []),
+    ...(shopLocation !== "all" ? [{ id: "location", label: shopLocation, onRemove: () => setShopLocation("all") }] : []),
     ...selectedCats.map(id => {
       let catName = "Danh mục";
       for (const c of realCategories) {
@@ -89,20 +98,21 @@ function SearchContent() {
         url += `&categoryId=${selectedCats.join(',')}`;
     }
 
+    if (minRating > 0) url += `&minRating=${minRating}`;
+    if (shopLocation !== "all") url += `&shopLocation=${encodeURIComponent(shopLocation)}`;
+
     let sortParam = "";
-    if (sort === "popular") sortParam = "soldCount,desc";
-    else if (sort === "newest") sortParam = "createdAt,desc";
-    else if (sort === "price_asc") sortParam = "price,asc";
-    else if (sort === "price_desc") sortParam = "price,desc";
-    else if (sort === "rating") sortParam = "rating,desc";
+    if (sort === "popular") sortParam = "topselling";
+    else if (sort === "newest") sortParam = "newest";
+    else if (sort === "price_asc") sortParam = "price_asc";
+    else if (sort === "price_desc") sortParam = "price_desc";
     
     if (sortParam) {
-        url += `&sort=${sortParam}`;
+        url += `&sortBy=${sortParam}`;
     }
     
     api.get(url).then(res => {
         let list = res.data.content || [];
-        if (minRating > 0) list = list.filter((p:any) => (p.rating || 5.0) >= minRating);
         
         setResults(list);
         setTotalPages(res.data.totalPages || 1);
@@ -112,7 +122,7 @@ function SearchContent() {
         console.error(err);
         setLoading(false);
     });
-  }, [query, priceRange, selectedCats, minRating, sort, range, currentPage]);
+  }, [query, priceRange, selectedCats, minRating, shopLocation, sort, range, currentPage]);
 
   const FilterPanel = () => (
     <div className="space-y-6">
@@ -188,8 +198,22 @@ function SearchContent() {
         </div>
       </div>
 
+      {/* Location */}
+      <div>
+        <h3 className="text-sm font-bold mb-3 font-[family-name:var(--font-body)]" style={{ color: "var(--text-primary)" }}>Khu vực</h3>
+        <div className="space-y-1.5">
+          {LOCATIONS.map(l => (
+            <button key={l.id} onClick={() => setShopLocation(l.id)}
+              className="w-full text-left px-3 py-2 rounded-xl text-sm cursor-pointer transition-all duration-150"
+              style={{ background: shopLocation === l.id ? "var(--purple-dim)" : "transparent", color: shopLocation === l.id ? "var(--purple-light)" : "var(--text-secondary)", border: shopLocation === l.id ? "1px solid var(--border-purple)" : "1px solid transparent" }}>
+              {l.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="pt-2">
-        <button onClick={() => { setPriceRange("all"); setMinRating(0); setSelectedCats([]); }}
+        <button onClick={() => { setPriceRange("all"); setMinRating(0); setSelectedCats([]); setShopLocation("all"); }}
           disabled={chips.length === 0}
           className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
           style={{ 
@@ -308,7 +332,7 @@ function SearchContent() {
                   <Search className="w-16 h-16 mb-4" style={{ color: "var(--text-muted)" }} />
                   <h3 className="text-lg font-bold mb-2" style={{ color: "var(--text-primary)" }}>Không tìm thấy sản phẩm</h3>
                   <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
-                  <Button variant="glass" onClick={() => { setPriceRange("all"); setMinRating(0); setSelectedCats([]); }}>Xóa bộ lọc</Button>
+                  <Button variant="glass" onClick={() => { setPriceRange("all"); setMinRating(0); setSelectedCats([]); setShopLocation("all"); }}>Xóa bộ lọc</Button>
                 </div>
               ) : (
                 <>
@@ -325,10 +349,10 @@ function SearchContent() {
                             onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"}
                             onClick={() => window.location.href = `/products/${p.id}`}>
                             <div className={`w-24 h-24 rounded-xl flex-shrink-0 bg-gradient-to-br ${["from-violet-600/80 to-indigo-600/80","from-amber-500/80 to-orange-600/80","from-purple-600/80 to-pink-600/80"][i % 3]} flex items-center justify-center overflow-hidden`}>
-                              {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover mix-blend-overlay opacity-50" /> : <span className="text-white/30 text-2xl">🛒</span>}
+                              {p.imageUrl ? <img src={p.imageUrl} alt={p.name.replace(/<[^>]+>/g, '')} className="w-full h-full object-cover mix-blend-overlay opacity-50" /> : <span className="text-white/30 text-2xl">🛒</span>}
                             </div>
                             <div className="flex-1 min-w-0 flex flex-col justify-center">
-                              <h3 className="font-medium line-clamp-2 text-sm group-hover:text-gold transition-colors duration-200" style={{ color: "var(--text-primary)" }}>{p.name}</h3>
+                              <h3 className="font-medium line-clamp-2 text-sm group-hover:text-gold transition-colors duration-200" style={{ color: "var(--text-primary)" }} dangerouslySetInnerHTML={{ __html: p.name }} />
                               <div className="flex items-center gap-2 mt-1">
                                 <Star className="w-3.5 h-3.5 fill-gold text-gold" />
                                 <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{p.rating || "5.0"}</span>

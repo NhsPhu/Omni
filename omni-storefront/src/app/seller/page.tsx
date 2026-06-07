@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/axios";
-import { TrendingUp, Package, ShoppingCart, DollarSign } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { TrendingUp, Package, ShoppingCart, DollarSign, Filter } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 
 export default function SellerDashboardPage() {
   const router = useRouter();
@@ -13,6 +13,7 @@ export default function SellerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [shop, setShop] = useState<any>(null);
   const [vendorStats, setVendorStats] = useState<any>(null);
+  const [funnelData, setFunnelData] = useState<any>(null);
   const [activeProductsCount, setActiveProductsCount] = useState(0);
 
   useEffect(() => {
@@ -29,11 +30,22 @@ export default function SellerDashboardPage() {
         
         // Fetch stats if shop is active
         if (res.data.status === "ACTIVE") {
-          const [statsRes, productsRes] = await Promise.all([
+          const [statsRes, funnelRes, productsRes] = await Promise.all([
             api.get("/vendor/statistics"),
+            api.get("/vendor/funnel"),
             api.get("/vendor/products?page=0&size=1")
           ]);
           setVendorStats(statsRes.data);
+          
+          // Format funnel data for BarChart
+          const fd = funnelRes.data;
+          setFunnelData([
+            { name: 'Lượt xem', value: fd.views, fill: '#8b5cf6' },
+            { name: 'Thêm giỏ', value: fd.carts, fill: '#3b82f6' },
+            { name: 'Đặt hàng', value: fd.orders, fill: '#f59e0b' },
+            { name: 'Thanh toán', value: fd.successfulPayments, fill: '#10b981' }
+          ]);
+          
           setActiveProductsCount(productsRes.data.totalElements || 0);
         }
       } catch (err: any) {
@@ -165,12 +177,33 @@ export default function SellerDashboardPage() {
           </div>
         </div>
 
-        {/* Top Products Placeholder */}
-        <div className="glass border border-border rounded-2xl p-6 shadow-lg">
-          <h2 className="text-lg font-bold text-text-primary mb-4 border-b border-border pb-4">Sản phẩm bán chạy</h2>
-          <div className="text-center py-16 text-text-muted flex flex-col items-center justify-center">
-            <Package className="w-12 h-12 mx-auto opacity-20 mb-3" />
-            <p>Chưa có dữ liệu sản phẩm.</p>
+        {/* Funnel Chart */}
+        <div className="glass border border-border rounded-2xl p-6 shadow-lg flex flex-col">
+          <h2 className="text-lg font-bold text-text-primary mb-4 border-b border-border pb-4">Phễu chuyển đổi (Sales Funnel)</h2>
+          <div className="flex-1 min-h-[300px] mt-4">
+            {funnelData && funnelData.some((d: any) => d.value > 0) ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={funnelData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#ffffff10" />
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 13 }} width={80} />
+                  <Tooltip 
+                    cursor={{fill: 'rgba(255, 255, 255, 0.05)'}}
+                    contentStyle={{ borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}
+                  />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={32}>
+                    {funnelData.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-center py-16 text-text-muted flex flex-col items-center justify-center h-full">
+                <Filter className="w-12 h-12 mx-auto opacity-20 mb-3" />
+                <p>Chưa có dữ liệu chuyển đổi.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
