@@ -105,7 +105,7 @@ export default function AuthPage() {
         toast.success("Đăng ký thành công! Vui lòng đăng nhập.");
         setMode("login");
       } else if (mode === "forgot") {
-        await new Promise(r => setTimeout(r, 1000));
+        await api.post("/auth/forgot-password", { email: form.email });
         setSuccess(true);
       }
     } catch (err: any) {
