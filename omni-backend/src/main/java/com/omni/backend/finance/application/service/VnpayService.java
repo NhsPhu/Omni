@@ -5,7 +5,8 @@ import com.omni.backend.sales.adapter.persistence.repository.ChildOrderRepositor
 import com.omni.backend.sales.adapter.persistence.entity.ParentOrderJpaEntity;
 import com.omni.backend.sales.adapter.persistence.entity.ChildOrderJpaEntity;
 import com.omni.backend.finance.domain.event.OrderPaidEvent;
-import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.omni.backend.shared.config.RabbitMQConfig;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +20,13 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
+import java.time.ZonedDateTime;
 import java.util.*;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Service
@@ -29,7 +36,9 @@ public class VnpayService {
     private final ParentOrderRepository parentOrderRepository;
     private final ChildOrderRepository childOrderRepository;
     private final WalletService walletService; 
-    private final ApplicationEventPublisher eventPublisher;
+    private final RabbitTemplate rabbitTemplate;
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String VNP_PAY_URL = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
     @org.springframework.beans.factory.annotation.Value("${vnpay.return-url:http://localhost:3000/payment/callback}")
@@ -160,7 +169,7 @@ public class VnpayService {
         walletService.creditAdminPending(orderId, amountInVnd);
 
         // Publish OrderPaidEvent
-        eventPublisher.publishEvent(new OrderPaidEvent(orderId, order.getUserId()));
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY_ORDER_PAID, new OrderPaidEvent(orderId, order.getUserId()));
 
         log.info("VNPAY IPN: Successfully processed payment for order {}. Amount: {} VND, Bank: {}", 
                 orderId, amountInVnd, vnpBankCode);
@@ -196,6 +205,58 @@ public class VnpayService {
 
         String computedHash = hmacSHA512(vnpHashSecret, hashData.toString());
         return computedHash.equalsIgnoreCase(vnpSecureHash);
+    }
+
+    public boolean processRefund(UUID orderId, BigDecimal amount, String transDate) {
+        try {
+            long amountInVnd = amount.longValue() * 100;
+            String vnp_RequestId = UUID.randomUUID().toString().replace("-", "");
+            String vnp_Command = "refund";
+            String vnp_TransactionType = "02"; // 02: Refund entirely, 03: Refund partially
+            String vnp_CreateDate = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
+            String vnp_IpAddr = "127.0.0.1";
+            String vnp_CreateBy = "Admin";
+            String vnp_OrderInfo = "Hoan tien don hang " + orderId;
+
+            String hashData = vnp_RequestId + "|" + "2.1.0" + "|" + vnp_Command + "|" + vnpTmnCode + "|" 
+                    + vnp_TransactionType + "|" + orderId.toString() + "|" + amountInVnd + "|" 
+                    + "" + "|" + transDate + "|" + vnp_CreateBy + "|" + vnp_CreateDate + "|" + vnp_IpAddr + "|" + vnp_OrderInfo;
+
+            String vnp_SecureHash = hmacSHA512(vnpHashSecret, hashData);
+
+            Map<String, Object> requestParams = new HashMap<>();
+            requestParams.put("vnp_RequestId", vnp_RequestId);
+            requestParams.put("vnp_Version", "2.1.0");
+            requestParams.put("vnp_Command", vnp_Command);
+            requestParams.put("vnp_TmnCode", vnpTmnCode);
+            requestParams.put("vnp_TransactionType", vnp_TransactionType);
+            requestParams.put("vnp_TxnRef", orderId.toString());
+            requestParams.put("vnp_Amount", amountInVnd);
+            requestParams.put("vnp_TransactionNo", "");
+            requestParams.put("vnp_TransactionDate", transDate);
+            requestParams.put("vnp_CreateBy", vnp_CreateBy);
+            requestParams.put("vnp_CreateDate", vnp_CreateDate);
+            requestParams.put("vnp_IpAddr", vnp_IpAddr);
+            requestParams.put("vnp_OrderInfo", vnp_OrderInfo);
+            requestParams.put("vnp_SecureHash", vnp_SecureHash);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestParams, headers);
+
+            String vnpApiUrl = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
+            String response = restTemplate.postForObject(vnpApiUrl, entity, String.class);
+            
+            log.info("VNPAY Refund Response for order {}: {}", orderId, response);
+            
+            if (response != null && response.contains("\"vnp_ResponseCode\":\"00\"")) {
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
+            log.error("Error processing VNPay refund for order {}", orderId, e);
+            return false;
+        }
     }
 
     /**

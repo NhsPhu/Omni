@@ -52,5 +52,15 @@ public class NotificationController {
         response.put("unreadCount", count);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/fcm-token")
+    public ResponseEntity<Void> saveFcmToken(Authentication authentication, @RequestBody Map<String, String> body) {
+        String token = body.get("token");
+        String deviceInfo = body.get("deviceInfo");
+        if (token != null && !token.isBlank()) {
+            notificationService.saveFcmToken(getUserId(authentication), token, deviceInfo);
+        }
+        return ResponseEntity.ok().build();
+    }
 }
 

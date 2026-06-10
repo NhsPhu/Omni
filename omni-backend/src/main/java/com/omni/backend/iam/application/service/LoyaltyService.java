@@ -7,7 +7,9 @@ import com.omni.backend.iam.adapter.persistence.repository.LoyaltyPointTransacti
 import com.omni.backend.iam.adapter.persistence.repository.LoyaltyTierRepository;
 import com.omni.backend.iam.adapter.persistence.repository.UserRepository;
 import com.omni.backend.sales.domain.event.OrderCompletedEvent;
-import org.springframework.context.event.EventListener;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.annotation.RabbitHandler;
+import com.omni.backend.shared.config.RabbitMQConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -20,6 +22,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@RabbitListener(queues = RabbitMQConfig.QUEUE_LOYALTY)
 public class LoyaltyService {
 
     private final UserRepository userRepository;
@@ -92,7 +95,7 @@ public class LoyaltyService {
         return transactionRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
-    @EventListener
+    @RabbitHandler
     public void handleOrderCompleted(OrderCompletedEvent event) {
         // Calculate points: 1 point per 10,000 VND
         int points = event.getTotalAmount().divide(new java.math.BigDecimal("10000"), java.math.RoundingMode.DOWN).intValue();

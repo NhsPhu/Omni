@@ -13,7 +13,8 @@ import com.omni.backend.sales.application.dto.CheckoutResponse;
 import com.omni.backend.sales.domain.event.OrderPlacedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.omni.backend.shared.config.RabbitMQConfig;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.omni.backend.iam.adapter.persistence.repository.UserRepository;
@@ -35,7 +36,7 @@ public class CheckoutService {
     private final CartService cartService;
     private final ProductSkuRepository productSkuRepository;
     private final ParentOrderRepository parentOrderRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final RabbitTemplate rabbitTemplate;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final LoyaltyTierRepository loyaltyTierRepository;
@@ -185,7 +186,7 @@ public class CheckoutService {
         }
 
         if ("cod".equalsIgnoreCase(request.getPaymentMethod())) {
-            eventPublisher.publishEvent(new OrderPlacedEvent(parentOrder.getId(), userId, parentOrder.getFinalAmount()));
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY_ORDER_PLACED, new OrderPlacedEvent(parentOrder.getId(), userId, parentOrder.getFinalAmount()));
         }
 
         log.info("Checkout successful for user {}, ParentOrder ID: {}", userId, parentOrder.getId());

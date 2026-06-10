@@ -20,4 +20,7 @@ public class ProductSkuDto {
     private BigDecimal originalPrice;
     private Integer stockQuantity;
     private Map<String, String> attributes;
+    private BigDecimal flashSalePrice;
+    private Integer flashStock;
+    private Integer flashSoldCount;
 }

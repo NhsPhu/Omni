@@ -34,6 +34,12 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: 6379
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: 5672
+    username: guest
+    password: guest
+
   mail:
     host: smtp.gmail.com
     port: 587
@@ -72,3 +78,11 @@ ghn:
 vnpay:
   tmn-code: UD2YB7G7
   hash-secret: ${VNPAY_HASH_SECRET:DJ8X3REITF7WMJQ5HGIJKNKKTSO8YQDK}
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans

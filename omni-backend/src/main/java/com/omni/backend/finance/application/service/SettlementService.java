@@ -12,7 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
-import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.omni.backend.shared.config.RabbitMQConfig;
 import com.omni.backend.sales.adapter.persistence.repository.OrderStatusHistoryRepository;
 import com.omni.backend.sales.adapter.persistence.entity.OrderStatusHistoryJpaEntity;
 import com.omni.backend.notification.application.event.OrderCompletedEvent;
@@ -25,7 +26,7 @@ public class SettlementService {
     private final ChildOrderRepository childOrderRepository;
     private final WalletService walletService;
     private final CommissionSnapshotRepository commissionSnapshotRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final RabbitTemplate rabbitTemplate;
     private final OrderStatusHistoryRepository statusHistoryRepo;
 
     public BigDecimal getCurrentCommissionRate() {
@@ -88,7 +89,9 @@ public class SettlementService {
         statusHistoryRepo.save(history);
 
         // 2. Publish event để Notification module gửi thông báo
-        eventPublisher.publishEvent(
+        rabbitTemplate.convertAndSend(
+            RabbitMQConfig.EXCHANGE_NAME, 
+            RabbitMQConfig.ROUTING_KEY_ORDER_COMPLETED,
             OrderCompletedEvent.builder()
                 .shopOrderId(shopOrderId)
                 .shopId(order.getShopId())

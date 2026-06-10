@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -43,8 +44,7 @@ class CheckoutServiceTest {
     @Mock
     private ParentOrderRepository parentOrderRepository;
 
-    @Mock
-    private ApplicationEventPublisher eventPublisher;
+
 
     @Mock
     private UserRepository userRepository;
@@ -66,6 +66,9 @@ class CheckoutServiceTest {
 
     @Mock
     private FlashSaleService flashSaleService;
+
+    @Mock
+    private RabbitTemplate rabbitTemplate;
 
     @InjectMocks
     private CheckoutService checkoutService;
@@ -132,7 +135,7 @@ class CheckoutServiceTest {
         
         verify(stockReservationService).reserveStockAndIncrementSold(eq(testSkuId), any(), eq(2), eq("SKU-001"));
         verify(cartService).removeFromCart(testUserId, testSkuId);
-        verify(eventPublisher).publishEvent(any(com.omni.backend.sales.domain.event.OrderPlacedEvent.class));
+        verify(rabbitTemplate).convertAndSend(anyString(), anyString(), any(com.omni.backend.sales.domain.event.OrderPlacedEvent.class));
     }
 
     @Test

@@ -44,6 +44,10 @@ public class ProductService {
     private final ProductSearchRepository productSearchRepository;
     private final ShopRepository shopRepository;
 
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.omni.backend.sales.application.service.FlashSaleService flashSaleService;
+
     @Transactional
     public ProductDto createProduct(ProductDto dto) {
         String slug = dto.getSlug();
@@ -211,16 +215,33 @@ public class ProductService {
         ProductJpaEntity product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        List<ProductSkuDto> skus = productSkuRepository.findByProductId(id).stream()
-                .map(sku -> ProductSkuDto.builder()
-                        .id(sku.getId())
-                        .skuCode(sku.getSkuCode())
-                        .price(sku.getPrice())
-                        .originalPrice(sku.getOriginalPrice())
-                        .stockQuantity(sku.getStockQuantity())
-                        .attributes(sku.getAttributes())
-                        .build())
+        List<ProductSkuJpaEntity> skuEntities = productSkuRepository.findByProductId(id);
+        List<UUID> skuIds = skuEntities.stream().map(ProductSkuJpaEntity::getId).collect(Collectors.toList());
+        Map<UUID, com.omni.backend.sales.application.dto.FlashSaleItemDto> flashSales = flashSaleService.getActiveFlashSaleItemsBySkuIds(skuIds);
+
+        List<ProductSkuDto> skus = skuEntities.stream()
+                .map(sku -> {
+                    ProductSkuDto skuDto = ProductSkuDto.builder()
+                            .id(sku.getId())
+                            .skuCode(sku.getSkuCode())
+                            .price(sku.getPrice())
+                            .originalPrice(sku.getOriginalPrice())
+                            .stockQuantity(sku.getStockQuantity())
+                            .attributes(sku.getAttributes())
+                            .build();
+
+                    if (flashSales.containsKey(sku.getId())) {
+                        com.omni.backend.sales.application.dto.FlashSaleItemDto fsItem = flashSales.get(sku.getId());
+                        skuDto.setFlashSalePrice(fsItem.getFlashPrice());
+                        skuDto.setFlashStock(fsItem.getFlashStock());
+                        skuDto.setFlashSoldCount(fsItem.getSoldCount());
+                    }
+                    return skuDto;
+                })
                 .collect(Collectors.toList());
+
+        BigDecimal fsMin = skus.stream().filter(s -> s.getFlashSalePrice() != null).map(ProductSkuDto::getFlashSalePrice).min(BigDecimal::compareTo).orElse(null);
+        BigDecimal fsMax = skus.stream().filter(s -> s.getFlashSalePrice() != null).map(ProductSkuDto::getFlashSalePrice).max(BigDecimal::compareTo).orElse(null);
 
         List<ProductImageDto> images = productImageRepository.findByProductIdOrderBySortOrderAsc(id).stream()
                 .map(img -> ProductImageDto.builder()
@@ -253,6 +274,8 @@ public class ProductService {
                 .soldCount(product.getSoldCount())
                 .skus(skus)
                 .images(images)
+                .flashSalePriceMin(fsMin)
+                .flashSalePriceMax(fsMax)
                 .build();
     }
 

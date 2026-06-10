@@ -206,6 +206,17 @@ public class FlashSaleService {
                 .collect(Collectors.toMap(FlashSaleItemDto::getSkuId, FlashSaleItemDto::getFlashPrice, (existing, replacement) -> existing));
     }
 
+    public Map<UUID, FlashSaleItemDto> getActiveFlashSaleItemsBySkuIds(List<UUID> skuIds) {
+        FlashSaleEventDto activeEvent = getActiveEvent();
+        if (activeEvent == null || activeEvent.getItems() == null || skuIds == null || skuIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return activeEvent.getItems().stream()
+                .filter(item -> skuIds.contains(item.getSkuId()) && item.getFlashStock() > item.getSoldCount())
+                .collect(Collectors.toMap(FlashSaleItemDto::getSkuId, item -> item, (existing, replacement) -> existing));
+    }
+
     public Map<UUID, FlashSaleItemDto> getActiveFlashSaleItemsByProductIds(List<UUID> productIds) {
         FlashSaleEventDto activeEvent = getActiveEvent();
         if (activeEvent == null || activeEvent.getItems() == null || productIds == null || productIds.isEmpty()) {

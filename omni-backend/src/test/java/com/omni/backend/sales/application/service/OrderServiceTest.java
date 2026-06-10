@@ -19,6 +19,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.omni.backend.finance.application.service.VnpayService;
+import com.omni.backend.sales.adapter.persistence.repository.ShopAnalyticsDailyRepository;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -49,10 +51,19 @@ class OrderServiceTest {
     private GhnShippingClient ghnShippingClient;
 
     @Mock
+    private UserAddressRepository userAddressRepository;
+
+    @Mock
     private NotificationService notificationService;
 
     @Mock
-    private UserAddressRepository userAddressRepository;
+    private VnpayService vnpayService;
+
+    @Mock
+    private TrackingService trackingService;
+
+    @Mock
+    private ShopAnalyticsDailyRepository analyticsRepository;
 
     @InjectMocks
     private OrderService orderService;
@@ -185,5 +196,33 @@ class OrderServiceTest {
         );
 
         assertEquals("Order must be in PROCESSING status to be shipped", exception.getMessage());
+    }
+
+    @Test
+    void testResolveDispute_RefundsToBuyer() {
+        childOrder.setStatus("RETURN_REQUESTED");
+        parentOrder.setFinalAmount(new BigDecimal("100000"));
+        
+        when(childOrderRepository.findById(childOrderId)).thenReturn(Optional.of(childOrder));
+        when(vnpayService.processRefund(eq(parentOrderId), eq(new BigDecimal("100000")), anyString())).thenReturn(true);
+        when(childOrderRepository.save(any(ChildOrderJpaEntity.class))).thenReturn(childOrder);
+
+        orderService.resolveDispute(childOrderId, true, "Refund approved", testUserId);
+
+        assertEquals("RETURNED", childOrder.getStatus());
+        verify(vnpayService).processRefund(eq(parentOrderId), eq(new BigDecimal("100000")), anyString());
+        verify(historyRepository).save(any(OrderStatusHistoryJpaEntity.class));
+    }
+
+    @Test
+    void testGetVendorStatistics() {
+        when(trackingService.getShopVisitorsCount(eq(testShopId), any(java.time.LocalDate.class))).thenReturn(100L);
+        when(childOrderRepository.findByShopId(testShopId)).thenReturn(new ArrayList<>());
+
+        com.omni.backend.sales.application.dto.VendorStatisticsDto stats = orderService.getVendorStatistics(testShopId);
+
+        assertEquals(700L, stats.getVisitorsCount()); // 100 visitors/day * 7 days
+        assertEquals(0, stats.getNewOrdersCount());
+        verify(trackingService, times(8)).getShopVisitorsCount(eq(testShopId), any(java.time.LocalDate.class));
     }
 }

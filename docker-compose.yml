@@ -27,25 +27,47 @@ services:
     networks:
       - omni-network
 
-  # elasticsearch:
-  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
-  #   container_name: omni_es
-  #   environment:
-  #     - discovery.type=single-node
-  #     - xpack.security.enabled=false
-  #     - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-  #   ports:
-  #     - "${ES_PORT:-9200}:9200"
-  #   volumes:
-  #     - es_data:/usr/share/elasticsearch/data
-  #   restart: unless-stopped
-  #   networks:
-  #     - omni-network
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: omni_es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "${ES_PORT:-9200}:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    networks:
+      - omni-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: omni_rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+    restart: unless-stopped
+    networks:
+      - omni-network
+
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: omni_zipkin
+    ports:
+      - "9411:9411"
+    restart: unless-stopped
+    networks:
+      - omni-network
 
 volumes:
   postgres_data:
   redis_data:
-  # es_data:
+  es_data:
+  rabbitmq_data:
 
 networks:
   omni-network:

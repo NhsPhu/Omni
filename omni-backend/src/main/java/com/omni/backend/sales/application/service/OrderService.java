@@ -12,7 +12,9 @@ import com.omni.backend.sales.adapter.persistence.repository.ParentOrderReposito
 import com.omni.backend.sales.adapter.persistence.repository.ShopAnalyticsDailyRepository;
 import com.omni.backend.sales.domain.event.OrderCompletedEvent;
 import com.omni.backend.notification.application.service.NotificationService;
-import org.springframework.context.ApplicationEventPublisher;
+import com.omni.backend.finance.application.service.VnpayService;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.omni.backend.shared.config.RabbitMQConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -52,8 +54,10 @@ public class OrderService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final UserAddressRepository userAddressRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final RabbitTemplate rabbitTemplate;
     private final ShopAnalyticsDailyRepository analyticsRepository;
+    private final VnpayService vnpayService;
+    private final TrackingService trackingService;
 
     @Transactional(readOnly = true)
     public List<ParentOrderJpaEntity> getUserOrders(UUID userId) {
@@ -192,16 +196,28 @@ public class OrderService {
                 })
                 .toList();
 
-        // Calculate fake but dynamic visitors and conversion rate to avoid static mock data
-        long visitorsCount = orders.size() > 0 ? orders.size() * 85L + 124L : 0L;
-        double conversionRate = visitorsCount > 0 ? (double) orders.size() / visitorsCount * 100 : 0.0;
+        // Calculate conversion rate using real visitors data from TrackingService
+        long visitorsCount = trackingService.getShopVisitorsCount(shopId, LocalDate.now());
+        
+        // Optionally aggregate visitors from the past 7 days instead of just today for a 7-day conversion rate, 
+        // but since we are replacing fake data, showing today's visitors or sum of recent visitors is fine.
+        // Let's get the 7-day visitor count to match the 7-day revenue chart.
+        long totalVisitors7Days = 0;
+        for (int i = 0; i < 7; i++) {
+            totalVisitors7Days += trackingService.getShopVisitorsCount(shopId, LocalDate.now().minusDays(i));
+        }
+        
+        // Orders created in the last 7 days
+        long ordersLast7Days = newOrdersCount; 
+
+        double conversionRate = totalVisitors7Days > 0 ? (double) ordersLast7Days / totalVisitors7Days * 100 : 0.0;
         
         return VendorStatisticsDto.builder()
                 .totalRevenue(totalRevenue)
                 .newOrdersCount(newOrdersCount)
                 .pendingOrdersCount(pendingOrdersCount)
                 .conversionRate(Math.round(conversionRate * 100.0) / 100.0)
-                .visitorsCount(visitorsCount)
+                .visitorsCount(totalVisitors7Days)
                 .revenueChart(chartData)
                 .build();
     }
@@ -298,7 +314,7 @@ public class OrderService {
         changeChildOrderStatus(childOrder, "COMPLETED", userId, "Customer confirmed receipt");
         childOrder.setDeliveredAt(ZonedDateTime.now());
         childOrderRepository.save(childOrder);
-        eventPublisher.publishEvent(new OrderCompletedEvent(childOrder.getParentOrder().getUserId(), childOrder.getId(), childOrder.getTotalAmount()));
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY_ORDER_COMPLETED, new OrderCompletedEvent(childOrder.getParentOrder().getUserId(), childOrder.getId(), childOrder.getTotalAmount()));
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -422,7 +438,16 @@ public class OrderService {
         if (approved) {
             changeChildOrderStatus(childOrder, "RETURNED", adminId, "Admin approved return: " + resolutionNote);
             rollbackStock(childOrder);
-            // Here you would also trigger refund to wallet/payment gateway
+            
+            // Trigger refund to payment gateway
+            boolean refundSuccess = vnpayService.processRefund(
+                    childOrder.getParentOrder().getId(), 
+                    childOrder.getTotalAmount(), 
+                    new java.text.SimpleDateFormat("yyyyMMddHHmmss").format(new java.util.Date())
+            );
+            if (!refundSuccess) {
+                log.warn("VNPay refund API returned false or failed for child order {}", childOrderId);
+            }
         } else {
             changeChildOrderStatus(childOrder, "RETURN_REJECTED", adminId, "Admin rejected return: " + resolutionNote);
         }
@@ -462,7 +487,7 @@ public class OrderService {
         for (ChildOrderJpaEntity order : deliveredOrders) {
             changeChildOrderStatus(order, "COMPLETED", null, "Auto-completed by system (7 days past delivery)");
             childOrderRepository.save(order);
-            eventPublisher.publishEvent(new OrderCompletedEvent(order.getParentOrder().getUserId(), order.getId(), order.getTotalAmount()));
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY_ORDER_COMPLETED, new OrderCompletedEvent(order.getParentOrder().getUserId(), order.getId(), order.getTotalAmount()));
             log.info("Auto-completed child order {}", order.getId());
         }
     }

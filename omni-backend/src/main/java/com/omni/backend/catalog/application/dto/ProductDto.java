@@ -31,4 +31,6 @@ public class ProductDto {
     private String shopLocation;
     private List<ProductSkuDto> skus;
     private List<ProductImageDto> images;
+    private BigDecimal flashSalePriceMin;
+    private BigDecimal flashSalePriceMax;
 }
