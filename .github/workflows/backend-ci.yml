@@ -1,0 +1,64 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: omni_user
+          POSTGRES_PASSWORD: omni_password
+          POSTGRES_DB: omni_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Run Gitleaks (Secrets scanning)
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Dependency vulnerability scan
+      run: mvn -B dependency-check:check
+      working-directory: ./omni-backend
+      continue-on-error: true # For demonstration
+
+    - name: Build and Test
+      working-directory: ./omni-backend
+      run: mvn -B clean verify
+      env:
+        DB_HOST: localhost
+        REDIS_HOST: localhost
+        JWT_SECRET_KEY: testing-secret-key-that-is-long-enough-for-hs256
