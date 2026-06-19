@@ -1,57 +1,48 @@
 package com.omni.backend.shared.security;
 
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import io.github.bucket4j.ConsumptionProbe;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    private final Map<String, Bucket> cache = new ConcurrentHashMap<>();
-
-    private Bucket resolveBucket(String ip) {
-        return cache.computeIfAbsent(ip, this::newBucket);
-    }
-
-    private Bucket newBucket(String ip) {
-        // 1000 requests per minute per IP to support modern SPAs
-        Bandwidth limit = Bandwidth.builder()
-                .capacity(1000)
-                .refillGreedy(1000, Duration.ofMinutes(1))
-                .build();
-        return Bucket.builder()
-                .addLimit(limit)
-                .build();
-    }
+    private final StringRedisTemplate redisTemplate;
+    private static final int MAX_REQUESTS_PER_MINUTE = 1000;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
             
         String ip = getClientIP(request);
-        Bucket bucket = resolveBucket(ip);
+        String key = "rate_limit:" + ip;
         
-        ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
+        Long currentRequests = redisTemplate.opsForValue().increment(key, 1);
         
-        if (probe.isConsumed()) {
-            response.setHeader("X-Rate-Limit-Remaining", String.valueOf(probe.getRemainingTokens()));
+        if (currentRequests != null && currentRequests == 1) {
+            redisTemplate.expire(key, 1, TimeUnit.MINUTES);
+        }
+        
+        if (currentRequests != null && currentRequests <= MAX_REQUESTS_PER_MINUTE) {
+            long remaining = MAX_REQUESTS_PER_MINUTE - currentRequests;
+            response.setHeader("X-Rate-Limit-Remaining", String.valueOf(remaining));
             filterChain.doFilter(request, response);
         } else {
-            long waitForRefill = probe.getNanosToWaitForRefill() / 1_000_000_000;
+            Long expireTime = redisTemplate.getExpire(key, TimeUnit.SECONDS);
+            long waitForRefill = expireTime != null && expireTime > 0 ? expireTime : 60;
+            
             response.setHeader("X-Rate-Limit-Retry-After-Seconds", String.valueOf(waitForRefill));
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setContentType("application/json;charset=UTF-8");
@@ -64,6 +55,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (xfHeader == null || xfHeader.isEmpty() || !xfHeader.contains(request.getRemoteAddr())) {
             return request.getRemoteAddr();
         }
-        return xfHeader.split(",")[0];
+        return xfHeader.split(",")[0].trim();
     }
 }
