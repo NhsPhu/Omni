@@ -28,7 +28,7 @@ public class ProductSearchService {
     private final ElasticsearchOperations elasticsearchOperations;
     private final com.omni.backend.catalog.adapter.persistence.repository.CategoryRepository categoryRepository;
 
-    public Page<ProductDocument> searchProducts(String keyword, java.util.List<UUID> categoryIds, Double minPrice, Double maxPrice, Double minRating, String shopLocation, String sortBy, int page, int size) {
+    public Page<ProductDocument> searchProducts(String keyword, java.util.List<UUID> categoryIds, Double minPrice, Double maxPrice, Double minRating, String shopLocation, UUID shopId, String sortBy, int page, int size) {
         BoolQuery.Builder boolQueryBuilder = QueryBuilders.bool();
 
         // 1. Full-text search on name and description
@@ -79,6 +79,11 @@ public class ProductSearchService {
         // 5. Filter by Location
         if (shopLocation != null && !shopLocation.isBlank()) {
             boolQueryBuilder.filter(QueryBuilders.term().field("shopLocation").value(shopLocation).build()._toQuery());
+        }
+
+        // 5.5 Filter by ShopId
+        if (shopId != null) {
+            boolQueryBuilder.filter(QueryBuilders.term().field("shopId").value(shopId.toString()).build()._toQuery());
         }
 
         NativeQueryBuilder queryBuilder = NativeQuery.builder()

@@ -3,6 +3,7 @@ package com.omni.backend.iam.adapter.web;
 import com.omni.backend.iam.application.dto.ShopRegistrationDto;
 import com.omni.backend.iam.application.dto.ShopResponseDto;
 import com.omni.backend.iam.application.dto.ShopUpdateDto;
+import com.omni.backend.iam.application.dto.ShopAiSettingsUpdateDto;
 import com.omni.backend.iam.application.service.ShopService;
 import com.omni.backend.shared.security.CustomUserDetails;
 import jakarta.validation.Valid;
@@ -50,6 +51,27 @@ public class ShopController {
         UUID ownerId = userDetails.getId();
         
         ShopResponseDto response = shopService.updateShop(ownerId, dto);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me/ai-settings")
+    public ResponseEntity<ShopResponseDto> getAiSettings(Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        UUID ownerId = userDetails.getId();
+        
+        ShopResponseDto response = shopService.getShopByOwner(ownerId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/me/ai-settings")
+    public ResponseEntity<ShopResponseDto> updateAiSettings(
+            Authentication authentication,
+            @Valid @RequestBody ShopAiSettingsUpdateDto dto) {
+        
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        UUID ownerId = userDetails.getId();
+        
+        ShopResponseDto response = shopService.updateShopAiSettings(ownerId, dto);
         return ResponseEntity.ok(response);
     }
 

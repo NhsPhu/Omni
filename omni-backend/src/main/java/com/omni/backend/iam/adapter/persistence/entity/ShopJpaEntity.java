@@ -82,6 +82,18 @@ public class ShopJpaEntity {
     @Column(name = "deleted_at")
     private ZonedDateTime deletedAt;
 
+    @Column(name = "ai_chatbot_enabled")
+    private Boolean aiChatbotEnabled = false;
+
+    @Column(name = "ai_provider", length = 50)
+    private String aiProvider = "gemini";
+
+    @Column(name = "ai_tone", length = 50)
+    private String aiTone = "professional";
+
+    @Column(name = "ai_custom_instructions", columnDefinition = "TEXT")
+    private String aiCustomInstructions;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private ZonedDateTime createdAt;

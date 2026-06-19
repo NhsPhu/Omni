@@ -66,7 +66,7 @@ class ProductSearchServiceTest {
                 .thenReturn(mockSearchHits);
 
         Page<ProductDocument> result = productSearchService.searchProducts(
-                keyword, categoryIds, minPrice, maxPrice, minRating, location, sortBy, page, size);
+                keyword, categoryIds, minPrice, maxPrice, minRating, location, null, sortBy, page, size);
 
         assertNotNull(result);
 
@@ -90,7 +90,7 @@ class ProductSearchServiceTest {
                 .thenReturn(mockSearchHits);
 
         Page<ProductDocument> result = productSearchService.searchProducts(
-                null, null, null, null, null, null, null, page, size);
+                null, null, null, null, null, null, null, null, page, size);
 
         assertNotNull(result);
 

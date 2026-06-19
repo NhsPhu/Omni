@@ -5,6 +5,7 @@ import com.omni.backend.iam.adapter.persistence.repository.ShopRepository;
 import com.omni.backend.iam.application.dto.ShopRegistrationDto;
 import com.omni.backend.iam.application.dto.ShopResponseDto;
 import com.omni.backend.iam.application.dto.ShopUpdateDto;
+import com.omni.backend.iam.application.dto.ShopAiSettingsUpdateDto;
 import com.omni.backend.iam.adapter.persistence.repository.UserRepository;
 import com.omni.backend.iam.adapter.persistence.entity.UserJpaEntity;
 import com.omni.backend.iam.domain.Role;
@@ -145,6 +146,20 @@ public class ShopService {
         return mapToDto(updated);
     }
 
+    @Transactional
+    public ShopResponseDto updateShopAiSettings(UUID ownerId, ShopAiSettingsUpdateDto dto) {
+        ShopJpaEntity shop = shopRepository.findByOwnerId(ownerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shop not found for this user"));
+
+        if (dto.getAiChatbotEnabled() != null) shop.setAiChatbotEnabled(dto.getAiChatbotEnabled());
+        if (dto.getAiProvider() != null) shop.setAiProvider(dto.getAiProvider());
+        if (dto.getAiTone() != null) shop.setAiTone(dto.getAiTone());
+        if (dto.getAiCustomInstructions() != null) shop.setAiCustomInstructions(dto.getAiCustomInstructions());
+
+        ShopJpaEntity updated = shopRepository.save(shop);
+        return mapToDto(updated);
+    }
+
     private ShopResponseDto mapToDto(ShopJpaEntity entity) {
         return ShopResponseDto.builder()
                 .id(entity.getId())
@@ -166,6 +181,10 @@ public class ShopService {
                 .bankAccountName(entity.getBankAccountName())
                 .logoUrl(entity.getLogoUrl())
                 .bannerUrl(entity.getBannerUrl())
+                .aiChatbotEnabled(entity.getAiChatbotEnabled())
+                .aiProvider(entity.getAiProvider())
+                .aiTone(entity.getAiTone())
+                .aiCustomInstructions(entity.getAiCustomInstructions())
                 .build();
     }
 }

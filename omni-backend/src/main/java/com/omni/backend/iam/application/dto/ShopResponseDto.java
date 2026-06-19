@@ -30,4 +30,9 @@ public class ShopResponseDto {
     private String bankAccountName;
     private String logoUrl;
     private String bannerUrl;
+    
+    private Boolean aiChatbotEnabled;
+    private String aiProvider;
+    private String aiTone;
+    private String aiCustomInstructions;
 }

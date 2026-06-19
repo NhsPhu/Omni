@@ -31,11 +31,12 @@ public class PublicProductController {
             @RequestParam(required = false) Double maxPrice,
             @RequestParam(required = false) Double minRating,
             @RequestParam(required = false) String shopLocation,
+            @RequestParam(required = false) UUID shopId,
             @RequestParam(required = false) String sortBy,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         
-        Page<ProductDocument> results = productSearchService.searchProducts(keyword, categoryId, minPrice, maxPrice, minRating, shopLocation, sortBy, page, size);
+        Page<ProductDocument> results = productSearchService.searchProducts(keyword, categoryId, minPrice, maxPrice, minRating, shopLocation, shopId, sortBy, page, size);
         return ResponseEntity.ok(results);
     }
 
