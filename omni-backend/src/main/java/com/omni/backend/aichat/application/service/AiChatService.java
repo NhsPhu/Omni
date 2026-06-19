@@ -8,21 +8,25 @@ import com.omni.backend.aichat.adapter.persistence.repository.AiChatMessageRepos
 import com.omni.backend.aichat.adapter.persistence.repository.AiChatSessionRepository;
 import com.omni.backend.aichat.application.dto.AiChatMessageDto;
 import com.omni.backend.aichat.application.dto.AiChatSessionDto;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,10 +37,20 @@ public class AiChatService {
     private final AiChatSessionRepository sessionRepo;
     private final AiChatMessageRepository messageRepo;
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate = new RestTemplate();
-    
-    @Value("${omni.n8n.webhook.url:http://localhost:5678/webhook/omni-ai-chat}")
+
+    // Initialized in @PostConstruct to avoid conflict with @RequiredArgsConstructor
+    private HttpClient httpClient;
+
+    @Value("${omni.n8n.webhook.url:http://omni_n8n:5678/webhook/omni-ai-chat}")
     private String n8nWebhookUrl;
+
+    @PostConstruct
+    public void init() {
+        this.httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_2)
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
+    }
 
     @Transactional
     public AiChatSessionDto getOrCreateSession(UUID userId, UUID shopId) {
@@ -89,23 +103,33 @@ public class AiChatService {
 
     public String callN8nWebhook(UUID sessionId, UUID userId, UUID shopId, String content) {
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
             Map<String, Object> body = new HashMap<>();
-            body.put("sessionId", sessionId.toString());
-            body.put("userId", userId.toString());
+            body.put("sessionId", sessionId != null ? sessionId.toString() : "anonymous");
+            if (userId != null) {
+                body.put("userId", userId.toString());
+            }
             if (shopId != null) {
                 body.put("shopId", shopId.toString());
             }
             body.put("message", content);
 
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            String requestBody = objectMapper.writeValueAsString(body);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(n8nWebhookUrl))
+                    .timeout(Duration.ofSeconds(60))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
             
-            log.info("Sending message to n8n webhook: {}", n8nWebhookUrl);
-            ResponseEntity<String> response = restTemplate.postForEntity(n8nWebhookUrl, request, String.class);
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                JsonNode root = objectMapper.readTree(response.getBody());
+            log.info("Sending message to n8n webhook asynchronously: {}", n8nWebhookUrl);
+            
+            CompletableFuture<HttpResponse<String>> futureResponse = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());
+            
+            HttpResponse<String> response = futureResponse.get(65, TimeUnit.SECONDS);
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300 && response.body() != null) {
+                JsonNode root = objectMapper.readTree(response.body());
                 if (root.has("output")) {
                     return root.get("output").asText();
                 } else if (root.has("text")) {
@@ -113,7 +137,7 @@ public class AiChatService {
                 } else if (root.has("message")) {
                     return root.get("message").asText();
                 }
-                return response.getBody();
+                return response.body();
             }
             return "Xin lỗi, hiện tại tôi đang gặp sự cố khi xử lý yêu cầu của bạn.";
         } catch (Exception e) {

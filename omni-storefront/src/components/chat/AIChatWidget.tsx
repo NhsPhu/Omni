@@ -117,12 +117,11 @@ export default function AIChatWidget() {
       setIsLoading(true);
 
       try {
-        const response = await fetch('http://localhost:5678/webhook/omni-ai-chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: 'anonymous', message: content }),
+        const response = await api.post('/public/ai-chat/anonymous', {
+          sessionId: 'anonymous',
+          message: content,
         });
-        const data = await response.json();
+        const data = response.data;
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(), role: 'ai',
           content: data.output || data.text || data.message || 'Xin lỗi, tôi không thể trả lời lúc này.',
