@@ -15,7 +15,8 @@ import {
   User,
   Settings,
   Zap,
-  MessageSquare
+  MessageSquare,
+  Bot
 } from 'lucide-react';
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -54,6 +55,7 @@ export default function AdminLayout() {
     { key: '/chat', icon: <MessageSquare size={18} />, label: 'Tin nhắn' },
     { key: '/analytics', icon: <LineChart size={18} />, label: 'Phân tích' },
     { key: '/flash-sale', icon: <Zap size={18} />, label: 'Flash Sale' },
+    { key: '/ai-settings', icon: <Bot size={18} />, label: 'Trợ lý AI' },
     { key: '/settings', icon: <Settings size={18} />, label: 'Cài đặt Shop' },
   ];
 
