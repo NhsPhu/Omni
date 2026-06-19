@@ -6,6 +6,7 @@ import Script from "next/script";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import SmoothScroll from "@/components/layout/SmoothScroll";
 import ChatWidget from "@/components/chat/ChatWidget";
+import AIChatWidget from "@/components/chat/AIChatWidget";
 import NextTopLoader from "nextjs-toploader";
 
 const cormorant = Cormorant({
@@ -59,6 +60,7 @@ export default function RootLayout({
         </SmoothScroll>
         <Toaster richColors position="top-right" />
         <ChatWidget />
+        <AIChatWidget />
 
         {/* Facebook JS SDK — khởi tạo async sau khi trang load */}
         <Script id="fb-sdk-init" strategy="afterInteractive">{`

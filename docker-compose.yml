@@ -2,11 +2,11 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: omni_postgres
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_USER: ${DB_USER:-omni_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-omni_password}
       POSTGRES_DB: ${DB_NAME:-omni_db}
     ports:
       - "${DB_PORT:-5432}:5432"
@@ -32,7 +32,8 @@ services:
     container_name: omni_es
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ES_PASSWORD:-elastic}
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
       - "${ES_PORT:-9200}:9200"
@@ -45,6 +46,9 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: omni_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-omni_rabbit}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-omni_rabbit_pass}
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -63,12 +67,68 @@ services:
     networks:
       - omni-network
 
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: omni_n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-omni_n8n_2024}
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=omni_postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=omni_db
+      - DB_POSTGRESDB_USER=omni_user
+      - DB_POSTGRESDB_PASSWORD=omni_password
+      - N8N_HOST=omni_n8n
+      - WEBHOOK_URL=http://omni_n8n:5678/
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - db
+    networks:
+      - omni-network
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: omni_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - omni-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: omni_grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - omni-network
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
   es_data:
   rabbitmq_data:
+  n8n_data:
+  grafana_data:
+  prometheus_data:
 
 networks:
   omni-network:
-    driver: bridge
+    name: omni-backend_omni_network
+    external: true

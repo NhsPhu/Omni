@@ -8,18 +8,23 @@ spring:
       max-request-size: 50MB
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:5432/omni_db
-    username: omni_user
-    password: omni_password
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:omni_db}
+    username: ${DB_USER:omni_user}
+    password: ${DB_PASSWORD:omni_password}
     driver-class-name: org.postgresql.Driver
+
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 20000
 
   jpa:
     hibernate:
       ddl-auto: validate # Flyway will handle schema creation
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
   flyway:
@@ -28,6 +33,8 @@ spring:
 
   elasticsearch:
     uris: http://${ES_HOST:localhost}:9200
+    username: ${ES_USER:elastic}
+    password: ${ES_PASSWORD:elastic}
 
   data:
     redis:
@@ -37,14 +44,14 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: 5672
-    username: guest
-    password: guest
+    username: ${RABBITMQ_USER:omni_rabbit}
+    password: ${RABBITMQ_PASSWORD:omni_rabbit_pass}
 
   mail:
     host: smtp.gmail.com
     port: 587
-    username: omnistorenf@gmail.com
-    password: ihen atrx stzr urob
+    username: ${MAIL_USERNAME:omnistorenf@gmail.com}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -68,21 +75,30 @@ server:
 
 app:
   storefront-url: ${STOREFRONT_URL:http://localhost:3000}
+  dashboard-url: ${DASHBOARD_URL:http://localhost:5173}
 
 ghn:
   api:
     url: https://online-gateway.ghn.vn/shiip/public-api/v2
-    token: ${GHN_TOKEN:f7e341a6-5f45-11f1-a694-7a6b2378a77f}
-    shopId: 6471542
+    token: ${GHN_TOKEN}
+    shopId: ${GHN_SHOP_ID:6471542}
 
 vnpay:
-  tmn-code: UD2YB7G7
-  hash-secret: ${VNPAY_HASH_SECRET:DJ8X3REITF7WMJQ5HGIJKNKKTSO8YQDK}
+  tmn-code: ${VNPAY_TMN_CODE:UD2YB7G7}
+  hash-secret: ${VNPAY_HASH_SECRET}
 
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
   tracing:
     sampling:
       probability: 1.0
   zipkin:
     tracing:
       endpoint: http://localhost:9411/api/v2/spans
+
+sentry:
+  dsn: ${SENTRY_DSN:}
+  traces-sample-rate: 1.0

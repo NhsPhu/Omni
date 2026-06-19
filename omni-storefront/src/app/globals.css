@@ -85,6 +85,10 @@
   --shadow-glow-purple: 0 0 40px rgba(167, 139, 250, 0.1);
   --shadow-card:        0 8px 32px rgba(0, 0, 0, 0.4);
   --shadow-card-hover:  0 12px 48px rgba(0, 0, 0, 0.6), 0 0 24px rgba(245, 158, 11, 0.1);
+
+  /* Gradients */
+  --grad-hero:      linear-gradient(135deg, #050509 0%, #0A0A0F 50%, rgba(245, 158, 11, 0.1) 100%);
+  --grad-iridescent:linear-gradient(135deg, #FCD34D 0%, #F8FAFC 50%, #FCD34D 100%);
 }
 
 @theme inline {
