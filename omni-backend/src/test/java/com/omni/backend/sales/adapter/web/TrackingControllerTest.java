@@ -30,6 +30,9 @@ class TrackingControllerTest {
     @MockBean
     private com.omni.backend.shared.security.CustomUserDetailsService customUserDetailsService;
 
+    @MockBean
+    private org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
+
     @Test
     void testTrackShopVisit() throws Exception {
         UUID shopId = UUID.randomUUID();

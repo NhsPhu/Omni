@@ -17,7 +17,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(indexName = "products")
-public class ProductDocument {
+public class ProductDocument implements java.io.Serializable {
+
 
     @Id
     private UUID id;

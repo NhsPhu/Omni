@@ -41,13 +41,13 @@ public class AiChatService {
     // Initialized in @PostConstruct to avoid conflict with @RequiredArgsConstructor
     private HttpClient httpClient;
 
-    @Value("${omni.n8n.webhook.url:http://omni_n8n:5678/webhook/omni-ai-chat}")
+    @Value("${omni.n8n.webhook.url:http://localhost:5678/webhook/omni-ai-chat}")
     private String n8nWebhookUrl;
 
     @PostConstruct
     public void init() {
         this.httpClient = HttpClient.newBuilder()
-                .version(HttpClient.Version.HTTP_2)
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
     }
@@ -126,7 +126,7 @@ public class AiChatService {
             
             CompletableFuture<HttpResponse<String>> futureResponse = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());
             
-            HttpResponse<String> response = futureResponse.get(65, TimeUnit.SECONDS);
+            HttpResponse<String> response = futureResponse.get(120, TimeUnit.SECONDS);
 
             if (response.statusCode() >= 200 && response.statusCode() < 300 && response.body() != null) {
                 JsonNode root = objectMapper.readTree(response.body());
@@ -139,10 +139,11 @@ public class AiChatService {
                 }
                 return response.body();
             }
-            return "Xin lỗi, hiện tại tôi đang gặp sự cố khi xử lý yêu cầu của bạn.";
+            log.error("n8n returned error status: {}. Body: {}", response.statusCode(), response.body());
+            return "Xin lỗi, hiện tại tôi đang gặp sự cố khi xử lý yêu cầu của bạn. (Lỗi n8n: " + response.statusCode() + ")";
         } catch (Exception e) {
-            log.error("Error calling n8n webhook", e);
-            return "Xin lỗi, hiện tại tôi không thể kết nối tới máy chủ AI. Vui lòng thử lại sau.";
+            log.error("Error calling n8n webhook: {}", e.getMessage(), e);
+            return "Xin lỗi, hiện tại tôi không thể kết nối tới máy chủ AI. Vui lòng thử lại sau. (Lỗi mạng: " + e.getMessage() + ")";
         }
     }
 

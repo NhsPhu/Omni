@@ -32,9 +32,7 @@ CREATE TABLE disputes (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Bổ sung các cột thống kê (sẽ dùng Trigger hoặc JPA để cập nhật)
-ALTER TABLE products ADD COLUMN avg_rating DECIMAL(3,2) DEFAULT 0.00;
-ALTER TABLE products ADD COLUMN review_count INTEGER DEFAULT 0;
+-- Các cột thống kê avg_rating và review_count đã được khởi tạo sẵn trong bảng products ở file V2
 
 -- Thêm cột tracking thời gian Admin xử lý Shop
 ALTER TABLE shops ADD COLUMN approved_at TIMESTAMP WITH TIME ZONE;

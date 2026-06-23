@@ -14,7 +14,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductDto {
+public class ProductDto implements java.io.Serializable {
     private UUID id;
     private UUID shopId;
     private UUID categoryId;

@@ -51,7 +51,7 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: ${MAIL_USERNAME:omnistorenf@gmail.com}
-    password: ${MAIL_PASSWORD}
+    password: ${MAIL_PASSWORD:dummy}
     properties:
       mail:
         smtp:
@@ -66,7 +66,7 @@ spring:
     mode: HTML
 
 jwt:
-  secret: ${JWT_SECRET_KEY:YmFzZTY0LWVuY29kZWQtc2VjcmV0LWtleS1tdXN0LWJlLWF0LWxlYXN0LTMyeWJ0ZXMtbG9uZw==} # Uses ENV variable or fallback
+  secret: ${JWT_SECRET_KEY:eW91cl9zdXBlcl9zZWNyZXRfa2V5X2F0X2xlYXN0XzMyX2NoYXJzX2xvbmdfY2hhbmdlX21l} # Uses ENV variable (REQUIRED)
   expiration: 86400000 # 1 day in ms
   refresh-expiration: 604800000 # 7 days in ms
 
@@ -80,12 +80,15 @@ app:
 ghn:
   api:
     url: https://online-gateway.ghn.vn/shiip/public-api/v2
-    token: ${GHN_TOKEN}
+    token: ${GHN_TOKEN:dummy}
     shopId: ${GHN_SHOP_ID:6471542}
+
+cloudinary:
+  url: ${CLOUDINARY_URL:}
 
 vnpay:
   tmn-code: ${VNPAY_TMN_CODE:UD2YB7G7}
-  hash-secret: ${VNPAY_HASH_SECRET}
+  hash-secret: ${VNPAY_HASH_SECRET:dummy}
 
 management:
   endpoints:

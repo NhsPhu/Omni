@@ -1,7 +1,5 @@
-version: '3.8'
-
 services:
-  db:
+  postgres:
     image: postgres:16-alpine
     container_name: omni_postgres
     environment:
@@ -12,9 +10,14 @@ services:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omni_user -d omni_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
     networks:
-      - omni-network
+      - omni_network
 
   redis:
     image: redis:7-alpine
@@ -23,25 +26,56 @@ services:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
     networks:
-      - omni-network
+      - omni_network
+
+  minio:
+    image: minio/minio
+    container_name: omni_minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-omni_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-omni_password123}
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - omni_network
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
-    container_name: omni_es
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: omni_elasticsearch
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=true
-      - ELASTIC_PASSWORD=${ES_PASSWORD:-elastic}
+      - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
       - "${ES_PORT:-9200}:9200"
     volumes:
       - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
     networks:
-      - omni-network
+      - omni_network
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -54,9 +88,14 @@ services:
       - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq/
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     restart: unless-stopped
     networks:
-      - omni-network
+      - omni_network
 
   zipkin:
     image: openzipkin/zipkin:latest
@@ -65,7 +104,7 @@ services:
       - "9411:9411"
     restart: unless-stopped
     networks:
-      - omni-network
+      - omni_network
 
   n8n:
     image: n8nio/n8n:latest
@@ -76,20 +115,12 @@ services:
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
       - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-omni_n8n_2024}
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=omni_postgres
-      - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=omni_db
-      - DB_POSTGRESDB_USER=omni_user
-      - DB_POSTGRESDB_PASSWORD=omni_password
       - N8N_HOST=omni_n8n
       - WEBHOOK_URL=http://omni_n8n:5678/
     volumes:
       - n8n_data:/home/node/.n8n
-    depends_on:
-      - db
     networks:
-      - omni-network
+      - omni_network
     restart: unless-stopped
 
   prometheus:
@@ -101,7 +132,7 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     networks:
-      - omni-network
+      - omni_network
     restart: unless-stopped
 
   grafana:
@@ -116,7 +147,7 @@ services:
     depends_on:
       - prometheus
     networks:
-      - omni-network
+      - omni_network
     restart: unless-stopped
 
 volumes:
@@ -127,8 +158,8 @@ volumes:
   n8n_data:
   grafana_data:
   prometheus_data:
+  minio_data:
 
 networks:
-  omni-network:
-    name: omni-backend_omni_network
-    external: true
+  omni_network:
+    driver: bridge

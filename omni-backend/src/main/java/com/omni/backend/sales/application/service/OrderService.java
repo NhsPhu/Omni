@@ -51,13 +51,13 @@ public class OrderService {
     private final com.omni.backend.shipping.application.service.GhnShippingClient ghnShippingClient;
     private final com.omni.backend.shipping.adapter.persistence.repository.ShipmentTrackingRepository trackingRepository;
     private final NotificationService notificationService;
-    private final UserRepository userRepository;
-    private final ProductRepository productRepository;
-    private final UserAddressRepository userAddressRepository;
-    private final RabbitTemplate rabbitTemplate;
+    private final com.omni.backend.iam.adapter.persistence.repository.UserRepository userRepository;
+    private final com.omni.backend.catalog.adapter.persistence.repository.ProductRepository productRepository;
+    private final com.omni.backend.iam.adapter.persistence.repository.UserAddressRepository userAddressRepository;
     private final ShopAnalyticsDailyRepository analyticsRepository;
-    private final VnpayService vnpayService;
+    private final RabbitTemplate rabbitTemplate;
     private final TrackingService trackingService;
+    private final VnpayService vnpayService;
 
     @Transactional(readOnly = true)
     public List<ParentOrderJpaEntity> getUserOrders(UUID userId) {
@@ -460,9 +460,7 @@ public class OrderService {
     @Transactional(rollbackFor = Exception.class)
     public void autoCancelPendingOrders() {
         ZonedDateTime fifteenMinsAgo = ZonedDateTime.now().minusMinutes(15);
-        List<ParentOrderJpaEntity> pendingOrders = parentOrderRepository.findAll().stream()
-                .filter(o -> "PENDING".equals(o.getStatus()) && o.getCreatedAt().isBefore(fifteenMinsAgo))
-                .toList();
+        List<ParentOrderJpaEntity> pendingOrders = parentOrderRepository.findByStatusAndCreatedAtBefore("PENDING", fifteenMinsAgo);
 
         for (ParentOrderJpaEntity order : pendingOrders) {
             order.setStatus("CANCELLED");
@@ -480,9 +478,7 @@ public class OrderService {
     @Transactional(rollbackFor = Exception.class)
     public void autoCompleteOrders() {
         ZonedDateTime sevenDaysAgo = ZonedDateTime.now().minusDays(7);
-        List<ChildOrderJpaEntity> deliveredOrders = childOrderRepository.findAll().stream()
-                .filter(o -> "DELIVERED".equals(o.getStatus()) && o.getUpdatedAt().isBefore(sevenDaysAgo))
-                .toList();
+        List<ChildOrderJpaEntity> deliveredOrders = childOrderRepository.findByStatusAndUpdatedAtBefore("DELIVERED", sevenDaysAgo);
 
         for (ChildOrderJpaEntity order : deliveredOrders) {
             changeChildOrderStatus(order, "COMPLETED", null, "Auto-completed by system (7 days past delivery)");
@@ -500,9 +496,7 @@ public class OrderService {
         ZonedDateTime startOfDay = today.atStartOfDay(java.time.ZoneId.systemDefault());
         ZonedDateTime endOfDay = startOfDay.plusDays(1);
         
-        List<ChildOrderJpaEntity> todaysOrders = childOrderRepository.findAll().stream()
-                .filter(o -> o.getCreatedAt().isAfter(startOfDay) && o.getCreatedAt().isBefore(endOfDay))
-                .toList();
+        List<ChildOrderJpaEntity> todaysOrders = childOrderRepository.findByCreatedAtBetween(startOfDay, endOfDay);
                 
         Map<UUID, List<ChildOrderJpaEntity>> ordersByShop = todaysOrders.stream()
                 .collect(Collectors.groupingBy(ChildOrderJpaEntity::getShopId));
@@ -517,10 +511,18 @@ public class OrderService {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
                     
             int ordersPlaced = orders.size();
-            // Simulate views and carts based on orders to ensure realistic funnel
-            int pageViews = ordersPlaced * 85 + 124;
-            int addToCarts = ordersPlaced * 12 + 30;
-            int checkoutStarts = ordersPlaced * 3 + 5;
+            
+            // Get actual unique visitors from Redis using TrackingService
+            long actualVisitors = trackingService.getShopVisitorsCount(shopId, today);
+            int pageViews = (int) actualVisitors;
+            
+            // Fallback heuristics if tracking is not heavily populated, to avoid zeros
+            if (pageViews < ordersPlaced) {
+                pageViews = ordersPlaced * 3 + 12; // Modest fallback
+            }
+            
+            int addToCarts = (int) (pageViews * 0.15) + (ordersPlaced * 2);
+            int checkoutStarts = (int) (addToCarts * 0.4) + ordersPlaced;
             
             com.omni.backend.sales.adapter.persistence.entity.ShopAnalyticsDailyJpaEntity analytics = analyticsRepository.findByShopIdAndDate(shopId, today)
                     .orElse(com.omni.backend.sales.adapter.persistence.entity.ShopAnalyticsDailyJpaEntity.builder()

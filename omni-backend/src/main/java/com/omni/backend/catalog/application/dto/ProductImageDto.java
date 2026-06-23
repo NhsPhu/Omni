@@ -11,7 +11,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductImageDto {
+public class ProductImageDto implements java.io.Serializable {
     private UUID id;
     private String imageUrl;
     private Boolean isPrimary;

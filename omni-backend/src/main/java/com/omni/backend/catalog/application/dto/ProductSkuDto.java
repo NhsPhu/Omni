@@ -13,7 +13,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductSkuDto {
+public class ProductSkuDto implements java.io.Serializable {
     private UUID id;
     private String skuCode;
     private BigDecimal price;

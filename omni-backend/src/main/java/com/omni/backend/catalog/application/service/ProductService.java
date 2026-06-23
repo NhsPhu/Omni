@@ -21,6 +21,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import com.omni.backend.shared.security.SecurityUtils;
 
 import java.math.BigDecimal;
@@ -77,6 +80,10 @@ public class ProductService {
     }
 
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "products", key = "#id"),
+        @CacheEvict(value = "featuredProducts", allEntries = true)
+    })
     public ProductDto updateProduct(UUID id, ProductDto dto) {
         ProductJpaEntity product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
@@ -167,6 +174,10 @@ public class ProductService {
     }
 
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "products", key = "#id"),
+        @CacheEvict(value = "featuredProducts", allEntries = true)
+    })
     public void updateProductStatus(UUID id, String status) {
         ProductJpaEntity product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
@@ -182,6 +193,10 @@ public class ProductService {
     }
 
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "products", key = "#id"),
+        @CacheEvict(value = "featuredProducts", allEntries = true)
+    })
     public void deleteProduct(UUID id) {
         ProductJpaEntity product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
@@ -211,6 +226,7 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "products", key = "#id")
     public ProductDto getProductById(UUID id) {
         ProductJpaEntity product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
@@ -314,6 +330,7 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "featuredProducts", key = "#tab != null ? #tab : 'default'")
     public List<ProductDocument> getFeaturedProducts(String tab) {
         PageRequest top8 = PageRequest.of(0, 8);
         List<ProductJpaEntity> entities;

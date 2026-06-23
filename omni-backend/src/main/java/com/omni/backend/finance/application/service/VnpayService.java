@@ -47,7 +47,7 @@ public class VnpayService {
     @org.springframework.beans.factory.annotation.Value("${vnpay.tmn-code:DEMO_TMN}")
     private String vnpTmnCode;
 
-    @org.springframework.beans.factory.annotation.Value("${vnpay.hash-secret:DEMO_SECRET_KEY_FOR_VNPAY_SANDBOX_TESTING_ONLY}")
+    @org.springframework.beans.factory.annotation.Value("${vnpay.hash-secret}")
     private String vnpHashSecret;
 
     public String createPaymentUrl(UUID orderId, BigDecimal amount, String ipAddress) {
