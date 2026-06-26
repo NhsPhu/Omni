@@ -85,15 +85,17 @@ public class VnpayService {
             String fieldName = itr.next();
             String fieldValue = vnp_Params.get(fieldName);
             if (fieldValue != null && fieldValue.length() > 0) {
-                // Build hash data: field=rawValue (NOT URL-encoded) per VNPay spec
                 hashData.append(fieldName);
                 hashData.append('=');
-                hashData.append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8));
+                hashData.append(fieldValue); // RAW value for HashData
                 
-                // Build query: URL-encoded
-                query.append(URLEncoder.encode(fieldName, StandardCharsets.UTF_8));
-                query.append('=');
-                query.append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8));
+                try {
+                    query.append(URLEncoder.encode(fieldName, StandardCharsets.UTF_8.toString()));
+                    query.append('=');
+                    query.append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString()));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 
                 if (itr.hasNext()) {
                     query.append('&');
@@ -102,10 +104,15 @@ public class VnpayService {
             }
         }
         
-        String vnp_SecureHash = hmacSHA512(vnpHashSecret, hashData.toString());
+        String rawHashData = hashData.toString();
+        String vnp_SecureHash = hmacSHA512(vnpHashSecret, rawHashData);
         query.append("&vnp_SecureHash=").append(vnp_SecureHash);
         
-        return VNP_PAY_URL + "?" + query.toString();
+        String finalUrl = VNP_PAY_URL + "?" + query.toString();
+        log.info("VNPAY HashSecret: {}", vnpHashSecret);
+        log.info("VNPAY HashData: {}", rawHashData);
+        log.info("VNPAY Final URL: {}", finalUrl);
+        return finalUrl;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -196,7 +203,7 @@ public class VnpayService {
             if (fieldValue != null && fieldValue.length() > 0) {
                 hashData.append(fieldName);
                 hashData.append('=');
-                hashData.append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8));
+                hashData.append(fieldValue); // RAW value
                 if (itr.hasNext()) {
                     hashData.append('&');
                 }
