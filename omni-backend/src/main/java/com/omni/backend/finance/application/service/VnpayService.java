@@ -53,10 +53,19 @@ public class VnpayService {
     public String createPaymentUrl(UUID orderId, BigDecimal amount, String ipAddress) {
         long amountInVnd = amount.longValue() * 100;
         
+        // Prevent \r or spaces from .env files
+        String secret = vnpHashSecret != null ? vnpHashSecret.trim() : "";
+        String tmn = vnpTmnCode != null ? vnpTmnCode.trim() : "";
+        
+        // VNPAY prefers IPv4. IPv6 localhost can cause signature/format issues
+        if (ipAddress == null || ipAddress.contains(":")) {
+            ipAddress = "127.0.0.1";
+        }
+        
         Map<String, String> vnp_Params = new HashMap<>();
         vnp_Params.put("vnp_Version", "2.1.0");
         vnp_Params.put("vnp_Command", "pay");
-        vnp_Params.put("vnp_TmnCode", vnpTmnCode);
+        vnp_Params.put("vnp_TmnCode", tmn);
         vnp_Params.put("vnp_Amount", String.valueOf(amountInVnd));
         vnp_Params.put("vnp_CurrCode", "VND");
         vnp_Params.put("vnp_TxnRef", orderId.toString());
@@ -87,12 +96,15 @@ public class VnpayService {
             if (fieldValue != null && fieldValue.length() > 0) {
                 hashData.append(fieldName);
                 hashData.append('=');
-                hashData.append(fieldValue); // RAW value for HashData
                 
                 try {
-                    query.append(URLEncoder.encode(fieldName, StandardCharsets.UTF_8.toString()));
+                    // VNPay Java demo uses US_ASCII URL encoding for both
+                    String encodedValue = URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString());
+                    hashData.append(encodedValue);
+                    
+                    query.append(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII.toString()));
                     query.append('=');
-                    query.append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString()));
+                    query.append(encodedValue);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -105,13 +117,12 @@ public class VnpayService {
         }
         
         String rawHashData = hashData.toString();
-        String vnp_SecureHash = hmacSHA512(vnpHashSecret, rawHashData);
+        String vnp_SecureHash = hmacSHA512(secret, rawHashData);
         query.append("&vnp_SecureHash=").append(vnp_SecureHash);
         
         String finalUrl = VNP_PAY_URL + "?" + query.toString();
-        log.info("VNPAY HashSecret: {}", vnpHashSecret);
+        log.info("VNPAY HashSecret length: {}", secret.length());
         log.info("VNPAY HashData: {}", rawHashData);
-        log.info("VNPAY Final URL: {}", finalUrl);
         return finalUrl;
     }
 
@@ -186,6 +197,8 @@ public class VnpayService {
     public boolean validateSignature(Map<String, String> params) {
         String vnpSecureHash = params.get("vnp_SecureHash");
         if (vnpSecureHash == null) return false;
+        
+        String secret = vnpHashSecret != null ? vnpHashSecret.trim() : "";
 
         // Remove hash params before re-computing
         Map<String, String> fields = new HashMap<>(params);
@@ -203,14 +216,18 @@ public class VnpayService {
             if (fieldValue != null && fieldValue.length() > 0) {
                 hashData.append(fieldName);
                 hashData.append('=');
-                hashData.append(fieldValue); // RAW value
+                try {
+                    hashData.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 if (itr.hasNext()) {
                     hashData.append('&');
                 }
             }
         }
 
-        String computedHash = hmacSHA512(vnpHashSecret, hashData.toString());
+        String computedHash = hmacSHA512(secret, hashData.toString());
         return computedHash.equalsIgnoreCase(vnpSecureHash);
     }
 
