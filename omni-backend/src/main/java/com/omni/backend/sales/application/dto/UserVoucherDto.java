@@ -14,6 +14,7 @@ public class UserVoucherDto {
     private UUID voucherId; // Platform or Shop voucher ID
     private String voucherType; // PLATFORM, SHOP
     private UUID shopId; // Null if platform
+    private String category; // OMNI, SHIPPING (only for platform vouchers)
     private String code;
     private String discountType; // PERCENTAGE, FIXED_AMOUNT
     private BigDecimal discountValue;

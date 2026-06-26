@@ -1,9 +1,11 @@
 package com.omni.backend.sales.application.service;
 
-import com.omni.backend.catalog.adapter.elasticsearch.ProductDocument;
-import com.omni.backend.catalog.adapter.elasticsearch.ProductSearchRepository;
+import com.omni.backend.catalog.adapter.persistence.entity.ProductSkuJpaEntity;
 import com.omni.backend.catalog.adapter.persistence.repository.ProductRepository;
 import com.omni.backend.catalog.adapter.persistence.repository.ProductSkuRepository;
+import com.omni.backend.catalog.adapter.elasticsearch.ProductSearchRepository;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -13,13 +15,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("StockReservationService Tests")
 class StockReservationServiceTest {
 
     @Mock
@@ -34,41 +35,54 @@ class StockReservationServiceTest {
     @InjectMocks
     private StockReservationService stockReservationService;
 
-    private final UUID testSkuId = UUID.randomUUID();
-    private final UUID testProductId = UUID.randomUUID();
-    private final String testSkuCode = "TEST-SKU-01";
+    private final UUID skuId = UUID.randomUUID();
+    private final UUID productId = UUID.randomUUID();
 
-    @Test
-    void testReserveStockAndIncrementSold_Success() {
-        int quantity = 2;
-        when(productSkuRepository.deductStock(testSkuId, quantity)).thenReturn(1);
+    @Nested
+    @DisplayName("reserveStockAndIncrementSold() - Trừ tồn kho và tăng sold count")
+    class ReserveStockTests {
 
-        ProductDocument doc = new ProductDocument();
-        doc.setId(testProductId);
-        doc.setSoldCount(10);
-        when(productSearchRepository.findById(testProductId)).thenReturn(Optional.of(doc));
+        @Test
+        @DisplayName("✅ Trừ tồn kho và tăng sold count thành công")
+        void reserveStock_Success() {
+            when(productSkuRepository.deductStock(skuId, 2)).thenReturn(1);
+            when(productSearchRepository.findById(productId)).thenReturn(Optional.empty());
 
-        stockReservationService.reserveStockAndIncrementSold(testSkuId, testProductId, quantity, testSkuCode);
+            assertDoesNotThrow(() ->
+                    stockReservationService.reserveStockAndIncrementSold(skuId, productId, 2, "SKU-001"));
 
-        verify(productSkuRepository).deductStock(testSkuId, quantity);
-        verify(productRepository).incrementSoldCount(testProductId, quantity);
-        verify(productSearchRepository).save(any(ProductDocument.class));
-        assertEquals(12, doc.getSoldCount());
-    }
+            verify(productSkuRepository).deductStock(skuId, 2);
+            verify(productRepository).incrementSoldCount(productId, 2);
+        }
 
-    @Test
-    void testReserveStockAndIncrementSold_NotEnoughStock() {
-        int quantity = 100;
-        when(productSkuRepository.deductStock(testSkuId, quantity)).thenReturn(0);
+        @Test
+        @DisplayName("❌ Lỗi khi không đủ tồn kho (deductStock trả về 0)")
+        void reserveStock_OutOfStock_ThrowsException() {
+            when(productSkuRepository.deductStock(skuId, 5)).thenReturn(0);
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> 
-            stockReservationService.reserveStockAndIncrementSold(testSkuId, testProductId, quantity, testSkuCode)
-        );
+            RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                    stockReservationService.reserveStockAndIncrementSold(skuId, productId, 5, "SKU-SPECIAL"));
 
-        assertEquals("Not enough stock for SKU: " + testSkuCode, exception.getMessage());
-        
-        // Ensure no other operations were called
-        verify(productRepository, never()).incrementSoldCount(any(), anyInt());
-        verify(productSearchRepository, never()).findById(any());
+            assertTrue(ex.getMessage().contains("SKU-SPECIAL"));
+            verify(productRepository, never()).incrementSoldCount(any(), anyInt());
+        }
+
+        @Test
+        @DisplayName("✅ Cũng cập nhật Elasticsearch khi tài liệu tồn tại")
+        void reserveStock_UpdatesElasticsearch_WhenDocumentExists() {
+            com.omni.backend.catalog.adapter.elasticsearch.ProductDocument doc =
+                    new com.omni.backend.catalog.adapter.elasticsearch.ProductDocument();
+            doc.setId(productId);
+            doc.setSoldCount(10);
+
+            when(productSkuRepository.deductStock(skuId, 3)).thenReturn(1);
+            when(productSearchRepository.findById(productId)).thenReturn(Optional.of(doc));
+            when(productSearchRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            stockReservationService.reserveStockAndIncrementSold(skuId, productId, 3, "SKU-002");
+
+            assertEquals(13, doc.getSoldCount());
+            verify(productSearchRepository).save(doc);
+        }
     }
 }

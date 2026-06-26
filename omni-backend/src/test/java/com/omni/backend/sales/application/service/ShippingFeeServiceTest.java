@@ -1,31 +1,30 @@
 package com.omni.backend.sales.application.service;
 
-import com.omni.backend.iam.adapter.persistence.entity.LoyaltyTierJpaEntity;
 import com.omni.backend.iam.adapter.persistence.entity.ShopJpaEntity;
 import com.omni.backend.iam.adapter.persistence.entity.UserAddressJpaEntity;
-import com.omni.backend.iam.adapter.persistence.entity.UserJpaEntity;
 import com.omni.backend.iam.adapter.persistence.repository.LoyaltyTierRepository;
 import com.omni.backend.iam.adapter.persistence.repository.ShopRepository;
 import com.omni.backend.iam.adapter.persistence.repository.UserAddressRepository;
 import com.omni.backend.iam.adapter.persistence.repository.UserRepository;
-import com.omni.backend.sales.application.dto.CartDto;
-import com.omni.backend.sales.application.dto.CartItemDto;
 import com.omni.backend.shipping.application.service.GhnShippingClient;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.*;
+import java.util.Optional;
+import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("ShippingFeeService Tests")
 class ShippingFeeServiceTest {
 
     @Mock
@@ -49,85 +48,82 @@ class ShippingFeeServiceTest {
     @InjectMocks
     private ShippingFeeService shippingFeeService;
 
-    private final UUID testUserId = UUID.randomUUID();
-    private final UUID testAddressId = UUID.randomUUID();
-    private final UUID testShopId = UUID.randomUUID();
+    private final UUID shopId = UUID.randomUUID();
+    private final UUID addressId = UUID.randomUUID();
+
+    private UserAddressJpaEntity testAddress;
+    private ShopJpaEntity testShop;
 
     @BeforeEach
     void setUp() {
+        testAddress = new UserAddressJpaEntity();
+        testAddress.setId(addressId);
+        testAddress.setGhnDistrictId(3695);
+        testAddress.setGhnWardCode("90746");
+
+        testShop = ShopJpaEntity.builder()
+                .id(shopId)
+                .name("Test Shop")
+                .warehouseDistrictId(1442)
+                .warehouseWardCode("20109")
+                .build();
     }
 
-    @Test
-    void testCalculateShippingFee_FreeshipEligible() {
-        UserJpaEntity user = new UserJpaEntity();
-        user.setId(testUserId);
-        user.setLoyaltyTier("GOLD");
+    @Nested
+    @DisplayName("calculateFeeForShop() - Tính phí vận chuyển cho từng shop")
+    class CalculateFeeForShopTests {
 
-        LoyaltyTierJpaEntity tier = new LoyaltyTierJpaEntity();
-        tier.setFreeshipEligible(true);
+        @Test
+        @DisplayName("✅ Trả về 0 nếu user đủ điều kiện freeship")
+        void calculateFeeForShop_Freeship_ReturnsZero() {
+            long fee = shippingFeeService.calculateFeeForShop(shopId, addressId, true);
+            assertEquals(0, fee);
+            verifyNoInteractions(ghnShippingClient, userAddressRepository, shopRepository);
+        }
 
-        when(userRepository.findById(testUserId)).thenReturn(Optional.of(user));
-        when(loyaltyTierRepository.findById(user.getLoyaltyTier())).thenReturn(Optional.of(tier));
+        @Test
+        @DisplayName("✅ Tính phí dựa theo địa chỉ shop và địa chỉ nhận hàng")
+        void calculateFeeForShop_WithAddress_CallsGhn() {
+            when(userAddressRepository.findById(addressId)).thenReturn(Optional.of(testAddress));
+            when(shopRepository.findById(shopId)).thenReturn(Optional.of(testShop));
+            when(ghnShippingClient.calculateFee(anyInt(), anyString(), anyInt(), anyString(),
+                    anyInt(), anyInt(), anyInt(), anyInt())).thenReturn(30000L);
 
-        long fee = shippingFeeService.calculateShippingFee(testAddressId, testUserId);
+            long fee = shippingFeeService.calculateFeeForShop(shopId, addressId, false);
 
-        assertEquals(0, fee);
-        verify(ghnShippingClient, never()).calculateFee(anyInt(), anyString(), anyInt(), anyString(), anyInt(), anyInt(), anyInt(), anyInt());
-    }
+            assertEquals(30000L, fee);
+            verify(ghnShippingClient).calculateFee(
+                    eq(1442), eq("20109"), eq(3695), eq("90746"),
+                    anyInt(), anyInt(), anyInt(), anyInt());
+        }
 
-    @Test
-    void testCalculateShippingFee_NormalUser_WithCart() {
-        UserAddressJpaEntity address = new UserAddressJpaEntity();
-        address.setGhnDistrictId(100);
-        address.setGhnWardCode("100-W");
+        @Test
+        @DisplayName("✅ Dùng giá trị mặc định nếu address không tồn tại")
+        void calculateFeeForShop_AddressNotFound_UsesDefaults() {
+            when(userAddressRepository.findById(addressId)).thenReturn(Optional.empty());
+            when(shopRepository.findById(shopId)).thenReturn(Optional.of(testShop));
+            when(ghnShippingClient.calculateFee(anyInt(), anyString(), anyInt(), anyString(),
+                    anyInt(), anyInt(), anyInt(), anyInt())).thenReturn(25000L);
 
-        ShopJpaEntity shop = new ShopJpaEntity();
-        shop.setWarehouseDistrictId(200);
-        shop.setWarehouseWardCode("200-W");
+            long fee = shippingFeeService.calculateFeeForShop(shopId, addressId, false);
 
-        CartDto cart = new CartDto();
-        Map<UUID, List<CartItemDto>> itemsByShop = new HashMap<>();
-        itemsByShop.put(testShopId, List.of(new CartItemDto()));
-        cart.setItemsByShop(itemsByShop);
+            assertEquals(25000L, fee);
+            // Falls back to default district 1442, ward 20109
+            verify(ghnShippingClient).calculateFee(
+                    eq(1442), eq("20109"), eq(1442), eq("20109"),
+                    anyInt(), anyInt(), anyInt(), anyInt());
+        }
 
-        when(userRepository.findById(testUserId)).thenReturn(Optional.of(new UserJpaEntity()));
-        when(userAddressRepository.findById(testAddressId)).thenReturn(Optional.of(address));
-        when(cartService.getCart(testUserId)).thenReturn(cart);
-        when(shopRepository.findById(testShopId)).thenReturn(Optional.of(shop));
-        when(ghnShippingClient.calculateFee(eq(200), eq("200-W"), eq(100), eq("100-W"), anyInt(), anyInt(), anyInt(), anyInt())).thenReturn(35000L);
+        @Test
+        @DisplayName("✅ Xử lý đúng khi addressId null")
+        void calculateFeeForShop_NullAddress_UsesDefaults() {
+            when(shopRepository.findById(shopId)).thenReturn(Optional.of(testShop));
+            when(ghnShippingClient.calculateFee(anyInt(), anyString(), anyInt(), anyString(),
+                    anyInt(), anyInt(), anyInt(), anyInt())).thenReturn(28000L);
 
-        long fee = shippingFeeService.calculateShippingFee(testAddressId, testUserId);
+            long fee = shippingFeeService.calculateFeeForShop(shopId, null, false);
 
-        assertEquals(35000L, fee);
-    }
-
-    @Test
-    void testCalculateShippingFee_ExceptionFallback() {
-        when(userRepository.findById(testUserId)).thenReturn(Optional.of(new UserJpaEntity()));
-        when(cartService.getCart(testUserId)).thenThrow(new RuntimeException("Redis error"));
-        when(ghnShippingClient.calculateFee(anyInt(), anyString(), anyInt(), anyString(), anyInt(), anyInt(), anyInt(), anyInt())).thenReturn(50000L);
-
-        long fee = shippingFeeService.calculateShippingFee(testAddressId, testUserId);
-
-        assertEquals(50000L, fee);
-    }
-
-    @Test
-    void testCalculateFeeForShop_Success() {
-        UserAddressJpaEntity address = new UserAddressJpaEntity();
-        address.setGhnDistrictId(100);
-        address.setGhnWardCode("100-W");
-
-        ShopJpaEntity shop = new ShopJpaEntity();
-        shop.setWarehouseDistrictId(200);
-        shop.setWarehouseWardCode("200-W");
-
-        when(userAddressRepository.findById(testAddressId)).thenReturn(Optional.of(address));
-        when(shopRepository.findById(testShopId)).thenReturn(Optional.of(shop));
-        when(ghnShippingClient.calculateFee(eq(200), eq("200-W"), eq(100), eq("100-W"), anyInt(), anyInt(), anyInt(), anyInt())).thenReturn(25000L);
-
-        long fee = shippingFeeService.calculateFeeForShop(testShopId, testAddressId, false);
-
-        assertEquals(25000L, fee);
+            assertEquals(28000L, fee);
+        }
     }
 }

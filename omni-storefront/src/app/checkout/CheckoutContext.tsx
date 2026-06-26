@@ -244,28 +244,36 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const payload = {
-        addressId: selectedAddr,
+        shippingAddressId: selectedAddr,
         paymentMethod: selectedPayment,
         skuIds: cartItems.map(i => i.id),
-        platformVoucherCode: activeVoucher ? activeVoucher.code : null,
-        shippingVoucherCode: activeShippingVoucher ? activeShippingVoucher.code : null,
-        shopVouchers: Object.values(selectedShopVouchers)
+        platformVoucherId: activeVoucher ? activeVoucher.id : null,
+        shippingVoucherId: activeShippingVoucher ? activeShippingVoucher.id : null,
+        shopVoucherIds: Object.values(selectedShopVouchers)
           .filter((v): v is Voucher => v !== null)
-          .map(v => ({ shopId: v.shopId, voucherCode: v.code }))
+          .map(v => v.id)
       };
 
       const res = await api.post("/checkout", payload);
-      setOrderId(res.data.id || "NEW-ORDER");
+      const parentOrderId = res.data.parentOrderId;
       
       if (selectedPayment === "vnpay") {
-        if (res.data.paymentUrl) {
-          window.location.href = res.data.paymentUrl;
-        } else {
-          toast.success("Đặt hàng thành công!");
-          setPlaced(true);
+        // Gọi backend để lấy VNPay payment URL rồi redirect
+        try {
+          const payRes = await api.post(`/payment/vnpay/create-url?orderId=${parentOrderId}`);
+          const paymentUrl = payRes.data;
+          if (paymentUrl && typeof paymentUrl === 'string' && paymentUrl.startsWith('http')) {
+            window.location.href = paymentUrl;
+            return; // Không setPlaced vì đang redirect
+          } else {
+            toast.error("Không lấy được link thanh toán VNPay. Vui lòng thử lại.");
+          }
+        } catch (payErr: any) {
+          toast.error(payErr.response?.data?.message || "Lỗi tạo link VNPay");
         }
       } else {
         toast.success("Đặt hàng thành công!");
+        setOrderId(parentOrderId || "");
         setPlaced(true);
       }
     } catch (error: any) {

@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -75,7 +76,7 @@ class VoucherApplicationServiceTest {
         when(shopVoucherRepository.findById(voucherId)).thenReturn(Optional.of(shopVoucher));
         when(userVoucherRepository.findByUserIdAndVoucherId(userId, voucherId)).thenReturn(Optional.of(new UserVoucherJpaEntity()));
 
-        BigDecimal discount = voucherApplicationService.applyShopVoucher(voucherId, shopId, new BigDecimal("150000"), userId);
+        BigDecimal discount = voucherApplicationService.applyShopVoucher(List.of(voucherId), shopId, new BigDecimal("150000"), userId);
 
         assertEquals(new BigDecimal("20000"), discount);
         assertEquals(1, shopVoucher.getUsedCount());
@@ -92,7 +93,7 @@ class VoucherApplicationServiceTest {
         when(shopVoucherRepository.findById(voucherId)).thenReturn(Optional.of(shopVoucher));
         
         // 20% of 200,000 = 40,000. Capped at 25,000.
-        BigDecimal discount = voucherApplicationService.applyShopVoucher(voucherId, shopId, new BigDecimal("200000"), userId);
+        BigDecimal discount = voucherApplicationService.applyShopVoucher(List.of(voucherId), shopId, new BigDecimal("200000"), userId);
 
         assertEquals(new BigDecimal("25000"), discount);
     }
@@ -101,16 +102,16 @@ class VoucherApplicationServiceTest {
     void testApplyShopVoucher_InvalidConditions() {
         // Condition 1: Subtotal < Min Order Value
         when(shopVoucherRepository.findById(voucherId)).thenReturn(Optional.of(shopVoucher));
-        BigDecimal discount1 = voucherApplicationService.applyShopVoucher(voucherId, shopId, new BigDecimal("50000"), userId);
+        BigDecimal discount1 = voucherApplicationService.applyShopVoucher(List.of(voucherId), shopId, new BigDecimal("50000"), userId);
         assertEquals(BigDecimal.ZERO, discount1);
 
         // Condition 2: Wrong Shop ID
-        BigDecimal discount2 = voucherApplicationService.applyShopVoucher(voucherId, UUID.randomUUID(), new BigDecimal("150000"), userId);
+        BigDecimal discount2 = voucherApplicationService.applyShopVoucher(List.of(voucherId), UUID.randomUUID(), BigDecimal.valueOf(500), userId);
         assertEquals(BigDecimal.ZERO, discount2);
 
         // Condition 3: Expired
         shopVoucher.setValidTo(ZonedDateTime.now().minusDays(2));
-        BigDecimal discount3 = voucherApplicationService.applyShopVoucher(voucherId, shopId, new BigDecimal("150000"), userId);
+        BigDecimal discount3 = voucherApplicationService.applyShopVoucher(List.of(voucherId), shopId, new BigDecimal("150000"), userId);
         assertEquals(BigDecimal.ZERO, discount3);
     }
 

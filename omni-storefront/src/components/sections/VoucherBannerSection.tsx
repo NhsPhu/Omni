@@ -11,20 +11,24 @@ import { useRouter } from "next/navigation";
 export default function VoucherBannerSection() {
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [savedVouchers, setSavedVouchers] = useState<any[]>([]);
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
     api.get("/public/vouchers/platform").then(res => {
-      setVouchers(res.data);
+      setVouchers(res.data || []);
     }).catch(() => {});
+  }, []);
 
+  useEffect(() => {
     if (isAuthenticated()) {
       api.get("/me/vouchers").then(res => {
-        setSavedVouchers(res.data);
+        setSavedVouchers(res.data || []);
       }).catch(() => {});
+    } else {
+      setSavedVouchers([]);
     }
-  }, [isAuthenticated]);
+  }, [user]);
 
   const handleSave = async (voucherId: string) => {
     if (!isAuthenticated()) {
@@ -35,16 +39,20 @@ export default function VoucherBannerSection() {
     try {
       await api.post("/me/vouchers/save", { voucherId, voucherType: "PLATFORM" });
       toast.success("Lưu voucher thành công!");
-      setSavedVouchers(prev => [...prev, { voucherId }]);
+      setSavedVouchers(prev => [...prev, { voucherId, isUsed: false }]);
     } catch (e: any) {
       toast.error(e.response?.data?.message || "Không thể lưu voucher");
     }
   };
 
-  if (vouchers.length === 0) return null;
+  const visibleVouchers = vouchers.filter(v => {
+    const saved = savedVouchers.find(sv => sv.voucherId === v.id);
+    return !saved?.isUsed;
+  });
 
-  // Duplicate for marquee effect
-  const marqueeVouchers = [...vouchers, ...vouchers, ...vouchers];
+  if (visibleVouchers.length === 0) return null;
+
+  const marqueeVouchers = [...visibleVouchers, ...visibleVouchers, ...visibleVouchers];
 
   return (
     <section className="py-4 overflow-hidden" style={{ background: "var(--grad-gold)" }}>
@@ -52,7 +60,6 @@ export default function VoucherBannerSection() {
         {marqueeVouchers.map((v, i) => {
           const saved = savedVouchers.find(sv => sv.voucherId === v.id);
           const isSaved = !!saved;
-          if (saved?.isUsed) return null; // Hide used vouchers
           return (
             <div key={`${v.id}-${i}`} className="flex items-center gap-3 px-4 py-2 rounded-xl flex-shrink-0" style={{ background: "rgba(0,0,0,0.8)", minWidth: "300px" }}>
               <div className="flex-shrink-0 p-2 rounded-full" style={{ background: "var(--gold-dim)" }}>
@@ -70,7 +77,7 @@ export default function VoucherBannerSection() {
                 size="sm" 
                 className="h-7 text-[10px] px-3" 
                 disabled={isSaved}
-                onClick={() => handleSave(v.id)}
+                onClick={() => !isSaved && handleSave(v.id)}
               >
                 {isSaved ? "Đã lưu" : "Lưu"}
               </Button>

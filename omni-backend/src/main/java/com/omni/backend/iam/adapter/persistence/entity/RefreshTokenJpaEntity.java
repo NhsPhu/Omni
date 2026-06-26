@@ -26,7 +26,7 @@ public class RefreshTokenJpaEntity {
     @Column(nullable = false, unique = true, length = 100)
     private String token;
 
-    @Column(name = "expiry_date", nullable = false)
+    @Column(name = "expires_at", nullable = false)
     private ZonedDateTime expiryDate;
 
     @CreationTimestamp

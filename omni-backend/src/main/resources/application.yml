@@ -1,6 +1,8 @@
 spring:
   application:
     name: omni-backend
+  config:
+    import: optional:file:.env[.properties]
 
   servlet:
     multipart:

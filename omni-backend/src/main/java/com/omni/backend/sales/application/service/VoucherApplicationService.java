@@ -1,6 +1,7 @@
 package com.omni.backend.sales.application.service;
 
 import com.omni.backend.sales.adapter.persistence.entity.PlatformVoucherJpaEntity;
+import com.omni.backend.sales.adapter.persistence.entity.ShopVoucherJpaEntity;
 import com.omni.backend.sales.adapter.persistence.repository.PlatformVoucherRepository;
 import com.omni.backend.sales.adapter.persistence.repository.ShopVoucherRepository;
 import com.omni.backend.sales.adapter.persistence.repository.UserVoucherRepository;
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -18,14 +20,21 @@ public class VoucherApplicationService {
     private final PlatformVoucherRepository platformVoucherRepository;
     private final UserVoucherRepository userVoucherRepository;
 
-    public BigDecimal applyShopVoucher(UUID voucherId, UUID shopId, BigDecimal shopSubtotal, UUID userId) {
-        if (voucherId == null) return BigDecimal.ZERO;
+    public BigDecimal applyShopVoucher(List<UUID> voucherIds, UUID shopId, BigDecimal shopSubtotal, UUID userId) {
+        if (voucherIds == null || voucherIds.isEmpty()) return BigDecimal.ZERO;
         
-        var vOpt = shopVoucherRepository.findById(voucherId);
-        if (vOpt.isEmpty()) return BigDecimal.ZERO;
+        ShopVoucherJpaEntity v = null;
+        for (UUID vid : voucherIds) {
+            var vOpt = shopVoucherRepository.findById(vid);
+            if (vOpt.isPresent() && vOpt.get().getShopId().equals(shopId)) {
+                v = vOpt.get();
+                break;
+            }
+        }
         
-        var v = vOpt.get();
-        if (!v.getShopId().equals(shopId) || v.getValidTo().isBefore(java.time.ZonedDateTime.now()) || v.getValidFrom().isAfter(java.time.ZonedDateTime.now())) {
+        if (v == null) return BigDecimal.ZERO;
+        
+        if (v.getValidTo().isBefore(java.time.ZonedDateTime.now()) || v.getValidFrom().isAfter(java.time.ZonedDateTime.now())) {
             return BigDecimal.ZERO;
         }
         

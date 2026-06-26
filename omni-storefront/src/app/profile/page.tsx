@@ -583,16 +583,16 @@ export default function ProfilePage() {
                     <h2 className="text-2xl font-bold mb-1 font-[family-name:var(--font-heading)]" style={{ color: "var(--text-primary)" }}>Kho Voucher</h2>
                     <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>Các mã giảm giá bạn đã lưu</p>
                     <div className="grid md:grid-cols-2 gap-4">
-                      {vouchers.length > 0 ? vouchers.map((v) => (
+                      {vouchers.filter((v: any) => !v.isUsed).length > 0 ? vouchers.filter((v: any) => !v.isUsed).map((v: any) => (
                         <div key={v.id} className="flex rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
                           <div className="w-24 flex flex-col items-center justify-center p-2" style={{ background: "var(--grad-purple)" }}>
                             <Ticket className="w-8 h-8 text-white mb-1" />
-                            <span className="text-xs text-white font-bold text-center">{v.voucherType === "SHOP" ? "SHOP" : "OMNI"}</span>
+                            <span className="text-xs text-white font-bold text-center">{v.voucherType === "SHOP" ? "SHOP" : v.category === "SHIPPING" ? "SHIP" : "OMNI"}</span>
                           </div>
                           <div className="flex-1 p-3 flex flex-col justify-center">
-                            <h4 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>{v.code} - Giảm {v.discountType?.toUpperCase() === 'PERCENTAGE' ? `${v.discountValue}%` : `${v.discountValue}đ`}</h4>
-                            <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>Đơn tối thiểu {v.minOrderValue}đ</p>
-                            <p className="text-[10px] mt-2 text-red-400">HSD: {new Date(v.validTo).toLocaleDateString("vi-VN")}</p>
+                            <h4 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>{v.code || "(Không có mã)"} - Giảm {v.discountType?.toUpperCase() === 'PERCENTAGE' ? `${v.discountValue}%` : `${Number(v.discountValue || 0).toLocaleString("vi-VN")}đ`}</h4>
+                            <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>Đơn tối thiểu {Number(v.minOrderValue || 0).toLocaleString("vi-VN")}đ</p>
+                            <p className="text-[10px] mt-2 text-red-400">HSD: {v.validTo ? new Date(v.validTo).toLocaleDateString("vi-VN") : "Không giới hạn"}</p>
                           </div>
                         </div>
                       )) : (

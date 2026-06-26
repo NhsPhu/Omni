@@ -149,9 +149,7 @@ public class CheckoutService {
 
             BigDecimal shopDiscount = BigDecimal.ZERO;
             if (request.getShopVoucherIds() != null && !request.getShopVoucherIds().isEmpty()) {
-                // Simplified: assuming user only sends 1 voucher per shop
-                UUID appliedVoucher = request.getShopVoucherIds().stream().findFirst().orElse(null);
-                shopDiscount = voucherApplicationService.applyShopVoucher(appliedVoucher, shopId, shopSubtotal, userId);
+                shopDiscount = voucherApplicationService.applyShopVoucher(request.getShopVoucherIds(), shopId, shopSubtotal, userId);
             }
             
             childOrder.setSubtotal(shopSubtotal);

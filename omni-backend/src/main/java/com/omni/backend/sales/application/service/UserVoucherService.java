@@ -70,6 +70,7 @@ public class UserVoucherService {
                                 .voucherId(v.getId())
                                 .voucherType("PLATFORM")
                                 .shopId(null)
+                                .category(v.getCategory())
                                 .code(v.getCode())
                                 .discountType(v.getDiscountType())
                                 .discountValue(v.getDiscountValue())
