@@ -90,7 +90,8 @@ cloudinary:
 
 vnpay:
   tmn-code: ${VNPAY_TMN_CODE:UD2YB7G7}
-  hash-secret: ${VNPAY_HASH_SECRET:dummy}
+  hash-secret: ${VNPAY_HASH_SECRET:DJ8X3REITF7WMJQ5HGIJKNKKTSO8YQDK}
+  return-url: ${VNPAY_RETURN_URL:http://localhost:3000/payment/callback}
 
 management:
   endpoints:
